@@ -9,11 +9,12 @@ datasource db {
 
 // Usuário único do sistema (login simples)
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  name         String
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  passwordHash  String         @map("password_hash")
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now()) @map("created_at")
 
   @@map("users")
 }
@@ -48,22 +49,22 @@ model Stage {
 
 // Card do Kanban
 model Lead {
-  id             String   @id @default(uuid())
+  id             String         @id @default(uuid())
   name           String
   phone          String?
   email          String?
   source         String?
-  estimatedValue Decimal? @map("estimated_value") @db.Decimal(12, 2)
+  estimatedValue Decimal?       @map("estimated_value") @db.Decimal(12, 2)
   notes          String?
-  position       Int      @default(0)
-  stageId        String   @map("stage_id")
-  stage          Stage    @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  position       Int            @default(0)
+  stageId        String         @map("stage_id")
+  stage          Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
   /// Próximo contato agendado (um por lead); null = nenhum
-  followUpAt     DateTime? @map("follow_up_at")
-  followUpNote   String?   @map("follow_up_note")
+  followUpAt     DateTime?      @map("follow_up_at")
+  followUpNote   String?        @map("follow_up_note")
   activities     LeadActivity[]
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   @@index([stageId])
   @@index([followUpAt])
@@ -95,4 +96,23 @@ model LeadActivity {
 
   @@index([leadId, createdAt])
   @@map("lead_activities")
+}
+
+// Sessões de login: refresh tokens com rotação. Cada login abre uma família; cada renovação cria
+// um token novo na mesma família e revoga o anterior. Só o hash (sha256) do segredo é guardado.
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @map("token_hash")
+  familyId     String    @map("family_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  /// Token que substituiu este na rotação
+  replacedById String?   @map("replaced_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }

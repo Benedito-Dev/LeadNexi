@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { setToken, useToken } from '../../lib/session.ts'
+import { endSession, setToken, useToken } from '../../lib/session.ts'
 import { getMe, login } from './api.ts'
 
 const meKey = ['auth', 'me'] as const
@@ -26,10 +26,11 @@ export function useLogin() {
   })
 }
 
+/** Sair: revoga a sessão no servidor (o refresh token para de valer) e limpa o cache. */
 export function useLogout() {
   const queryClient = useQueryClient()
-  return () => {
-    setToken(null)
+  return async () => {
+    await endSession()
     queryClient.clear()
   }
 }

@@ -8,6 +8,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    // Cookie do refresh token (quando o frontend chama a API direto, sem o proxy do Vite)
+    credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 

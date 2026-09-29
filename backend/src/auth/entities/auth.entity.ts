@@ -5,7 +5,10 @@ export class AuthUserEntity {
 }
 
 export class LoginResponseEntity {
-  /** JWT para enviar no header `Authorization: Bearer <token>` */
+  /**
+   * JWT curto (15 min) para o header `Authorization: Bearer <token>`.
+   * O refresh token vai no cookie httpOnly `lnx_refresh` (renovação em POST /auth/refresh).
+   */
   accessToken: string;
   user: AuthUserEntity;
 }

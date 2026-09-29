@@ -11,7 +11,7 @@ LeadNexi/
 ├── backend/               # NestJS + Prisma 7
 │   ├── prisma/            # schema.prisma e migrations
 │   └── src/
-│       ├── auth/          # login JWT (usuário único) + guard global
+│       ├── auth/          # login JWT + refresh token (cookie), guard global, limite de tentativas
 │       ├── pipelines/     # funis do Kanban
 │       ├── stages/        # etapas (colunas) e reordenação
 │       ├── leads/         # CRUD, busca/paginação, movimentação dos cards e histórico
@@ -49,12 +49,14 @@ npm run dev                # http://localhost:5173
 
 ## API
 
-Todas as rotas ficam sob `/api` e exigem `Authorization: Bearer <token>`, exceto `POST /auth/login` e `GET /health`.
+Todas as rotas ficam sob `/api` e exigem `Authorization: Bearer <token>`, exceto login, refresh, logout e `GET /health`.
+
+**Sessão:** o login devolve um access token (JWT de 15 min, guardado só em memória no frontend) e grava o refresh token (30 dias) num cookie `lnx_refresh` httpOnly, `SameSite=Strict`, restrito a `/api/auth`. `POST /auth/refresh` troca o refresh por um novo a cada uso (rotação) e devolve outro access token; reapresentar um refresh já trocado encerra a sessão inteira (sinal de roubo). `POST /auth/logout` revoga a sessão no servidor. O login aceita 5 tentativas por minuto por IP. Senhas com scrypt. Em produção (`NODE_ENV=production`) o cookie sai com `Secure`.
 A documentação completa (com "Try it out") está em **http://localhost:3000/api/docs**.
 
 | Recurso | Endpoints |
 |---|---|
-| Auth | `POST /auth/login` · `GET /auth/me` |
+| Auth | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` |
 | Pipelines | `GET /pipelines` · `GET /pipelines/:id` (Kanban completo) · `POST` · `PATCH /:id` · `DELETE /:id` |
 | Stages | `POST /pipelines/:id/stages` · `PATCH /pipelines/:id/stages/reorder` · `PATCH /stages/:id` · `DELETE /stages/:id` |
 | Leads | `GET /leads?search&pipelineId&stageId&source&page&limit` · `GET /leads/:id` · `POST` · `PATCH /:id` · `PATCH /:id/move` · `DELETE /:id` |

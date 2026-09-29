@@ -7,12 +7,13 @@ import { Button } from '../components/ui/Button.tsx'
 import { Input } from '../components/ui/Input.tsx'
 import { useLogin } from '../features/auth/hooks.ts'
 import { ApiError } from '../lib/api.ts'
-import { useToken } from '../lib/session.ts'
+import { useSessionStatus, useToken } from '../lib/session.ts'
 
 type Field = 'email' | 'password'
 
 export function LoginPage() {
   const token = useToken()
+  const sessionStatus = useSessionStatus()
   const location = useLocation()
   const login = useLogin()
   const [showPassword, setShowPassword] = useState(false)
@@ -20,6 +21,8 @@ export function LoginPage() {
 
   // Já logado (ou acabou de entrar): volta para a página que pediu o login
   if (token) return <Navigate to={redirectTarget(location.state)} replace />
+  // Ainda restaurando a sessão: não mostra o formulário à toa
+  if (sessionStatus === 'checking') return <div aria-busy="true" className="min-h-screen" />
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -150,6 +153,7 @@ function validate(email: string, password: string): { field: Field; message: str
 
 function loginErrorMessage(error: Error): string {
   if (error instanceof ApiError && error.status === 401) return 'E-mail ou senha inválidos.'
+  if (error instanceof ApiError && error.status === 429) return 'Muitas tentativas. Aguarde um minuto e tente de novo.'
   if (error instanceof ApiError && error.status < 500) return 'Confira o e-mail e a senha.'
   return 'Não foi possível conectar ao servidor. Tente de novo em instantes.'
 }

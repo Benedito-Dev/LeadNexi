@@ -1,4 +1,4 @@
-import { getToken, setToken } from './session.ts'
+import { getToken, refreshSession } from './session.ts'
 
 // Erro HTTP da API, com a mensagem enviada pelo backend (NestJS).
 export class ApiError extends Error {
@@ -12,9 +12,25 @@ export class ApiError extends Error {
 }
 
 // Cliente HTTP base. O Vite faz proxy de /api para o backend (localhost:3000).
+// Access token vencido (401): renova a sessão pelo cookie e repete a chamada uma vez.
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken()
-  const res = await fetch(`/api${path}`, {
+  let res = await send(path, init, getToken())
+
+  // Rotas de /auth tratam o próprio 401 (ex.: senha errada no login)
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    const refreshed = await refreshSession()
+    if (refreshed === 'error') throw new ApiError(0, 'Não foi possível conectar ao servidor.')
+    // Sem sessão: refreshSession já limpou o token; as rotas protegidas levam ao login
+    if (refreshed !== 'unauthenticated') res = await send(path, init, refreshed.token)
+  }
+
+  if (!res.ok) throw new ApiError(res.status, await readErrorMessage(res))
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+function send(path: string, init: RequestInit | undefined, token: string | null) {
+  return fetch(`/api${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -22,13 +38,6 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   })
-  if (!res.ok) {
-    // Token expirado ou inválido: encerra a sessão; as rotas protegidas levam ao login
-    if (res.status === 401 && token && getToken() === token) setToken(null)
-    throw new ApiError(res.status, await readErrorMessage(res))
-  }
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
