@@ -12,6 +12,7 @@ import { useInstagramAccount } from '../features/instagram/hooks.ts'
 const RETURN_ERRORS: Record<string, string> = {
   negado: 'A conexão foi cancelada no Instagram.',
   conta: 'Essa conta não é profissional. Mude para Empresa ou Criador no app do Instagram e tente de novo.',
+  expirado: 'O tempo para concluir a conexão acabou. Clique em "Conectar Instagram" de novo.',
   falha: 'Não foi possível conectar o Instagram. Tente de novo.',
 }
 
@@ -20,7 +21,8 @@ export function InstagramPage() {
   const account = useInstagramAccount()
   const [composerOpen, setComposerOpen] = useState(false)
   const [params, setParams] = useSearchParams()
-  const connected = account.data?.connected === true
+  // Conta conectada e com token valendo: só assim dá para publicar
+  const canPublish = account.data?.connected === true && !account.data.account.needsReconnect
 
   const returned = params.get('conectado') === '1' ? 'ok' : params.get('erro')
   const dismissReturn = () => setParams({}, { replace: true })
@@ -31,7 +33,7 @@ export function InstagramPage() {
         title="Instagram"
         description="Agende e publique fotos e carrosséis no seu perfil."
         actions={
-          <Button variant={connected ? 'primary' : 'secondary'} onClick={() => setComposerOpen(true)}>
+          <Button variant={canPublish ? 'primary' : 'secondary'} onClick={() => setComposerOpen(true)}>
             <Plus aria-hidden size={18} strokeWidth={1.75} />
             Novo post
           </Button>
@@ -86,7 +88,7 @@ export function InstagramPage() {
         <ConnectCard />
       )}
 
-      <PostComposer open={composerOpen} connected={connected} onClose={() => setComposerOpen(false)} />
+      <PostComposer open={composerOpen} connected={canPublish} onClose={() => setComposerOpen(false)} />
     </div>
   )
 }

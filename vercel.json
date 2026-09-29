@@ -29,5 +29,11 @@
         "service": "frontend"
       }
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/instagram-token",
+      "schedule": "0 9 * * *"
+    }
   ]
 }

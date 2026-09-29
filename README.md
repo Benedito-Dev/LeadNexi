@@ -62,7 +62,10 @@ A documentação completa (com "Try it out") está em **http://localhost:3000/ap
 | Stages | `POST /pipelines/:id/stages` · `PATCH /pipelines/:id/stages/reorder` · `PATCH /stages/:id` · `DELETE /stages/:id` |
 | Leads | `GET /leads?search&pipelineId&stageId&source&page&limit` · `GET /leads/:id` · `POST` · `PATCH /:id` · `PATCH /:id/move` · `DELETE /:id` |
 | Histórico do lead | `GET /leads/follow-ups` (agenda, atrasados primeiro) · `GET /leads/:id/activities` · `POST /leads/:id/notes` · `DELETE /leads/:id/notes/:activityId` · `PUT /leads/:id/follow-up` · `POST /leads/:id/follow-up/complete` · `DELETE /leads/:id/follow-up` |
-| Instagram | `GET /instagram/account` · `POST /instagram/connect` (link do login oficial) · `DELETE /instagram/account` |
+| Instagram | `GET /instagram/account` · `POST /instagram/connect` (link do login oficial) · `GET /instagram/callback` (volta do login, pública) · `DELETE /instagram/account` |
+| Cron | `GET /cron/instagram-token` (renova o token; exige `Authorization: Bearer <CRON_SECRET>`) |
+
+**Instagram:** "Conectar" leva ao login oficial do Instagram; a Meta devolve o navegador para `/api/instagram/callback`, que confere o `state` (JWT de 10 min), troca o código pelo token de 60 dias, lê o perfil (só contas profissionais) e volta para `/instagram?conectado=1` ou `?erro=negado|conta|expirado|falha`. O token fica criptografado no banco (AES-256-GCM, `TOKEN_ENCRYPTION_KEY`). Um cron diário renova os tokens que vencem em até 10 dias; se a Meta recusar o token, a tela pede para conectar de novo (`needsReconnect`).
 
 **Regras:** etapas e pipelines com leads não podem ser apagados (409); as posições de colunas e cards são sempre contíguas (0, 1, 2…) e recalculadas a cada movimento.
 O histórico registra sozinho a criação e cada troca de etapa (com o nome das etapas no momento); só anotações podem ser apagadas. Cada lead tem no máximo um próximo contato agendado (`followUpAt`).
@@ -72,7 +75,8 @@ O histórico registra sozinho a criação e cada troca de etapa (com o nome das 
 No ar em **https://leadnexi.vercel.app**: um projeto Vercel (`leadnexi`) com dois serviços, definidos em `vercel.json`: `frontend` (Vite, SPA) e `backend` (NestJS, função Node). `/api/*` vai para o backend e o resto para o frontend, no mesmo domínio (o cookie do refresh token funciona sem CORS). Banco: Postgres no Neon, conectado pela Vercel Marketplace (injeta `DATABASE_URL` e `DATABASE_URL_UNPOOLED`).
 
 - **Deploy:** `vercel deploy --prod` na raiz do repositório.
-- **Variáveis na Vercel:** `JWT_SECRET`, `JWT_EXPIRES_IN=15m`, `REFRESH_TOKEN_TTL_DAYS=30` (+ as do Neon).
+- **Variáveis na Vercel:** `JWT_SECRET`, `JWT_EXPIRES_IN=15m`, `REFRESH_TOKEN_TTL_DAYS=30` (+ as do Neon). Para o Instagram: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URI`, `TOKEN_ENCRYPTION_KEY` e `CRON_SECRET`.
+- **Cron:** `crons` no `vercel.json` chama `/api/cron/instagram-token` todo dia às 9h UTC (no plano Hobby a Vercel roda cron no máximo 1x por dia, em algum momento dentro da hora marcada).
 - **Migrações:** `DATABASE_URL="<DATABASE_URL_UNPOOLED>" npx prisma migrate deploy` (em `backend/`), antes do deploy que depende delas.
 - **Build do backend** (`npm run vercel-build`): `nest build` + `scripts/bundle-vercel.mjs`, que empacota `dist/main.js` num arquivo único com as dependências. Na Vercel o `dist/` vira a raiz da função e o `node_modules` fica fora do alcance do Node; o bundle não depende dele.
 - Na Vercel (`VERCEL` definido) o Swagger fica desligado e o Express confia no proxy (IP real para o limite de tentativas). O limite é em memória, por instância da função.

@@ -462,8 +462,9 @@ Qualquer endereço desconhecido do app (rota `*`, abre com ou sem login). Tela c
 ### 9.5 Tela Instagram
 Item "Instagram" no menu (ícone próprio). Coluna única de até 768 px, "Novo post" no topo (primário com conta conectada, secundário sem).
 - **Sem conta:** cartão `navy-800` `radius 20` com o ícone num círculo `violet-tint`, título "Conecte seu Instagram", três benefícios (ícones cyan) e "Conectar Instagram" (primário). Abaixo, a garantia "Você entra pelo login oficial do Instagram. O LeadNexi nunca vê sua senha." Falha ao iniciar aparece em `danger`.
-- **Conectada:** cartão com foto do perfil, @usuário, bolinha `success` "Conectado" e "Desconectar" (confirma com segundo clique); abaixo, a lista de posts agendados (vazio: caixa tracejada).
-- **Volta do login** (`?conectado=1` / `?erro=negado|conta|falha`): faixa de aviso fechável no topo.
+- **Conectada:** cartão com foto do perfil, @usuário, bolinha `success` "Conectado" e "Desconectar" (confirma com segundo clique; no celular, só o ícone até confirmar); abaixo, a lista de posts agendados (vazio: caixa tracejada).
+- **Conexão expirada** (token recusado pela Meta ou vencido): bolinha `warning` "Conexão expirada"; no mesmo cartão, abaixo de uma divisória, o aviso (ícone `warning`) e "Conectar de novo" (primário). "Novo post" passa a secundário.
+- **Volta do login** (`?conectado=1` / `?erro=negado|conta|expirado|falha`): faixa de aviso fechável no topo.
 - **Novo post** (painel à direita, `<Drawer>`): área tracejada para arrastar ou escolher imagens (até 10); miniaturas numeradas em grade de 4, com remover e mover (no hover/foco; em toque sempre), aviso `warning` quando a proporção sai de 4:5–1,91:1, e "A imagem 1 é a capa do carrossel". Legenda com contadores de hashtags (30) e caracteres (2.200). "Quando publicar": seletor Agendar / Publicar agora + data e hora. No rodapé, o primeiro motivo que impede publicar, em texto claro.
 - As imagens viram JPEG (lado maior 1440 px, fundo branco sob transparência) no navegador antes de subir. Controles sobre as miniaturas usam `backdrop` + `on-accent` (legíveis nos dois temas).
 

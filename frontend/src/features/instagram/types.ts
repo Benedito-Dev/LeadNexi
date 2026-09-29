@@ -4,6 +4,8 @@ export interface InstagramAccount {
   profilePictureUrl: string | null
   tokenExpiresAt: string
   createdAt: string
+  /** O token não vale mais (revogado ou vencido): precisa conectar de novo para publicar */
+  needsReconnect: boolean
 }
 
 /** GET /instagram/account */

@@ -118,18 +118,21 @@ model RefreshToken {
 }
 
 // Conta do Instagram conectada (login oficial da Meta). O token de acesso fica criptografado
-// (AES-256-GCM) e dura 60 dias; é renovado antes de vencer.
+// (AES-256-GCM, chave TOKEN_ENCRYPTION_KEY) e dura 60 dias; o cron diário renova antes de vencer.
 model InstagramAccount {
-  id                String   @id @default(uuid())
-  /// ID do usuário do Instagram na API (app-scoped)
-  igUserId          String   @unique @map("ig_user_id")
+  id                String    @id @default(uuid())
+  /// ID da conta profissional no Instagram (`user_id`): é o usado para publicar
+  igUserId          String    @unique @map("ig_user_id")
   username          String
   name              String?
-  profilePictureUrl String?  @map("profile_picture_url")
-  accessToken       String   @map("access_token")
-  tokenExpiresAt    DateTime @map("token_expires_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  profilePictureUrl String?   @map("profile_picture_url")
+  /// Token criptografado ("v1.<iv>.<tag>.<dados>"), nunca em texto puro
+  accessToken       String    @map("access_token")
+  tokenExpiresAt    DateTime  @map("token_expires_at")
+  /// Quando a Meta recusou o token (revogado ou vencido): a conta precisa ser reconectada
+  tokenInvalidAt    DateTime? @map("token_invalid_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@map("instagram_accounts")
 }
