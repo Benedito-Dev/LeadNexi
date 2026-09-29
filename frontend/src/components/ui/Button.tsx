@@ -5,7 +5,7 @@ type ButtonProps = ComponentProps<'button'> & {
 }
 
 const variants = {
-  primary: 'bg-violet-600 text-white',
+  primary: 'bg-violet-600 text-on-accent',
   secondary: 'border border-navy-600 text-white hover:bg-navy-800',
   // Ação destrutiva: mesmo formato do secundário, texto na cor de erro (BRAND.md, seção 4.3)
   danger: 'border border-navy-600 text-danger hover:bg-navy-800',

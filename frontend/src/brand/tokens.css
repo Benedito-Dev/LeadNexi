@@ -76,6 +76,54 @@
 
   /* Grade de nós (padrão de fundo) */
   --lnx-dot-grid: radial-gradient(circle, var(--lnx-grid-dot) 1.4px, transparent 1.6px) 0 0 / 32px 32px;
+
+  /* Fixos entre temas */
+  --lnx-on-accent: #F8FAFC;                /* texto sobre violeta (botão primário) */
+  --lnx-backdrop: rgba(11, 16, 32, 0.7);   /* fundo atrás de modais */
+  --lnx-logo-bridge: #22D3EE;              /* ponte e nós do símbolo */
+  --lnx-logo-text: #F8FAFC;                /* nome "LeadNexi" */
+
+  color-scheme: dark;
+}
+
+/* Tema claro (BRAND.md, seção 4.6). Os nomes dos tokens continuam os do escuro: cada um
+   guarda o PAPEL (navy-800 = superfície, white = texto principal), e aqui recebe o valor claro. */
+:root[data-theme="light"] {
+  --lnx-navy: #F4F6FA;        /* fundo principal */
+  --lnx-navy-900: #FFFFFF;    /* sidebar */
+  --lnx-navy-850: #EAEEF4;    /* fundo de coluna do kanban */
+  --lnx-navy-800: #FFFFFF;    /* superfície (cards, inputs) */
+  --lnx-navy-750: #F1F4F9;    /* painel / hover de menu */
+  --lnx-navy-700: #E2E7EF;    /* bordas */
+  --lnx-navy-600: #CBD3DF;    /* bordas fortes */
+  --lnx-nav-active: #E8ECF4;  /* item ativo do menu */
+  --lnx-navy-drag: #FFFFFF;
+  --lnx-kanban-border: #DDE3EC;
+  --lnx-slate-tint: #E8ECF3;
+
+  --lnx-white: #0B1020;       /* texto principal (navy) */
+  --lnx-slate-300: #334155;   /* texto secundário forte */
+  --lnx-slate-400: #536076;   /* texto secundário (5.9:1 no branco) */
+
+  --lnx-violet-300: #5B4BEA;  /* texto violeta sobre claro */
+  --lnx-violet-tint: #ECEAFF;
+  --lnx-violet-deep: #E4E0FF; /* avatar */
+  --lnx-cyan: #0E7490;        /* cyan legível em texto pequeno (5.4:1) */
+  --lnx-cyan-tint: #D5F3F8;
+  --lnx-grid-dot: #E3E8F0;
+  --lnx-trail: #C5CDDB;
+
+  --lnx-success: #047857;
+  --lnx-warning: #B45309;
+  --lnx-danger:  #DC2626;
+
+  --lnx-shadow-float: 0 20px 50px rgba(15, 23, 42, 0.16);
+  --lnx-shadow-drag:  0 12px 32px rgba(15, 23, 42, 0.14);
+  --lnx-backdrop: rgba(11, 16, 32, 0.45);
+  --lnx-logo-bridge: #0891B2;
+  --lnx-logo-text: #0B1020;
+
+  color-scheme: light;
 }
 
 body {

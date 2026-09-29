@@ -71,11 +71,6 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
 
   return (
     <Page
-      badge={
-        <span className="rounded-full bg-slate-tint px-2.5 py-1 text-xs leading-none font-bold text-slate-300">
-          {board.name}
-        </span>
-      }
       actions={
         <>
           {actions}
@@ -139,18 +134,10 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
   )
 }
 
-function Page({
-  badge,
-  actions,
-  children,
-}: {
-  badge?: ReactNode
-  actions?: ReactNode
-  children: ReactNode
-}) {
+function Page({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="Funil de vendas" badge={badge} actions={actions} />
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Funil de vendas" actions={actions} />
       {children}
     </div>
   )
@@ -158,11 +145,11 @@ function Page({
 
 function BoardSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Carregando funil" className="flex flex-col gap-5">
-      <div className="h-19 animate-pulse rounded-lg border bg-navy-750" />
-      <div className="grid auto-cols-[minmax(256px,1fr)] grid-flow-col gap-4 overflow-hidden">
+    <div aria-busy="true" aria-label="Carregando funil" className="flex flex-col gap-6">
+      <div className="h-13 w-2/3 animate-pulse rounded-md bg-navy-800" />
+      <div className="grid auto-cols-[minmax(248px,1fr)] grid-flow-col gap-5 overflow-hidden">
         {[0, 1, 2, 3].map((column) => (
-          <div key={column} className="h-80 animate-pulse rounded-lg border border-kanban-border bg-navy-850" />
+          <div key={column} className="h-40 animate-pulse rounded-md bg-navy-800" />
         ))}
       </div>
     </div>

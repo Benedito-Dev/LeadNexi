@@ -11,9 +11,9 @@ import { stageColorClass } from '../stageColor.ts'
 import type { Stage } from '../types.ts'
 import { SortableLeadCard } from './LeadCard.tsx'
 
-// Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso; borda Navy 600
-// ao receber um card. Cabeçalho: bolinha, nome e ações; abaixo, contagem e total em R$;
-// por fim, a linha da etapa.
+// Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso, com a altura do
+// próprio conteúdo; borda Navy 600 ao receber um card. Cabeçalho: bolinha, nome, contagem e ações (no desktop,
+// só aparecem no hover/foco); abaixo, o total da etapa em R$.
 export function KanbanColumn({
   stage,
   index,
@@ -46,11 +46,11 @@ export function KanbanColumn({
   return (
     <section
       aria-label={`Etapa ${stage.name}`}
-      className={`flex min-w-62 flex-1 basis-0 flex-col gap-2 rounded-lg border bg-navy-850 p-2.5 transition-colors ${
+      className={`group flex min-w-62 flex-1 basis-0 flex-col gap-3 rounded-lg border bg-navy-850 p-2.5 transition-colors ${
         isOver ? 'border-navy-600' : 'border-transparent'
       }`}
     >
-      <header className="px-1 pt-0.5 pb-1.5">
+      <header className="px-1">
         <div className="flex min-h-8 items-center gap-2">
           <span aria-hidden className={`size-2 shrink-0 rounded-full ${color}`} />
           {renaming ? (
@@ -78,13 +78,18 @@ export function KanbanColumn({
           ) : (
             <>
               <h2
-                className="min-w-0 flex-1 truncate text-ui font-bold text-white"
+                className="min-w-0 truncate text-ui font-bold text-white"
                 title={stage.name}
                 onDoubleClick={() => setRenaming(true)}
               >
                 {stage.name}
               </h2>
-              <span className="-mr-1 flex shrink-0">
+              <span className="text-small text-slate-400 tabular-nums">
+                <span className="sr-only">Leads: </span>
+                {leads.length}
+              </span>
+              <span className="flex-1" />
+              <span className="-mr-1 flex shrink-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 has-aria-expanded:opacity-100 [@media(hover:hover)]:opacity-0">
                 <button
                   type="button"
                   onClick={() => onAddLead(stage.id)}
@@ -105,16 +110,10 @@ export function KanbanColumn({
             </>
           )}
         </div>
-        <p className="flex items-center justify-between gap-2 pl-4 font-mono text-xs">
-          <span className="text-slate-400">
-            {leads.length} {leads.length === 1 ? 'lead' : 'leads'}
-          </span>
-          <span className="text-slate-300">
-            <span className="sr-only">Total: </span>
-            {formatCurrency(total)}
-          </span>
+        <p className="pl-4 text-small text-slate-400 tabular-nums">
+          <span className="sr-only">Total: </span>
+          {formatCurrency(total)}
         </p>
-        <div aria-hidden className={`mt-2.5 h-0.5 rounded-full ${color}`} />
       </header>
 
       <SortableContext items={leads.map((lead) => lead.id)} strategy={verticalListSortingStrategy}>
@@ -129,8 +128,8 @@ export function KanbanColumn({
             />
           ))}
           {leads.length === 0 && (
-            <p className="rounded-md border border-dashed px-3 py-5 text-center text-small font-medium text-slate-400">
-              {dragDisabled ? 'Nenhum lead encontrado.' : 'Nenhum lead aqui ainda. Arraste um card ou crie um novo lead.'}
+            <p className="rounded-md border border-dashed px-3 py-6 text-center text-small font-medium text-slate-400">
+              {dragDisabled ? 'Nenhum lead encontrado.' : 'Arraste um card para cá.'}
             </p>
           )}
         </div>

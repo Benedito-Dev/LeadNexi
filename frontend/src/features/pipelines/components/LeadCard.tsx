@@ -2,43 +2,29 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { KeyboardEvent } from 'react'
 import { formatCurrency, formatElapsed } from '../../../lib/format.ts'
-import { SourceTag } from '../../leads/components/SourceTag.tsx'
 import type { Lead } from '../../leads/types.ts'
 
-// Card de lead compacto (BRAND.md, seção 8): nome e valor na 1ª linha, contato e tempo
-// na 2ª, origem embaixo. Mono só no valor. "closed" = etapa final: valor em cyan.
+// Card de lead (BRAND.md, seção 8): três linhas lidas de cima para baixo. Nome, valor (se
+// houver) e uma linha discreta com origem e tempo. "closed" = etapa final: valor em cyan.
 export function LeadCard({ lead, closed, dragging = false }: { lead: Lead; closed: boolean; dragging?: boolean }) {
   return (
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2.5 gap-y-1 rounded-md border p-3 ${
+      className={`flex flex-col gap-1 rounded-md border px-3.5 py-3 transition-colors ${
         dragging ? '-rotate-[1.5deg] border-cyan bg-navy-drag shadow-drag' : 'bg-navy-800'
       }`}
     >
       <p className="line-clamp-2 text-ui font-bold text-white">{lead.name}</p>
-      {lead.estimatedValue ? (
-        <span className={`font-mono text-xs ${closed ? 'text-cyan' : 'text-white'}`}>
+      {lead.estimatedValue && (
+        <p className={`text-ui tabular-nums ${closed ? 'text-cyan' : 'text-slate-300'}`}>
           {formatCurrency(lead.estimatedValue)}
-        </span>
-      ) : (
-        <span aria-label="Sem valor" className="font-mono text-xs text-slate-400">
-          —
-        </span>
+        </p>
       )}
-
-      <p className="truncate text-small font-medium text-slate-400">{lead.phone ?? lead.email ?? ''}</p>
-      <time
-        dateTime={lead.updatedAt}
-        title="Última movimentação"
-        className={`text-right text-xs font-semibold ${dragging ? 'text-cyan' : 'text-slate-400'}`}
-      >
-        {dragging ? 'agora' : formatElapsed(lead.updatedAt)}
-      </time>
-
-      {lead.source && (
-        <div className="col-span-2 mt-1.5">
-          <SourceTag source={lead.source} />
-        </div>
-      )}
+      <p className="mt-1.5 truncate text-xs font-semibold text-slate-400">
+        {lead.source && <>{lead.source} · </>}
+        <time dateTime={lead.updatedAt} title="Última movimentação" className={dragging ? 'text-cyan' : undefined}>
+          {dragging ? 'agora' : formatElapsed(lead.updatedAt)}
+        </time>
+      </p>
     </div>
   )
 }

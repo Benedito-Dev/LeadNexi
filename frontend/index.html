@@ -9,6 +9,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" />
     <title>LeadNexi</title>
+    <script>
+      // Aplica o tema salvo antes da primeira pintura (ver src/lib/theme.ts)
+      try {
+        if (localStorage.getItem('leadnexi.theme') === 'light') {
+          document.documentElement.dataset.theme = 'light'
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F4F6FA')
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

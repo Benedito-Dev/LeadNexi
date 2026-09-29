@@ -1,8 +1,9 @@
-import { LogOut, Users } from 'lucide-react'
+import { LogOut, Moon, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { KanbanIcon } from '../brand/icons.tsx'
 import { useLogout, useMe } from '../features/auth/hooks.ts'
+import { setTheme, useTheme } from '../lib/theme.ts'
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
 
@@ -66,6 +67,7 @@ function UserCard() {
         <p className="truncate text-ui font-bold text-white">{user.name}</p>
         <p className="truncate text-small font-medium text-slate-400">{user.email}</p>
       </div>
+      <ThemeToggle />
       <button
         type="button"
         onClick={logout}
@@ -76,6 +78,26 @@ function UserCard() {
         <LogOut aria-hidden size={18} strokeWidth={1.75} />
       </button>
     </div>
+  )
+}
+
+/** Alterna entre tema escuro e claro; o ícone mostra o tema para onde vai. */
+function ThemeToggle() {
+  const theme = useTheme()
+  const next = theme === 'dark' ? 'light' : 'dark'
+  const label = next === 'light' ? 'Usar tema claro' : 'Usar tema escuro'
+  const Icon = next === 'light' ? Sun : Moon
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(next)}
+      aria-label={label}
+      title={label}
+      className="-mr-2 grid size-9 shrink-0 cursor-pointer place-items-center rounded-sm text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
+    >
+      <Icon aria-hidden size={18} strokeWidth={1.75} />
+    </button>
   )
 }
 

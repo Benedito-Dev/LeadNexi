@@ -15,7 +15,7 @@ export function AppLayout() {
     <div className="lg:flex">
       <a
         href="#conteudo"
-        className="sr-only rounded-md bg-violet-600 px-4 py-2 text-ui font-bold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
+        className="sr-only rounded-md bg-violet-600 px-4 py-2 text-ui font-bold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
       >
         Pular para o conteúdo
       </a>
@@ -42,7 +42,7 @@ export function AppLayout() {
         aria-label="Menu"
         // Clique fora do painel (no fundo escurecido) fecha o menu
         onClick={(event) => event.target === event.currentTarget && closeMenu()}
-        className="m-0 h-dvh max-h-none w-62 max-w-[85vw] border-r border-slate-tint bg-navy-900 p-0 text-white backdrop:bg-navy/70"
+        className="m-0 h-dvh max-h-none w-62 max-w-[85vw] border-r border-slate-tint bg-navy-900 p-0 text-white backdrop:bg-backdrop"
       >
         <Sidebar
           onNavigate={closeMenu}

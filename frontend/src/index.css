@@ -3,10 +3,6 @@
 @import "./brand/theme.css";
 
 @layer base {
-  :root {
-    color-scheme: dark;
-  }
-
   /* Borda padrão da marca (Navy 700) para qualquer utilitário `border`. */
   *,
   ::before,

@@ -30,7 +30,7 @@ export function Dialog({
       onClose={onClose}
       // Clique no fundo escurecido fecha
       onClick={(event) => event.target === event.currentTarget && onClose()}
-      className="m-auto max-h-[calc(100dvh-32px)] w-[min(520px,calc(100vw-32px))] rounded-xl border border-navy-600 bg-navy-800 p-0 text-white shadow-float backdrop:bg-navy/70"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[min(520px,calc(100vw-32px))] rounded-xl border border-navy-600 bg-navy-800 p-0 text-white shadow-float backdrop:bg-backdrop"
     >
       {open && (
         <>

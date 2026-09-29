@@ -150,7 +150,7 @@ Símbolo acima, nome abaixo, centralizados. Nome ≈ 0.43 × altura do símbolo;
 | Nome | HEX | Uso |
 |---|---|---|
 | Navy 900 | `#0E1428` | Sidebar |
-| Navy 850 | `#0F1426` | Fundo das colunas do Kanban |
+| Navy 850 | `#0F1426` | Fundo da coluna do Kanban ao receber um card arrastado |
 | Navy 750 | `#11172A` | Painéis, mock do produto |
 | Navy 800 | `#141A2E` | Superfície: cards, inputs, KPIs |
 | Navy 700 | `#232B45` | Bordas padrão |
@@ -194,6 +194,33 @@ Sucesso `#34D399` · Atenção `#FBBF24` · Erro `#F87171`.
 
 ---
 
+### 4.6 Tema claro
+O escuro continua sendo o padrão. O usuário alterna pelo botão sol/lua na sidebar (ao lado de "Sair"); a escolha fica salva no navegador (`leadnexi.theme`).
+Os tokens mantêm o nome do escuro e trocam só o valor: cada um guarda o **papel** (`navy-800` = superfície, `white` = texto principal). Por isso os componentes não mudam entre temas. Os valores ficam em `tokens.css`, no bloco `:root[data-theme="light"]`.
+
+| Token (papel) | Escuro | Claro |
+|---|---|---|
+| `navy` (fundo) | `#0B1020` | `#F4F6FA` |
+| `navy-900` (sidebar) | `#0E1428` | `#FFFFFF` |
+| `navy-850` (coluna do Kanban) | `#0F1426` | `#EAEEF4` |
+| `navy-800` (superfície: cards, inputs) | `#141A2E` | `#FFFFFF` |
+| `navy-750` (painel, hover de menu) | `#11172A` | `#F1F4F9` |
+| `navy-700` (borda) | `#232B45` | `#E2E7EF` |
+| `navy-600` (borda forte) | `#2A3352` | `#CBD3DF` |
+| `nav-active` | `#1B2242` | `#E8ECF4` |
+| `slate-tint` | `#1E2640` | `#E8ECF3` |
+| `white` (texto principal) | `#F8FAFC` | `#0B1020` |
+| `slate-300` (texto secundário forte) | `#CBD5E1` | `#334155` |
+| `slate-400` (texto secundário) | `#94A3B8` | `#536076` (5.9:1 no branco) |
+| `violet-300` (texto violeta) | `#A99FFD` | `#5B4BEA` |
+| `violet-tint` / `violet-deep` | `#241F5C` / `#2A2468` | `#ECEAFF` / `#E4E0FF` |
+| `cyan` | `#22D3EE` | `#0E7490` (5.4:1: legível em texto pequeno) |
+| `cyan-tint` | `#0E3440` | `#D5F3F8` |
+| `success` / `warning` / `danger` | `#34D399` / `#FBBF24` / `#F87171` | `#047857` / `#B45309` / `#DC2626` |
+
+Fixos nos dois temas: botão primário `#5B4BEA` com texto `on-accent` (`#F8FAFC`, nunca `text-white`, que vira navy no claro) e o fundo de modal `backdrop`.
+Símbolo e logo seguem o tema sozinhos (variante `auto`, que é o padrão): ponte `#22D3EE` e nome `#F8FAFC` no escuro; ponte `#0891B2` e nome `#0B1020` no claro.
+
 ## 5. Tipografia
 
 | Papel | Fonte | Pesos |
@@ -221,7 +248,7 @@ Google Fonts:
 | Small | 13 / 600 | 0 | Metadados, nome do contato |
 | Data | Geist Mono 12–13 / 500 | 0 | "R$ 297", "12 min", contadores |
 | KPI | Geist Mono 28 / 500 | 0 | "R$ 18.400" (card KPI isolado) |
-| KPI compacto | Geist Mono 20 / 500 | 0 | Faixa de KPIs do Kanban (`text-kpi-sm`) |
+| KPI compacto | Geist Mono 20 / 500 | 0 | Resumo do funil no Kanban (`text-kpi-sm`) |
 
 **Regras:** títulos sempre com tracking negativo; valores monetários e tempos sempre em Geist Mono; máximo ~70 caracteres por linha em texto corrido.
 
@@ -297,19 +324,19 @@ Contador: pílula fundo `#0E3440`, texto `#22D3EE` Geist Mono 11.
 ### Card KPI
 `padding 18 20` · `radius 16` · fundo `#141A2E` · borda `#232B45` · rótulo 13/600 `#94A3B8` · valor Geist Mono 28/500 (valor de receita em `#22D3EE`).
 
-### Faixa de KPIs (topo do Kanban)
-Uma superfície só com 4 indicadores: `radius 16` · fundo `#11172A` · borda e divisórias 1 px `#232B45` · células `padding 14 20`.
-Rótulo 13/600 `#94A3B8` · valor Geist Mono **20**/500 (KPI compacto); receita/fechado em `#22D3EE`.
-Taxa de conversão com barra de 3 px: trilha `#1E2640`, preenchimento no gradiente violeta→cyan.
+### Resumo do funil (topo do Kanban)
+Quatro números soltos, **sem superfície nem borda** em volta: rótulo 13/600 `#94A3B8` em cima, valor Geist Mono **20**/500 (KPI compacto) embaixo; fechado em `#22D3EE`.
+Espaço de 40 px entre os indicadores; abaixo, divisória 1 px `#232B45` com 20 px de respiro separando o resumo do quadro.
 No celular: grade 2 × 2.
 
 ### Coluna do Kanban
-`padding 10` · `radius 16` · fundo `#0F1426` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `#2A3352` · gap 8. As colunas não esticam: cada uma tem a altura do próprio conteúdo.
-Cabeçalho em duas linhas, para o nome da etapa nunca ser cortado pelos números:
-- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 (ocupa o espaço livre) + botões "+" (novo lead na etapa) e "⋯" (ações da etapa), 28 px, ícone 16 `#94A3B8`.
-- Linha 2: contagem ("3 leads", Geist Mono 12 `#94A3B8`) à esquerda e total da etapa em R$ (Geist Mono 12 `#CBD5E1`) à direita.
-- Abaixo, linha de 2 px na cor da etapa.
-Largura mínima 248 px; as colunas dividem o espaço. No fim do quadro, botão "+" tracejado de 44 px (borda `#2A3352`) para criar etapa; ao clicar vira um campo.
+**Sem fundo e sem borda em repouso**: só os cards têm superfície (uma camada de contorno por vez). Ao receber um card arrastado, a coluna ganha fundo `#0F1426` e borda 1 px `#2A3352` · `padding 8` · `radius 16` · gap 12 entre cabeçalho e cards, 8 entre cards. As colunas não esticam: cada uma tem a altura do próprio conteúdo.
+Cabeçalho:
+- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem (só o número, Geist Mono 12 `#94A3B8`) + botões "+" (novo lead na etapa) e "⋯" (ações da etapa) à direita, 28 px, ícone 16 `#94A3B8`.
+- Linha 2: total da etapa em R$ (Geist Mono 12 `#94A3B8`), alinhado ao nome.
+- Sem linha colorida sob o cabeçalho: a cor da etapa aparece só na bolinha.
+Largura mínima 248 px; as colunas dividem o espaço, com 20 px entre os conteúdos. No fim do quadro, botão de texto "+ Nova etapa" (13/600 `#94A3B8`, hover fundo `#141A2E`) alinhado ao cabeçalho; ao clicar vira um campo.
+Coluna vazia: caixa tracejada "Arraste um card para cá." em 13/600 `#94A3B8`.
 Ações da etapa (menu "⋯"): Renomear (o nome vira campo: Enter salva, Esc cancela), Mover para a esquerda/direita (a cor acompanha a nova posição) e Excluir etapa (desativado enquanto houver leads, com a explicação; confirma em modal).
 
 ### Menu suspenso
@@ -319,10 +346,11 @@ Teclado: setas navegam, Home/End vão às pontas, Esc fecha e devolve o foco ao 
 Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` (da 5ª etapa em diante, cyan).
 
 ### Card de lead
-`padding 12` · `radius 12` · fundo `#141A2E` · borda `#232B45` (hover `#2A3352`) · gap 4 entre linhas.
-- Linha 1: nome do negócio 14/700 + valor (Geist Mono 12) à direita; sem valor: "—" em `#94A3B8`.
-- Linha 2: contato 13/500 `#94A3B8` + tempo desde a última movimentação (Manrope 12/600 `#94A3B8`) à direita.
-- Linha 3: etiqueta de origem.
+`padding 12` · `radius 12` · fundo `#141A2E` · borda `#232B45` (hover `#2A3352`). Lido de cima para baixo, tudo alinhado à esquerda:
+- Nome do negócio 14/700 (até 2 linhas).
+- Valor logo abaixo, Geist Mono 13 `#CBD5E1`, gap 4. Sem valor: a linha some (nada de "—").
+- Rodapé, 12 px abaixo: etiqueta de origem à esquerda e tempo desde a última movimentação (Manrope 12/600 `#94A3B8`) à direita.
+- Telefone e e-mail não aparecem no card: ficam no detalhe do lead (a busca continua encontrando por eles).
 - Geist Mono no card só para dinheiro: o tempo fica em Manrope para não competir com o valor.
 - **Sendo arrastado:** fundo `#161E38`, borda 1 px `#22D3EE`, sombra `0 12px 32px rgba(0,0,0,.45)`, rotação -1.5°, tempo "agora" em cyan.
 - **Fechado:** valor em `#22D3EE`.
@@ -358,12 +386,12 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 ### 9.1 Dashboard (1440 × 900)
 ```
 ┌──────────┬───────────────────────────────────────────────────────────┐
-│ Sidebar  │ Funil de vendas (Vendas)         [🔍 Buscar] [+ Novo lead]│
-│ 248px    ├──────────┬──────────┬──────────┬──────────────────────────┤
-│ #0E1428  │ KPI      │ KPI      │ KPI ▬▬── │ KPI (receita em cyan)    │
-│          │          │          │          │  ← faixa única, 1 bloco   │
-│ Logo     ├──────────┴──────────┴──────────┴──────────────────────────┤
-│ Funil ●  │ Novo lead │ Contato feito │ Proposta │ Fechado            │
+│ Sidebar  │ Funil de vendas                  [🔍 Buscar] [+ Novo lead]│
+│ 248px    │                                                           │
+│ #0E1428  │ Leads   Em negociação   Conversão   Fechado (cyan)        │
+│          │ 6       R$ 3.897        50%         R$ 2.650,50           │
+│ Logo     │ ───────────────────────────────────────────────────────── │
+│ Funil ●  │ ● Novo 1  │ ● Contato 1   │ ● Proposta│ ● Fechado 3  + Nova│
 │ Leads    │ [card]    │ [card]        │ [card*]  │ [card]             │
 │ Conversas│ [card]    │ [card]        │ [card]   │ [card]             │
 │ Agenda   │ [card]    │ [card]        │          │                    │
@@ -372,7 +400,7 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 │ Usuário  │                                                           │
 └──────────┴───────────────────────────────────────────────────────────┘
 ```
-Área principal: `padding 28 32`, gap 20. Faixa de KPIs e colunas: grid de 4 colunas; colunas com gap 16. Sidebar com borda direita 1 px `#1E2640`.
+Área principal: `padding 28 32`, gap 24. Resumo do funil sem superfície; colunas sem fundo, 20 px entre os conteúdos. Sidebar com borda direita 1 px `#1E2640`.
 
 ### 9.2 Site — hero (1440 × 900)
 ```
