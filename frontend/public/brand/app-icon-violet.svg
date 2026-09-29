@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
+  <defs>
+    <mask id="lnx-gap-app" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M16 16L48 48" stroke="#000" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="16" cy="16" r="10" fill="#000"/>
+      <circle cx="48" cy="48" r="10" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#5B4BEA"/>
+  <g transform="translate(8 8) scale(0.75)">
+    <g mask="url(#lnx-gap-app)" fill="#F8FAFC">
+      <path d="M10 16A6 6 0 0 1 22 16V42H26A6 6 0 0 1 26 54H16A6 6 0 0 1 10 48Z"/>
+      <rect x="42" y="10" width="12" height="44" rx="6"/>
+    </g>
+    <path d="M16 16L48 48" stroke="#22D3EE" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="16" cy="16" r="7" fill="#22D3EE"/>
+    <circle cx="48" cy="48" r="7" fill="#22D3EE"/>
+  </g>
+</svg>

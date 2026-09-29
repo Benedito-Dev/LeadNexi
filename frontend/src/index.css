@@ -1,41 +1,21 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
-}
+@import "tailwindcss";
+@import "./brand/tokens.css" layer(base);
+@import "./brand/theme.css";
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
 
-body {
-  margin: 0;
-}
+  /* Borda padrão da marca (Navy 700) para qualquer utilitário `border`. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--lnx-navy-700);
+  }
 
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 200px;
-  padding: 1rem;
-  border-right: 1px solid #8884;
-}
-
-.sidebar nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sidebar a.active {
-  font-weight: 600;
-}
-
-.content {
-  flex: 1;
-  padding: 1.5rem;
+  /* Menu lateral aberto no celular: a página por trás não rola */
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
 }

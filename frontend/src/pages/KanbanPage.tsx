@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageHeader.tsx'
+
 export function KanbanPage() {
-  return <h1>Kanban</h1>
+  return <PageHeader title="Funil de vendas" />
 }
