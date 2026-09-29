@@ -169,7 +169,7 @@ Símbolo acima, nome abaixo, centralizados. Nome ≈ 0.43 × altura do símbolo;
 | Violet deep | `#2A2468` | Avatar, balão de mensagem enviada |
 | Grid dot | `#161D35` | Pontos da grade de nós sobre o fundo navy |
 | Trail | `#3B4470` | Trilhas secundárias da linguagem gráfica |
-| Etapas do funil | `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` | Bolinha da coluna do Kanban, nós da trilha do funil |
+| Etapas do funil | `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` | Faixa do topo da coluna do Kanban, bolinha da etapa na tabela de leads, nós da trilha do funil |
 
 ### 4.3 Estados
 
