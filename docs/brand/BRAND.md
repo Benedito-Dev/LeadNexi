@@ -372,6 +372,14 @@ Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdo
 - **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, tempo "agora" em cyan.
 - **Fechado:** valor em verde (`success`: `#34D399` no escuro, `#047857` no claro).
 
+### Transição de login
+Ao clicar em "Entrar", uma tela `navy` cobre o formulário com o símbolo (88 px, via `<LeadNexiMark>`, intacto) e os efeitos numa camada por cima, na grade de 64 da ponte (16,16 → 48,48):
+- **Esperando (loop, sem fim definido):** um pulso branco com brilho na cor da ponte corre de um nó ao outro a cada 1,1 s. Texto "Entrando…". Fica no mínimo 0,4 s, para não piscar quando o login é instantâneo.
+- **Deu certo (uma vez, ~0,75 s):** a ponte acende de ponta a ponta com brilho e o símbolo "respira" (escala 1 → 1,08 → 1). Texto "Tudo certo". Só então o app abre.
+- **Erro:** a tela some, o formulário dá uma tremida horizontal (0,4 s) e mostra a mensagem; os campos mantêm o que foi digitado.
+- **Reduzir movimento** (preferência do sistema): sem pulso, sem confirmação animada e sem tremida; entra direto.
+Animações definidas em `theme.css` (`animate-bridge-pulse`, `animate-bridge-light`, `animate-mark-pop`, `animate-shake`, `animate-fade-in`), sempre com `motion-safe:`.
+
 ### Painel do lead
 Clicar num lead (card ou linha da tabela) abre um **painel à direita** (`<Drawer>`: `<dialog>` com altura total, largura 480 px ou a tela inteira no celular, fundo `navy-800`, borda esquerda `navy-600`, sombra float). "Novo lead" continua no modal.
 - **Topo:** iniciais + nome (`text-h2`) + etapa (bolinha) · valor; à direita, botão de WhatsApp e fechar.

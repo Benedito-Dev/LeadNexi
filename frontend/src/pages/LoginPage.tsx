@@ -5,17 +5,29 @@ import { FunnelTrail } from '../brand/FunnelTrail.tsx'
 import { LeadNexiLogo } from '../brand/LeadNexiMark.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { Input } from '../components/ui/Input.tsx'
-import { useLogin } from '../features/auth/hooks.ts'
+import { useLogin, useStartSession } from '../features/auth/hooks.ts'
+import { LoginTransition, type LoginPhase } from '../features/auth/LoginTransition.tsx'
 import { ApiError } from '../lib/api.ts'
 import { useSessionStatus, useToken } from '../lib/session.ts'
 
 type Field = 'email' | 'password'
+
+/** O loop fica na tela pelo menos isso, para não "piscar" quando o login é instantâneo */
+const MIN_LOOP_MS = 400
+/** Duração da confirmação (ponte acende + símbolo respira) antes de abrir o app */
+const DONE_MS = 750
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function LoginPage() {
   const token = useToken()
   const sessionStatus = useSessionStatus()
   const location = useLocation()
   const login = useLogin()
+  const startSession = useStartSession()
+  const [phase, setPhase] = useState<LoginPhase | null>(null)
+  const [shaking, setShaking] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [fieldError, setFieldError] = useState<{ field: Field; message: string } | null>(null)
 
@@ -24,7 +36,7 @@ export function LoginPage() {
   // Ainda restaurando a sessão: não mostra o formulário à toa
   if (sessionStatus === 'checking') return <div aria-busy="true" className="min-h-screen" />
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const data = new FormData(form)
@@ -37,7 +49,23 @@ export function LoginPage() {
       ;(form.elements.namedItem(invalid.field) as HTMLInputElement).focus()
       return
     }
-    login.mutate({ email, password })
+
+    // Loop enquanto o servidor responde; confirmação curta; só então o app abre
+    const startedAt = Date.now()
+    setPhase('loading')
+    try {
+      const session = await login.mutateAsync({ email, password })
+      if (!prefersReducedMotion()) {
+        await wait(MIN_LOOP_MS - (Date.now() - startedAt))
+        setPhase('done')
+        await wait(DONE_MS)
+      }
+      startSession(session)
+    } catch {
+      // Volta ao formulário com a mensagem (login.error) e a tremida
+      setPhase(null)
+      setShaking(true)
+    }
   }
 
   const error = fieldError?.message ?? (login.error ? loginErrorMessage(login.error) : null)
@@ -45,6 +73,7 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <title>Entrar · LeadNexi</title>
+      {phase && <LoginTransition phase={phase} />}
 
       <main className="flex flex-col px-6 py-8 sm:px-10 lg:px-16 lg:py-10">
         <LeadNexiLogo size={40} />
@@ -54,7 +83,12 @@ export function LoginPage() {
             <h1 className="text-app-title">Entrar</h1>
             <p className="mt-2 text-body text-slate-400">Acesse seu funil de vendas.</p>
 
-            <form noValidate onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+            <form
+              noValidate
+              onSubmit={(event) => void handleSubmit(event)}
+              onAnimationEnd={() => setShaking(false)}
+              className={`mt-8 flex flex-col gap-5 ${shaking ? 'motion-safe:animate-shake' : ''}`}
+            >
               <div className="flex flex-col gap-2">
                 <label htmlFor="email" className="text-small text-slate-300">
                   E-mail
