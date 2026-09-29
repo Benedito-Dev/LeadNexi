@@ -2,14 +2,26 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Clock } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import { formatCurrency, formatElapsed } from '../../../lib/format.ts'
+import { formatCurrency, formatElapsed, whatsappUrl } from '../../../lib/format.ts'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
+import { WhatsAppLink } from '../../leads/components/WhatsAppLink.tsx'
 import type { Lead } from '../../leads/types.ts'
 
 // Card de lead (BRAND.md, seção 8): corpo com iniciais, nome e origem (com ícone do canal); rodapé separado por
 // divisória com o valor (verde na etapa final) e o tempo desde a última movimentação.
-export function LeadCard({ lead, closed, dragging = false }: { lead: Lead; closed: boolean; dragging?: boolean }) {
+// `actionSpace`: reserva o canto direito do corpo para o botão de WhatsApp (sobreposto pelo SortableLeadCard).
+export function LeadCard({
+  lead,
+  closed,
+  dragging = false,
+  actionSpace = false,
+}: {
+  lead: Lead
+  closed: boolean
+  dragging?: boolean
+  actionSpace?: boolean
+}) {
   return (
     <div
       className={`rounded-md border transition-colors ${
@@ -18,7 +30,7 @@ export function LeadCard({ lead, closed, dragging = false }: { lead: Lead; close
     >
       <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-3">
         <LeadAvatar name={lead.name} />
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${actionSpace ? 'pr-8' : ''}`}>
           <p className="line-clamp-2 text-ui font-bold text-white">{lead.name}</p>
           {lead.source && (
             <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
@@ -53,6 +65,9 @@ export function LeadCard({ lead, closed, dragging = false }: { lead: Lead; close
 /**
  * Card arrastável. Clique ou Enter abre a edição; Espaço pega o card para mover pelo teclado.
  * Com `disabled` (ex.: busca ativa) o card só abre, não arrasta.
+ * O botão de WhatsApp fica FORA da área arrastável (irmão, sobreposto no canto): assim não há
+ * elemento interativo dentro do card, e Enter/clique nele não abrem a edição nem iniciam o arraste.
+ * No desktop aparece no hover/foco do card (grupo nomeado `card`: a coluna também é `group`); em toque, sempre.
  */
 export function SortableLeadCard({
   lead,
@@ -65,7 +80,7 @@ export function SortableLeadCard({
   disabled?: boolean
   onOpen: (lead: Lead) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
     data: { type: 'lead' },
     disabled,
@@ -80,21 +95,35 @@ export function SortableLeadCard({
     listeners?.onKeyDown?.(event)
   }
 
+  const hasWhatsApp = lead.phone !== null && whatsappUrl(lead.phone) !== null
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
-      onKeyDown={handleKeyDown}
-      onClick={() => onOpen(lead)}
-      aria-roledescription={disabled ? undefined : 'card arrastável'}
-      aria-label={disabled ? `${lead.name}. Enter para editar.` : `${lead.name}. Enter para editar, Espaço para mover.`}
-      className={`rounded-md transition-colors hover:[&>div]:border-navy-600 ${
-        disabled ? 'cursor-pointer' : 'cursor-grab'
-      } ${isDragging ? 'opacity-40' : ''}`}
+      className={`group/card relative ${isDragging ? 'opacity-40' : ''}`}
     >
-      <LeadCard lead={lead} closed={closed} />
+      <div
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        onKeyDown={handleKeyDown}
+        onClick={() => onOpen(lead)}
+        aria-roledescription={disabled ? undefined : 'card arrastável'}
+        aria-label={disabled ? `${lead.name}. Enter para editar.` : `${lead.name}. Enter para editar, Espaço para mover.`}
+        className={`rounded-md transition-colors hover:[&>div]:border-navy-600 ${
+          disabled ? 'cursor-pointer' : 'cursor-grab'
+        }`}
+      >
+        <LeadCard lead={lead} closed={closed} actionSpace={hasWhatsApp} />
+      </div>
+      {!isDragging && (
+        <WhatsAppLink
+          name={lead.name}
+          phone={lead.phone}
+          className="absolute top-3 right-2.5 opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+        />
+      )}
     </div>
   )
 }
