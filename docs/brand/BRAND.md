@@ -445,6 +445,12 @@ Amanhã 1 · Próximos dias 1                          ← slate-300
 ```
 Linha: superfície `navy-800`, borda `navy-700` (hover `navy-600`), `radius 16`; iniciais + nome 14/700 + o que fazer · etapa; hora 13/700 (atrasado em `danger`); WhatsApp e "Feito" (secundário 36 px). Clicar no lead abre o painel. No celular a hora vai para baixo do nome e "Feito" vira só o ícone. Vazio: caixa tracejada explicando como agendar.
 
+### 9.2.2 Página 404
+Qualquer endereço desconhecido do app (rota `*`, abre com ou sem login). Tela cheia com a grade de nós (`bg-dot-grid`), logo no topo (link para o início) e, no centro:
+- **Trilha interrompida** (seção 6.1): nó cyan de início → horizontal → 45° → horizontal em violeta, sinal de corte `//` e o resto do caminho tracejado (`trail`) até um nó vazio tracejado.
+- Etiqueta "Erro 404" (violeta), título `text-h1` "Página não encontrada" e texto `slate-400`: "O link pode estar incompleto ou a página mudou de lugar. Seus leads continuam onde estavam."
+- Botão primário "Ir para o início" e, só quando há página anterior no app, o secundário "Voltar".
+
 ### 9.2.1 Site — hero (1440 × 900)
 ```
 ┌──────────────────────────────────────────────────────────────────────┐

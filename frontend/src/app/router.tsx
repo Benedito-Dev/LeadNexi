@@ -4,6 +4,7 @@ import { RequireAuth } from '../features/auth/RequireAuth.tsx'
 import { KanbanPage } from '../pages/KanbanPage.tsx'
 import { LeadsPage } from '../pages/LeadsPage.tsx'
 import { LoginPage } from '../pages/LoginPage.tsx'
+import { NotFoundPage } from '../pages/NotFoundPage.tsx'
 import { TodayPage } from '../pages/TodayPage.tsx'
 
 export const router = createBrowserRouter([
@@ -22,4 +23,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Qualquer outro endereço: 404 própria (fora do login, abre mesmo sem sessão)
+  { path: '*', element: <NotFoundPage /> },
 ])
