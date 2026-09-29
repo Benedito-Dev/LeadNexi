@@ -65,6 +65,16 @@ A documentação completa (com "Try it out") está em **http://localhost:3000/ap
 **Regras:** etapas e pipelines com leads não podem ser apagados (409); as posições de colunas e cards são sempre contíguas (0, 1, 2…) e recalculadas a cada movimento.
 O histórico registra sozinho a criação e cada troca de etapa (com o nome das etapas no momento); só anotações podem ser apagadas. Cada lead tem no máximo um próximo contato agendado (`followUpAt`).
 
+## Produção (Vercel)
+
+No ar em **https://leadnexi.vercel.app**: um projeto Vercel (`leadnexi`) com dois serviços, definidos em `vercel.json`: `frontend` (Vite, SPA) e `backend` (NestJS, função Node). `/api/*` vai para o backend e o resto para o frontend, no mesmo domínio (o cookie do refresh token funciona sem CORS). Banco: Postgres no Neon, conectado pela Vercel Marketplace (injeta `DATABASE_URL` e `DATABASE_URL_UNPOOLED`).
+
+- **Deploy:** `vercel deploy --prod` na raiz do repositório.
+- **Variáveis na Vercel:** `JWT_SECRET`, `JWT_EXPIRES_IN=15m`, `REFRESH_TOKEN_TTL_DAYS=30` (+ as do Neon).
+- **Migrações:** `DATABASE_URL="<DATABASE_URL_UNPOOLED>" npx prisma migrate deploy` (em `backend/`), antes do deploy que depende delas.
+- **Build do backend** (`npm run vercel-build`): `nest build` + `scripts/bundle-vercel.mjs`, que empacota `dist/main.js` num arquivo único com as dependências. Na Vercel o `dist/` vira a raiz da função e o `node_modules` fica fora do alcance do Node; o bundle não depende dele.
+- Na Vercel (`VERCEL` definido) o Swagger fica desligado e o Express confia no proxy (IP real para o limite de tentativas). O limite é em memória, por instância da função.
+
 ## Testes
 
 ```bash
