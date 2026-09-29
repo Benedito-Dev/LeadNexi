@@ -247,13 +247,13 @@ describe('Instagram (e2e)', () => {
     }
 
     it('só o cron autorizado chama', async () => {
-      await api().get('/cron/instagram-token').expect(401);
+      await api().get('/cron/instagram-daily').expect(401);
       await api()
-        .get('/cron/instagram-token')
+        .get('/cron/instagram-daily')
         .set('Authorization', 'Bearer errado')
         .expect(401);
       // O token de login do usuário também não serve
-      await api().get('/cron/instagram-token').set(auth).expect(401);
+      await api().get('/cron/instagram-daily').set(auth).expect(401);
     });
 
     it('renova só o que vence em até 10 dias e tem mais de 24 h', async () => {
@@ -266,10 +266,10 @@ describe('Instagram (e2e)', () => {
       });
 
       const res = await api()
-        .get('/cron/instagram-token')
+        .get('/cron/instagram-daily')
         .set(cron)
         .expect(200);
-      expect(res.body).toEqual({ refreshed: 1, invalid: 0, failed: 0 });
+      expect(res.body.tokens).toEqual({ refreshed: 1, invalid: 0, failed: 0 });
       expect(meta.refreshLongLived).toHaveBeenCalledTimes(1);
       expect(meta.refreshLongLived).toHaveBeenCalledWith('token-vence-logo');
 
@@ -289,10 +289,10 @@ describe('Instagram (e2e)', () => {
       );
 
       const res = await api()
-        .get('/cron/instagram-token')
+        .get('/cron/instagram-daily')
         .set(cron)
         .expect(200);
-      expect(res.body).toEqual({ refreshed: 0, invalid: 1, failed: 0 });
+      expect(res.body.tokens).toEqual({ refreshed: 0, invalid: 1, failed: 0 });
       const account = await api()
         .get('/instagram/account')
         .set(auth)
@@ -307,10 +307,10 @@ describe('Instagram (e2e)', () => {
       );
 
       const res = await api()
-        .get('/cron/instagram-token')
+        .get('/cron/instagram-daily')
         .set(cron)
         .expect(200);
-      expect(res.body).toEqual({ refreshed: 0, invalid: 0, failed: 1 });
+      expect(res.body.tokens).toEqual({ refreshed: 0, invalid: 0, failed: 1 });
       const account = await api()
         .get('/instagram/account')
         .set(auth)
@@ -330,10 +330,10 @@ describe('Instagram (e2e)', () => {
       });
 
       const res = await api()
-        .get('/cron/instagram-token')
+        .get('/cron/instagram-daily')
         .set(cron)
         .expect(200);
-      expect(res.body).toEqual({ refreshed: 0, invalid: 1, failed: 0 });
+      expect(res.body.tokens).toEqual({ refreshed: 0, invalid: 1, failed: 0 });
       expect(meta.refreshLongLived).not.toHaveBeenCalled();
       const account = await api()
         .get('/instagram/account')

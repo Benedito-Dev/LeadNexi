@@ -33,7 +33,8 @@ function send(path: string, init: RequestInit | undefined, token: string | null)
   return fetch(`/api${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      // Com FormData (upload de arquivo) o navegador define o Content-Type com o boundary
+      ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },

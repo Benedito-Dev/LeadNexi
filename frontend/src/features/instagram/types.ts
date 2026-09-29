@@ -10,3 +10,32 @@ export interface InstagramAccount {
 
 /** GET /instagram/account */
 export type InstagramAccountStatus = { connected: false } | { connected: true; account: InstagramAccount }
+
+export type InstagramPostStatus = 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED'
+
+export interface InstagramPostImage {
+  id: string
+  width: number
+  height: number
+  /** Link assinado (vale 1 hora) */
+  url: string
+}
+
+/** GET /instagram/posts */
+export interface InstagramPost {
+  id: string
+  caption: string
+  scheduledAt: string
+  status: InstagramPostStatus
+  /** Motivo da falha, quando status = FAILED */
+  error: string | null
+  createdAt: string
+  /** Na ordem do carrossel: a primeira é a capa */
+  images: InstagramPostImage[]
+}
+
+export interface CreateInstagramPostInput {
+  caption: string
+  scheduledAt: string
+  mediaIds: string[]
+}

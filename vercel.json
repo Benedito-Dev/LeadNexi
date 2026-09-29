@@ -32,7 +32,7 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/instagram-token",
+      "path": "/api/cron/instagram-daily",
       "schedule": "0 9 * * *"
     }
   ]

@@ -136,3 +136,47 @@ model InstagramAccount {
 
   @@map("instagram_accounts")
 }
+
+enum InstagramPostStatus {
+  /// Esperando a hora de publicar
+  SCHEDULED
+  /// Sendo enviado ao Instagram agora
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+// Post do Instagram montado no LeadNexi: legenda, imagens (em ordem) e quando publicar.
+model InstagramPost {
+  id          String              @id @default(uuid())
+  caption     String
+  /// Quando publicar
+  scheduledAt DateTime            @map("scheduled_at")
+  status      InstagramPostStatus @default(SCHEDULED)
+  /// Motivo da falha, em português claro, para a tela
+  error       String?
+  images      InstagramMedia[]
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([status, scheduledAt])
+  @@map("instagram_posts")
+}
+
+// Imagem (JPEG) guardada no armazenamento de arquivos (padrão S3; a chave é o caminho lá).
+// Nasce solta, no upload, e é presa a um post ao agendar; solta há mais de 24 h, o cron apaga.
+model InstagramMedia {
+  id         String         @id @default(uuid())
+  postId     String?        @map("post_id")
+  post       InstagramPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// Ordem no carrossel (0 = capa)
+  position   Int            @default(0)
+  storageKey String         @unique @map("storage_key")
+  width      Int
+  height     Int
+  sizeBytes  Int            @map("size_bytes")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([postId])
+  @@map("instagram_media")
+}
