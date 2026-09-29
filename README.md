@@ -10,9 +10,12 @@ LeadNexi/
 ├── backend/               # NestJS + Prisma 7
 │   ├── prisma/            # schema.prisma e migrations
 │   └── src/
-│       ├── auth/          # login (usuário único)
-│       ├── leads/         # CRUD de leads
-│       ├── pipelines/     # pipelines e etapas do Kanban
+│       ├── auth/          # login JWT (usuário único) + guard global
+│       ├── pipelines/     # funis do Kanban
+│       ├── stages/        # etapas (colunas) e reordenação
+│       ├── leads/         # CRUD, busca/paginação e movimentação dos cards
+│       ├── health/        # health check público
+│       ├── common/        # filtro de erros do Prisma, utilitários de posição
 │       ├── prisma/        # PrismaService (global)
 │       └── generated/     # Prisma Client (gerado, fora do git)
 └── frontend/              # React + Vite
@@ -33,9 +36,32 @@ cd backend
 cp .env.example .env
 npm install
 npx prisma migrate dev
+npx prisma db seed         # cria seu usuário (SEED_USER_*) e o pipeline "Vendas"
 npm run start:dev          # http://localhost:3000/api  (Swagger: /api/docs)
 
 cd ../frontend
 npm install
 npm run dev                # http://localhost:5173
+```
+
+## API
+
+Todas as rotas ficam sob `/api` e exigem `Authorization: Bearer <token>`, exceto `POST /auth/login` e `GET /health`.
+A documentação completa (com "Try it out") está em **http://localhost:3000/api/docs**.
+
+| Recurso | Endpoints |
+|---|---|
+| Auth | `POST /auth/login` · `GET /auth/me` |
+| Pipelines | `GET /pipelines` · `GET /pipelines/:id` (Kanban completo) · `POST` · `PATCH /:id` · `DELETE /:id` |
+| Stages | `POST /pipelines/:id/stages` · `PATCH /pipelines/:id/stages/reorder` · `PATCH /stages/:id` · `DELETE /stages/:id` |
+| Leads | `GET /leads?search&pipelineId&stageId&source&page&limit` · `GET /leads/:id` · `POST` · `PATCH /:id` · `PATCH /:id/move` · `DELETE /:id` |
+
+**Regras:** etapas e pipelines com leads não podem ser apagados (409); as posições de colunas e cards são sempre contíguas (0, 1, 2…) e recalculadas a cada movimento.
+
+## Testes
+
+```bash
+cd backend
+npm test            # unitários
+npm run test:e2e    # e2e (precisa do banco rodando)
 ```
