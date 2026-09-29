@@ -3,13 +3,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { Clock } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { formatCurrency, formatElapsed } from '../../../lib/format.ts'
+import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
 import type { Lead } from '../../leads/types.ts'
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase()
-}
 
 // Card de lead (BRAND.md, seção 8): corpo com iniciais, nome e origem (com ícone do canal); rodapé separado por
 // divisória com o valor (verde na etapa final) e o tempo desde a última movimentação.
@@ -21,12 +17,7 @@ export function LeadCard({ lead, closed, dragging = false }: { lead: Lead; close
       }`}
     >
       <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-3">
-        <span
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-tint text-xs font-extrabold text-slate-300"
-        >
-          {initials(lead.name)}
-        </span>
+        <LeadAvatar name={lead.name} />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-ui font-bold text-white">{lead.name}</p>
           {lead.source && (

@@ -1,9 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react'
 
-// Mesma aparência do <Input> (BRAND.md, seção 8), para select e textarea.
+// Mesma aparência do <Input> (BRAND.md, seção 8), para textarea. Seleção: use <Dropdown>.
 // Ocupam 100% do espaço recebido: para limitar a largura, envolva num container.
 const controlClass =
-  'w-full rounded-md border bg-navy-800 px-3.5 text-body text-white placeholder:text-slate-400 aria-[invalid=true]:border-danger'
+  'w-full rounded-md border bg-navy-800 px-3.5 text-white placeholder:text-slate-400 aria-[invalid=true]:border-danger'
 
 /** Rótulo + campo, com dica opcional abaixo. */
 export function Field({
@@ -28,10 +28,6 @@ export function Field({
   )
 }
 
-export function Select({ className = '', ...props }: ComponentProps<'select'>) {
-  return <select className={`h-11 cursor-pointer ${controlClass} ${className}`} {...props} />
-}
-
 export function Textarea({ className = '', ...props }: ComponentProps<'textarea'>) {
-  return <textarea className={`min-h-24 resize-y py-2.5 ${controlClass} ${className}`} {...props} />
+  return <textarea className={`min-h-24 resize-y py-2.5 text-body ${controlClass} ${className}`} {...props} />
 }

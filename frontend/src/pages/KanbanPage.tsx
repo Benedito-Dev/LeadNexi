@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
-import { Select } from '../components/ui/Field.tsx'
+import { Dropdown } from '../components/ui/Dropdown.tsx'
 import { Input } from '../components/ui/Input.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
 import { useMoveLead } from '../features/leads/hooks.ts'
@@ -11,6 +11,7 @@ import { KanbanBoard } from '../features/pipelines/components/KanbanBoard.tsx'
 import { NewStageColumn } from '../features/stages/components/NewStageColumn.tsx'
 import { PipelineKpis } from '../features/pipelines/components/PipelineKpis.tsx'
 import { usePipelineBoard, usePipelines } from '../features/pipelines/hooks.ts'
+import { stageColorClass } from '../features/pipelines/stageColor.ts'
 import type { PipelineBoard } from '../features/pipelines/types.ts'
 
 export function KanbanPage() {
@@ -24,17 +25,12 @@ export function KanbanPage() {
 
   const pipelineSelect = list.length > 1 && (
     <div className="w-44 shrink-0">
-      <Select
-        aria-label="Funil"
-        value={pipelineId}
-        onChange={(event) => setSearchParams({ pipeline: event.target.value })}
-      >
-        {list.map((pipeline) => (
-          <option key={pipeline.id} value={pipeline.id}>
-            {pipeline.name}
-          </option>
-        ))}
-      </Select>
+      <Dropdown
+        label="Funil"
+        value={pipelineId ?? ''}
+        onChange={(value) => setSearchParams({ pipeline: value })}
+        options={list.map((pipeline) => ({ value: pipeline.id, label: pipeline.name }))}
+      />
     </div>
   )
 
@@ -127,7 +123,11 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
 
       <LeadFormDialog
         target={formTarget}
-        stages={board.stages.map((stage) => ({ id: stage.id, label: stage.name }))}
+        stages={board.stages.map((stage, index) => ({
+          id: stage.id,
+          label: stage.name,
+          colorClass: stageColorClass(index),
+        }))}
         onClose={() => setFormTarget(null)}
       />
     </Page>

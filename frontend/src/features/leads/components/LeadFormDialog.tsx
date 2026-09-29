@@ -2,13 +2,15 @@ import { CircleAlert, LoaderCircle, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Dialog } from '../../../components/ui/Dialog.tsx'
-import { Field, Select, Textarea } from '../../../components/ui/Field.tsx'
+import { Dropdown } from '../../../components/ui/Dropdown.tsx'
+import { Field, Textarea } from '../../../components/ui/Field.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 import { ApiError } from '../../../lib/api.ts'
 import { formatCurrency, parseCurrency } from '../../../lib/format.ts'
 import { useCreateLead, useDeleteLead, useUpdateLead } from '../hooks.ts'
 import { LEAD_SOURCES } from '../sources.ts'
 import type { Lead, LeadInput } from '../types.ts'
+import { SourceIcon } from './SourceIcon.tsx'
 
 /** Criar (em uma etapa) ou editar um lead existente. */
 export type LeadFormTarget = { mode: 'create'; stageId: string } | { mode: 'edit'; lead: Lead }
@@ -17,6 +19,8 @@ export type LeadFormTarget = { mode: 'create'; stageId: string } | { mode: 'edit
 export interface StageOption {
   id: string
   label: string
+  /** Cor da etapa (bolinha no dropdown) */
+  colorClass?: string
 }
 
 export function LeadFormDialog({
@@ -137,19 +141,26 @@ function LeadForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Origem" htmlFor="lead-source">
-          <Select id="lead-source" name="source" defaultValue={lead?.source ?? ''}>
-            <option value="">Sem origem</option>
-            {sources.map((source) => (
-              <option key={source}>{source}</option>
-            ))}
-          </Select>
+          <Dropdown
+            id="lead-source"
+            name="source"
+            defaultValue={lead?.source ?? ''}
+            options={[
+              { value: '', label: 'Sem origem' },
+              ...sources.map((source) => ({
+                value: source,
+                label: source,
+                icon: <SourceIcon source={source} size={16} />,
+              })),
+            ]}
+          />
         </Field>
         <Field label="Valor estimado" htmlFor="lead-value">
           <Input
             id="lead-value"
             name="estimatedValue"
             inputMode="decimal"
-            className="font-mono"
+            className="tabular-nums"
             defaultValue={
               lead?.estimatedValue ? formatCurrency(lead.estimatedValue).replace(/R\$\s/, '') : ''
             }
@@ -161,13 +172,18 @@ function LeadForm({
 
       {!lead && (
         <Field label="Etapa" htmlFor="lead-stage">
-          <Select id="lead-stage" name="stageId" defaultValue={target.mode === 'create' ? target.stageId : undefined}>
-            {stages.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {stage.label}
-              </option>
-            ))}
-          </Select>
+          <Dropdown
+            id="lead-stage"
+            name="stageId"
+            defaultValue={target.mode === 'create' ? target.stageId : (stages[0]?.id ?? '')}
+            options={stages.map((stage) => ({
+              value: stage.id,
+              label: stage.label,
+              icon: stage.colorClass && (
+                <span aria-hidden className={`size-2 shrink-0 rounded-full ${stage.colorClass}`} />
+              ),
+            }))}
+          />
         </Field>
       )}
 

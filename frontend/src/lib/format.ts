@@ -43,3 +43,13 @@ const percent = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFracti
 export function formatPercent(ratio: number): string {
   return percent.format(ratio)
 }
+
+/**
+ * Link do WhatsApp para o telefone: "+55 85 95555-7788" → "https://wa.me/5585955557788".
+ * Número nacional (10 ou 11 dígitos, com DDD) ganha o 55 do Brasil. Retorna null se não parecer telefone.
+ */
+export function whatsappUrl(phone: string): string | null {
+  const digits = phone.replace(/\D/g, '')
+  const full = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits
+  return full.length >= 12 && full.length <= 15 ? `https://wa.me/${full}` : null
+}

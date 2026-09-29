@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
-import { Select } from '../components/ui/Field.tsx'
+import { Dropdown } from '../components/ui/Dropdown.tsx'
 import { Input } from '../components/ui/Input.tsx'
 import {
   LeadFormDialog,
@@ -11,6 +11,7 @@ import {
   type StageOption,
 } from '../features/leads/components/LeadFormDialog.tsx'
 import { LeadsTable, type StageInfo } from '../features/leads/components/LeadsTable.tsx'
+import { SourceIcon } from '../features/leads/components/SourceIcon.tsx'
 import { useLeads } from '../features/leads/hooks.ts'
 import { LEAD_SOURCES } from '../features/leads/sources.ts'
 import { usePipelines } from '../features/pipelines/hooks.ts'
@@ -71,10 +72,13 @@ export function LeadsPage() {
   const stageIndex = new Map(
     allPipelines.flatMap((pipeline) => pipeline.stages.map((stage, index) => [stage.id, index] as const)),
   )
+  // A última etapa de cada funil é o "fechado" (mesma regra do Kanban)
+  const closedStageIds = new Set(allPipelines.flatMap((pipeline) => pipeline.stages.at(-1)?.id ?? []))
   const stageLabel = new Map(stageOptions.map((option) => [option.id, option.label]))
   const stageInfo = (id: string, fallbackName: string): StageInfo => ({
     label: stageLabel.get(id) ?? fallbackName,
     colorClass: stageColorClass(stageIndex.get(id) ?? 0),
+    closed: closedStageIds.has(id),
   })
 
   const hasFilters = search !== '' || stageId !== '' || source !== ''
@@ -92,7 +96,7 @@ export function LeadsPage() {
         title="Leads"
         badge={
           meta && (
-            <span className="rounded-full bg-slate-tint px-2.5 py-1 font-mono text-xs leading-none text-slate-300">
+            <span className="rounded-full bg-slate-tint px-2.5 py-1 text-xs leading-none font-bold text-slate-300 tabular-nums">
               {meta.total}
             </span>
           )
@@ -120,37 +124,43 @@ export function LeadsPage() {
       />
 
       <div className="grid grid-cols-2 items-center gap-3 sm:flex">
-        <div className="min-w-0 sm:w-56">
-          <Select
-            aria-label="Filtrar por etapa"
-            value={stageId}
-            onChange={(event) => updateParams({ etapa: event.target.value, pagina: '' })}
-          >
-            <option value="">Todas as etapas</option>
-            {stageOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </div>
         <div className="min-w-0 sm:w-48">
-          <Select
-            aria-label="Filtrar por origem"
+          <Dropdown
+            label="Filtrar por etapa"
+            value={stageId}
+            onChange={(value) => updateParams({ etapa: value, pagina: '' })}
+            options={[
+              { value: '', label: 'Todas as etapas' },
+              ...stageOptions.map((option) => ({
+                value: option.id,
+                label: option.label,
+                icon: (
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${stageInfo(option.id, '').colorClass}`} />
+                ),
+              })),
+            ]}
+          />
+        </div>
+        <div className="min-w-0 sm:w-44">
+          <Dropdown
+            label="Filtrar por origem"
             value={source}
-            onChange={(event) => updateParams({ origem: event.target.value, pagina: '' })}
-          >
-            <option value="">Todas as origens</option>
-            {LEAD_SOURCES.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </Select>
+            onChange={(value) => updateParams({ origem: value, pagina: '' })}
+            options={[
+              { value: '', label: 'Todas as origens' },
+              ...LEAD_SOURCES.map((option) => ({
+                value: option,
+                label: option,
+                icon: <SourceIcon source={option} size={16} />,
+              })),
+            ]}
+          />
         </div>
         {hasFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="col-span-2 h-11 cursor-pointer justify-self-start rounded-md px-3 text-ui text-slate-300 transition-colors hover:bg-navy-800"
+            className="col-span-2 h-11 cursor-pointer justify-self-start rounded-md px-3 text-ui text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
           >
             Limpar filtros
           </button>
@@ -167,7 +177,7 @@ export function LeadsPage() {
       ) : leads.isPending ? (
         <div aria-busy="true" aria-label="Carregando leads" className="overflow-hidden rounded-lg border bg-navy-750">
           {Array.from({ length: 6 }, (_, row) => (
-            <div key={row} className="h-13 animate-pulse border-b last:border-b-0" />
+            <div key={row} className="h-15 animate-pulse border-b last:border-b-0" />
           ))}
         </div>
       ) : leads.data.data.length === 0 ? (
@@ -209,7 +219,11 @@ export function LeadsPage() {
         </>
       )}
 
-      <LeadFormDialog target={formTarget} stages={stageOptions} onClose={() => setFormTarget(null)} />
+      <LeadFormDialog
+        target={formTarget}
+        stages={stageOptions.map((option) => ({ ...option, colorClass: stageInfo(option.id, '').colorClass }))}
+        onClose={() => setFormTarget(null)}
+      />
     </div>
   )
 }
@@ -235,16 +249,16 @@ function Pagination({
   return (
     <nav aria-label="Paginação" className="flex items-center justify-between gap-4">
       <p className="text-small font-medium text-slate-400">
-        <span className="font-mono text-slate-300">
+        <span className="text-slate-300 tabular-nums">
           {from}–{to}
         </span>{' '}
-        de <span className="font-mono text-slate-300">{total}</span>
+        de <span className="text-slate-300 tabular-nums">{total}</span>
       </p>
       <div className="flex items-center gap-2">
         <button type="button" aria-label="Página anterior" disabled={page <= 1} onClick={() => onChange(page - 1)} className={navButton}>
           <ChevronLeft aria-hidden size={18} strokeWidth={1.75} />
         </button>
-        <span className="px-2 font-mono text-xs text-slate-300" aria-current="page">
+        <span className="px-2 text-small text-slate-300 tabular-nums" aria-current="page">
           {page} / {totalPages}
         </span>
         <button

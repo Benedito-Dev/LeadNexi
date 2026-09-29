@@ -10,7 +10,7 @@ Antes de criar ou alterar tela, componente, estilo, ícone ou texto de interface
 - Botão primário `bg-violet-600` (nunca `bg-violet` com texto branco).
 - Texto secundário `text-slate-400` / `text-slate-300` — nunca `text-slate` sobre navy.
 - Cyan só em conexão/interação (foco, links, nós, WhatsApp); dinheiro fechado em verde (`text-success`). Gradiente `bg-flow` só em linhas ≤ 4px.
-- Números: Manrope no Kanban (KPIs, colunas, cards); Geist Mono (`font-mono`) em tabelas e dados técnicos.
+- Números e valores em Manrope (`tabular-nums` em colunas); Geist Mono (`font-mono`) só em rótulos técnicos.
 - Símbolo e logo só via `<LeadNexiMark>` / `<LeadNexiLogo>` — nunca redesenhar.
 - Sem emoji. Ícones Lucide com `strokeWidth={1.75}`.
 - Textos em português do Brasil, sentence case ("Novo lead").

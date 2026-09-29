@@ -252,7 +252,7 @@ Google Fonts:
 | Valor de card KPI | Manrope 24 / 700 (`text-h2`) | -0.02em | Cards de KPI do Kanban |
 
 **Regras:** títulos sempre com tracking negativo; máximo ~70 caracteres por linha em texto corrido.
-**Números:** no Kanban (cards de KPI, colunas e cards de lead) valores e contagens ficam em **Manrope** (`tabular-nums` quando empilhados em coluna): a Geist Mono espaçava demais os valores em R$. Tabelas, paginação e rótulos técnicos seguem em Geist Mono.
+**Números:** valores em R$, contagens e paginação ficam em **Manrope** no app todo (`tabular-nums` quando empilhados em coluna, como na tabela): a Geist Mono espaçava demais os valores em R$. Geist Mono fica para rótulos técnicos e código (ex.: a trilha do funil no site).
 
 ---
 
@@ -353,6 +353,14 @@ Itens: ícone 18 + texto 14/600 `#CBD5E1` (hover/foco: fundo `#11172A`, texto `#
 Teclado: setas navegam, Home/End vão às pontas, Esc fecha e devolve o foco ao botão.
 Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` (da 5ª etapa em diante, cyan).
 
+### Dropdown (seleção)
+Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdown>`, padrão listbox; com `name`, entra no FormData). Dentro de modal, o Esc fecha só a lista.
+- **Gatilho:** igual ao input (`height 44` · `radius 12` · fundo `navy-800` · borda `navy-700`, hover/aberto `navy-600`), texto 14/600, ícone da opção à esquerda e chevron 16 `slate-400` à direita (gira ao abrir).
+- **Lista:** flutuante como o menu suspenso (fundo `navy-800`, borda `navy-600`, `radius 12`, sombra float, padding 4), largura do gatilho (mínimo 200), altura máxima 288 com rolagem.
+- **Opções:** ícone + texto 14/600 `slate-300`; ativa (mouse ou teclado) com fundo `slate-tint` e texto principal; selecionada com check 16 em cyan.
+- **Ícones:** etapa = bolinha de 8 px na cor dela; origem = ícone do canal.
+- **Teclado:** ↑ ↓ abrem e navegam, Home/End vão às pontas, Enter ou Espaço escolhe, Esc fecha e devolve o foco, uma letra pula para a opção.
+
 ### Card de lead
 `radius 12` · fundo `navy-800` · borda `navy-700` (hover `navy-600`). Duas partes:
 - **Corpo** (`padding 14 14 12`): iniciais do lead num círculo de 32 px (fundo `slate-tint`, 12/800 `slate-300`) + nome 14/700 (até 2 linhas) + origem 12/600 `slate-400` com o ícone do canal (14 px, traço 1.75).
@@ -363,19 +371,21 @@ Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` �
 - **Fechado:** valor em verde (`success`: `#34D399` no escuro, `#047857` no claro).
 
 ### Tabela (lista de leads)
-Superfície `radius 16` · fundo `#11172A` · borda `#232B45`.
-Cabeçalho: altura 40 · texto 13/600 `#94A3B8` · divisória 1 px `#232B45`.
-Linhas: altura 52 · divisória 1 px `#232B45` · hover `#141A2E` · a linha inteira abre o registro (o nome é um botão, para o teclado).
-Nome 14/700 `#F8FAFC` · textos 13 `#CBD5E1` · vazio "—" em `#94A3B8` · valores em Geist Mono 13, alinhados à direita · etapa com a bolinha de 8 px na cor dela.
-No celular vira lista (mesma superfície, uma linha por lead): nome + valor, contato + tempo, origem + etapa.
-Paginação abaixo: "1–20 de 45" (números em Geist Mono) e botões de 44 px no estilo secundário.
+Superfície `radius 16` · fundo `navy-750` · borda `navy-700`. Mesmo vocabulário do card do Kanban.
+Cabeçalho: altura 40 · texto 13/600 `slate-400` · divisória 1 px `navy-700`.
+Linhas: altura 60 · divisória 1 px `navy-700` · hover `navy-800` · a linha inteira abre o registro (o nome é um botão, para o teclado).
+- **Nome:** iniciais 32 px (`LeadAvatar`) + nome 14/700.
+- **Contato:** telefone 13/500 `slate-300`; com telefone e e-mail, o e-mail vem embaixo em 12/600 `slate-400`.
+- **Origem:** ícone do canal 16 px + nome 13 `slate-300` (mesmos ícones do card).
+- **Etapa:** bolinha de 8 px na cor dela + nome.
+- **Valor:** Manrope 14/700 com `tabular-nums`, alinhado à direita; etapa final em verde (`success`). Vazio "—" em `slate-400`.
+- **WhatsApp:** última coluna, botão 32 px com o ícone em cyan (hover fundo `cyan-tint`), abre `wa.me/<número>` em nova aba. No desktop aparece no hover/foco da linha; em toque, sempre. Sem telefone válido, não aparece.
+Filtros acima da tabela: selects de 44 px com texto 14/600 (`<Select compact>`), para não competir com os dados; "Limpar filtros" em texto `slate-400`.
+No celular vira lista (mesma superfície): iniciais + nome + valor, contato + tempo, origem + etapa, e o botão de WhatsApp à direita (espaço reservado quando não há telefone, para alinhar os valores).
+Paginação abaixo: "1–20 de 45" (Manrope com `tabular-nums`) e botões de 44 px no estilo secundário.
 
-### Etiquetas de origem
-| Origem | Fundo | Texto |
-|---|---|---|
-| Instagram | `#241F5C` | `#A99FFD` |
-| WhatsApp | `#0E3440` | `#22D3EE` |
-| Indicação / outros | `#1E2640` | `#CBD5E1` |
+### Origem do lead
+Mostrada como **ícone do canal + nome** (nunca pílula colorida): Instagram e WhatsApp com ícones próprios (`src/brand/icons.tsx`) em `violet-300` e `cyan`; Site (`Globe`), Indicação (`Users`) e outras (`Tag`) em `slate-400`. Componente: `SourceIcon`.
 
 ### Status de canal
 Bolinha 8 px `#34D399` + nome 13 `#CBD5E1` + "conectado" 12 `#94A3B8`.
@@ -452,7 +462,7 @@ Fundo: navy + grade de nós 32 px (`#161D35`) + uma trilha 45° discreta em `#1E
 - [ ] Fundo `#0B1020` e superfícies nos tons navy da tabela
 - [ ] Botão primário `#5B4BEA`, não `#6D5DFB`
 - [ ] Nenhum texto em `#64748B` sobre fundo escuro
-- [ ] Números: Manrope no Kanban, Geist Mono em tabelas e dados técnicos
+- [ ] Números em Manrope (`tabular-nums` em colunas); Geist Mono só em rótulos técnicos
 - [ ] Dinheiro fechado em verde (`success`), cyan só em conexão/interação
 - [ ] Títulos Manrope com tracking negativo
 - [ ] Cyan só em pontos de conexão/interação
