@@ -35,3 +35,22 @@ export interface MoveLeadInput {
   /** Posição de destino na coluna (0 = topo) */
   position: number
 }
+
+/** Lead como vem de GET /leads e GET /leads/:id: com o resumo da etapa */
+export interface LeadWithStage extends Lead {
+  stage: { id: string; name: string; pipelineId: string }
+}
+
+/** Filtros de GET /leads */
+export interface LeadListQuery {
+  search?: string
+  stageId?: string
+  source?: string
+  page: number
+  limit: number
+}
+
+export interface Paginated<T> {
+  data: T[]
+  meta: { page: number; limit: number; total: number; totalPages: number }
+}

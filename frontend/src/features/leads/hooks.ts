@@ -1,34 +1,52 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { applyLeadMove } from '../pipelines/board.ts'
 import { pipelineKeys } from '../pipelines/hooks.ts'
 import type { PipelineBoard } from '../pipelines/types.ts'
-import { createLead, deleteLead, moveLead, updateLead } from './api.ts'
-import type { CreateLeadInput, LeadInput } from './types.ts'
+import { createLead, deleteLead, getLeads, moveLead, updateLead } from './api.ts'
+import type { CreateLeadInput, LeadInput, LeadListQuery } from './types.ts'
 
-// Qualquer mudança em lead afeta o quadro do pipeline: recarrega do servidor.
-function useInvalidateBoard(pipelineId: string) {
-  const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: pipelineKeys.board(pipelineId) })
+export const leadKeys = {
+  all: ['leads'] as const,
+  list: (query: LeadListQuery) => ['leads', 'list', query] as const,
 }
 
-export function useCreateLead(pipelineId: string) {
-  const invalidate = useInvalidateBoard(pipelineId)
+export function useLeads(query: LeadListQuery) {
+  return useQuery({
+    queryKey: leadKeys.list(query),
+    queryFn: () => getLeads(query),
+    // Ao trocar de página ou filtro, mantém a lista anterior até a nova chegar (sem piscar)
+    placeholderData: keepPreviousData,
+  })
+}
+
+// Lead mudou: recarrega os quadros (Kanban) e as listas (tela de Leads).
+function useInvalidateLeads() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: pipelineKeys.all }),
+      queryClient.invalidateQueries({ queryKey: leadKeys.all }),
+    ])
+}
+
+export function useCreateLead() {
+  const invalidate = useInvalidateLeads()
   return useMutation({
     mutationFn: (input: CreateLeadInput) => createLead(input),
     onSuccess: invalidate,
   })
 }
 
-export function useUpdateLead(pipelineId: string) {
-  const invalidate = useInvalidateBoard(pipelineId)
+export function useUpdateLead() {
+  const invalidate = useInvalidateLeads()
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: LeadInput }) => updateLead(id, input),
     onSuccess: invalidate,
   })
 }
 
-export function useDeleteLead(pipelineId: string) {
-  const invalidate = useInvalidateBoard(pipelineId)
+export function useDeleteLead() {
+  const invalidate = useInvalidateLeads()
   return useMutation({
     mutationFn: (id: string) => deleteLead(id),
     onSuccess: invalidate,
@@ -41,12 +59,13 @@ export function useDeleteLead(pipelineId: string) {
  */
 export function useMoveLead(pipelineId: string) {
   const queryClient = useQueryClient()
+  const invalidate = useInvalidateLeads()
   const key = pipelineKeys.board(pipelineId)
 
   const mutation = useMutation({
     mutationFn: ({ leadId, stageId, position }: { leadId: string; stageId: string; position: number }) =>
       moveLead(leadId, { stageId, position }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSettled: invalidate,
   })
 
   function move(leadId: string, stageId: string, position: number) {

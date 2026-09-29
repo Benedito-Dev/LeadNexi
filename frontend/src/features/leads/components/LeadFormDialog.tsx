@@ -6,7 +6,6 @@ import { Field, Select, Textarea } from '../../../components/ui/Field.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 import { ApiError } from '../../../lib/api.ts'
 import { formatCurrency, parseCurrency } from '../../../lib/format.ts'
-import type { Stage } from '../../pipelines/types.ts'
 import { useCreateLead, useDeleteLead, useUpdateLead } from '../hooks.ts'
 import { LEAD_SOURCES } from '../sources.ts'
 import type { Lead, LeadInput } from '../types.ts'
@@ -14,22 +13,26 @@ import type { Lead, LeadInput } from '../types.ts'
 /** Criar (em uma etapa) ou editar um lead existente. */
 export type LeadFormTarget = { mode: 'create'; stageId: string } | { mode: 'edit'; lead: Lead }
 
+/** Etapa oferecida no campo "Etapa" (label já pronto, ex.: "Vendas · Proposta") */
+export interface StageOption {
+  id: string
+  label: string
+}
+
 export function LeadFormDialog({
   target,
-  pipelineId,
   stages,
   onClose,
 }: {
   target: LeadFormTarget | null
-  pipelineId: string
-  stages: Stage[]
+  stages: StageOption[]
   onClose: () => void
 }) {
   const title = target?.mode === 'edit' ? 'Editar lead' : 'Novo lead'
   return (
     <Dialog open={target !== null} onClose={onClose} title={title}>
       {target && (
-        <LeadForm target={target} pipelineId={pipelineId} stages={stages} onDone={onClose} />
+        <LeadForm target={target} stages={stages} onDone={onClose} />
       )}
     </Dialog>
   )
@@ -39,19 +42,17 @@ type Field = 'name' | 'email' | 'estimatedValue'
 
 function LeadForm({
   target,
-  pipelineId,
   stages,
   onDone,
 }: {
   target: LeadFormTarget
-  pipelineId: string
-  stages: Stage[]
+  stages: StageOption[]
   onDone: () => void
 }) {
   const lead = target.mode === 'edit' ? target.lead : null
-  const create = useCreateLead(pipelineId)
-  const update = useUpdateLead(pipelineId)
-  const remove = useDeleteLead(pipelineId)
+  const create = useCreateLead()
+  const update = useUpdateLead()
+  const remove = useDeleteLead()
   const [fieldError, setFieldError] = useState<{ field: Field; message: string } | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -163,7 +164,7 @@ function LeadForm({
           <Select id="lead-stage" name="stageId" defaultValue={target.mode === 'create' ? target.stageId : undefined}>
             {stages.map((stage) => (
               <option key={stage.id} value={stage.id}>
-                {stage.name}
+                {stage.label}
               </option>
             ))}
           </Select>

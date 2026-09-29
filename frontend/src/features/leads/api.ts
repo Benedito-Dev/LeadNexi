@@ -1,5 +1,21 @@
 import { api } from '../../lib/api.ts'
-import type { CreateLeadInput, Lead, LeadInput, MoveLeadInput } from './types.ts'
+import type {
+  CreateLeadInput,
+  Lead,
+  LeadInput,
+  LeadListQuery,
+  LeadWithStage,
+  MoveLeadInput,
+  Paginated,
+} from './types.ts'
+
+export function getLeads(query: LeadListQuery) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  }
+  return api<Paginated<LeadWithStage>>(`/leads?${params}`)
+}
 
 export function createLead(input: CreateLeadInput) {
   return api<Lead>('/leads', { method: 'POST', body: JSON.stringify(input) })

@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 
 // Mesma aparência do <Input> (BRAND.md, seção 8), para select e textarea.
+// Ocupam 100% do espaço recebido: para limitar a largura, envolva num container.
 const controlClass =
   'w-full rounded-md border bg-navy-800 px-3.5 text-body text-white placeholder:text-slate-400 aria-[invalid=true]:border-danger'
 

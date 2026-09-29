@@ -3,11 +3,9 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import { formatCurrency } from '../../../lib/format.ts'
 import type { Lead } from '../../leads/types.ts'
+import { stageColorClass } from '../stageColor.ts'
 import type { Stage } from '../types.ts'
 import { SortableLeadCard } from './LeadCard.tsx'
-
-// Progressão de cor do funil (BRAND.md, seção 4.2): a partir da 4ª etapa fica cyan.
-const STAGE_COLOR = ['bg-stage-1', 'bg-stage-2', 'bg-stage-3', 'bg-stage-4']
 
 // Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso; borda Navy 600
 // ao receber um card. Cabeçalho com bolinha, nome, contagem, total em R$ e linha da etapa.
@@ -29,7 +27,7 @@ export function KanbanColumn({
   onOpenLead: (lead: Lead) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { type: 'stage' } })
-  const color = STAGE_COLOR[Math.min(index, 3)]
+  const color = stageColorClass(index)
   const total = leads.reduce((sum, lead) => sum + Number(lead.estimatedValue ?? 0), 0)
 
   return (

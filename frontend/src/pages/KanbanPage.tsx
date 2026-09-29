@@ -22,18 +22,19 @@ export function KanbanPage() {
   const board = usePipelineBoard(pipelineId)
 
   const pipelineSelect = list.length > 1 && (
-    <Select
-      aria-label="Funil"
-      value={pipelineId}
-      onChange={(event) => setSearchParams({ pipeline: event.target.value })}
-      className="w-auto min-w-44"
-    >
-      {list.map((pipeline) => (
-        <option key={pipeline.id} value={pipeline.id}>
-          {pipeline.name}
-        </option>
-      ))}
-    </Select>
+    <div className="w-44 shrink-0">
+      <Select
+        aria-label="Funil"
+        value={pipelineId}
+        onChange={(event) => setSearchParams({ pipeline: event.target.value })}
+      >
+        {list.map((pipeline) => (
+          <option key={pipeline.id} value={pipeline.id}>
+            {pipeline.name}
+          </option>
+        ))}
+      </Select>
+    </div>
   )
 
   if (pipelines.isError || board.isError) {
@@ -127,8 +128,7 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
 
       <LeadFormDialog
         target={formTarget}
-        pipelineId={board.id}
-        stages={board.stages}
+        stages={board.stages.map((stage) => ({ id: stage.id, label: stage.name }))}
         onClose={() => setFormTarget(null)}
       />
     </Page>

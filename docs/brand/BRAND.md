@@ -318,6 +318,14 @@ Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` �
 - **Sendo arrastado:** fundo `#161E38`, borda 1 px `#22D3EE`, sombra `0 12px 32px rgba(0,0,0,.45)`, rotação -1.5°, tempo "agora" em cyan.
 - **Fechado:** valor em `#22D3EE`.
 
+### Tabela (lista de leads)
+Superfície `radius 16` · fundo `#11172A` · borda `#232B45`.
+Cabeçalho: altura 40 · texto 13/600 `#94A3B8` · divisória 1 px `#232B45`.
+Linhas: altura 52 · divisória 1 px `#232B45` · hover `#141A2E` · a linha inteira abre o registro (o nome é um botão, para o teclado).
+Nome 14/700 `#F8FAFC` · textos 13 `#CBD5E1` · vazio "—" em `#94A3B8` · valores em Geist Mono 13, alinhados à direita · etapa com a bolinha de 8 px na cor dela.
+No celular vira lista (mesma superfície, uma linha por lead): nome + valor, contato + tempo, origem + etapa.
+Paginação abaixo: "1–20 de 45" (números em Geist Mono) e botões de 44 px no estilo secundário.
+
 ### Etiquetas de origem
 | Origem | Fundo | Texto |
 |---|---|---|
