@@ -4,6 +4,9 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { Drawer } from '../../../components/ui/Drawer.tsx'
 import { Textarea } from '../../../components/ui/Field.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
+import { ApiError } from '../../../lib/api.ts'
+import { formatDateTime } from '../../../lib/format.ts'
+import { useSchedulePost } from '../hooks.ts'
 import {
   CAPTION_LIMIT,
   countHashtags,
@@ -12,6 +15,7 @@ import {
   prepareImage,
   type PreparedImage,
 } from '../images.ts'
+import type { InstagramPost } from '../types.ts'
 
 type Mode = 'now' | 'schedule'
 
@@ -27,20 +31,32 @@ export function PostComposer({
   open,
   connected,
   onClose,
+  onScheduled,
 }: {
   open: boolean
   /** Sem conta conectada dá para montar o post, mas não publicar */
   connected: boolean
   onClose: () => void
+  /** Post agendado com sucesso (o painel já pode fechar) */
+  onScheduled: (post: InstagramPost) => void
 }) {
   return (
     <Drawer open={open} onClose={onClose} label="Novo post">
-      {open && <ComposerContent connected={connected} onClose={onClose} />}
+      {open && <ComposerContent connected={connected} onClose={onClose} onScheduled={onScheduled} />}
     </Drawer>
   )
 }
 
-function ComposerContent({ connected, onClose }: { connected: boolean; onClose: () => void }) {
+function ComposerContent({
+  connected,
+  onClose,
+  onScheduled,
+}: {
+  connected: boolean
+  onClose: () => void
+  onScheduled: (post: InstagramPost) => void
+}) {
+  const schedule = useSchedulePost()
   const [images, setImages] = useState<PreparedImage[]>([])
   const [preparing, setPreparing] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
@@ -115,9 +131,32 @@ function ComposerContent({ connected, onClose }: { connected: boolean; onClose: 
           ? `A legenda passou de ${CAPTION_LIMIT} caracteres.`
           : hashtags > HASHTAG_LIMIT
             ? `Use no máximo ${HASHTAG_LIMIT} hashtags.`
-            : mode === 'schedule' && !scheduledAt
-              ? 'Escolha a data e a hora.'
-              : 'O envio ao Instagram chega na próxima etapa.'
+            : mode === 'now'
+              ? 'Publicar na hora chega na próxima etapa. Por enquanto, use "Agendar".'
+              : !scheduledAt
+                ? 'Escolha a data e a hora.'
+                : // Mesmo formato ("2026-10-02T09:00"): dá para comparar como texto. O servidor confere de novo.
+                  scheduledAt < minDate
+                  ? 'Escolha um horário no futuro.'
+                  : null
+
+  const status = schedule.isPending
+    ? schedule.progress
+      ? `Enviando imagem ${schedule.progress.sent + 1} de ${schedule.progress.total}…`
+      : 'Agendando…'
+    : (blocker ?? `Será publicado ${formatDateTime(new Date(scheduledAt).toISOString()).toLowerCase()}.`)
+
+  function submit() {
+    if (blocker || schedule.isPending) return
+    schedule.mutate(
+      {
+        images: images.map(({ id, blob }) => ({ id, blob })),
+        caption,
+        scheduledAt: new Date(scheduledAt).toISOString(),
+      },
+      { onSuccess: onScheduled },
+    )
+  }
 
   return (
     <>
@@ -308,15 +347,37 @@ function ComposerContent({ connected, onClose }: { connected: boolean; onClose: 
       </div>
 
       <footer className="flex flex-col gap-3 border-t px-5 py-4">
-        <p className="text-small text-slate-400">{blocker}</p>
+        {schedule.isError && !schedule.isPending ? (
+          <p role="alert" className="flex items-start gap-2 text-small text-danger">
+            <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0" />
+            {scheduleErrorMessage(schedule.error)}
+          </p>
+        ) : (
+          <p aria-live="polite" className="text-small text-slate-400">
+            {status}
+          </p>
+        )}
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={schedule.isPending}>
             Cancelar
           </Button>
-          {/* Publicação/agendamento de verdade: próxima etapa (depende do app da Meta) */}
-          <Button disabled>{mode === 'now' ? 'Publicar agora' : 'Agendar'}</Button>
+          {/* "Publicar agora" chega com a publicação de verdade (próxima etapa) */}
+          <Button onClick={submit} disabled={blocker !== null || schedule.isPending}>
+            {schedule.isPending && <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />}
+            {mode === 'now' ? 'Publicar agora' : 'Agendar'}
+          </Button>
         </div>
       </footer>
     </>
   )
+}
+
+/** Mensagem do erro ao agendar, em português claro (os erros de regra já vêm assim do servidor). */
+function scheduleErrorMessage(error: Error): string {
+  if (!(error instanceof ApiError) || error.status === 0) {
+    return 'Não foi possível conectar ao servidor. Tente de novo.'
+  }
+  if (error.status === 413) return 'Uma das imagens passou de 4 MB. Use uma imagem menor.'
+  if (error.status >= 500) return 'Não foi possível agendar o post agora. Tente de novo em instantes.'
+  return error.message
 }

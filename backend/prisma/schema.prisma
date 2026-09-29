@@ -118,18 +118,65 @@ model RefreshToken {
 }
 
 // Conta do Instagram conectada (login oficial da Meta). O token de acesso fica criptografado
-// (AES-256-GCM) e dura 60 dias; é renovado antes de vencer.
+// (AES-256-GCM, chave TOKEN_ENCRYPTION_KEY) e dura 60 dias; o cron diário renova antes de vencer.
 model InstagramAccount {
-  id                String   @id @default(uuid())
-  /// ID do usuário do Instagram na API (app-scoped)
-  igUserId          String   @unique @map("ig_user_id")
+  id                String    @id @default(uuid())
+  /// ID da conta profissional no Instagram (`user_id`): é o usado para publicar
+  igUserId          String    @unique @map("ig_user_id")
   username          String
   name              String?
-  profilePictureUrl String?  @map("profile_picture_url")
-  accessToken       String   @map("access_token")
-  tokenExpiresAt    DateTime @map("token_expires_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  profilePictureUrl String?   @map("profile_picture_url")
+  /// Token criptografado ("v1.<iv>.<tag>.<dados>"), nunca em texto puro
+  accessToken       String    @map("access_token")
+  tokenExpiresAt    DateTime  @map("token_expires_at")
+  /// Quando a Meta recusou o token (revogado ou vencido): a conta precisa ser reconectada
+  tokenInvalidAt    DateTime? @map("token_invalid_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   @@map("instagram_accounts")
+}
+
+enum InstagramPostStatus {
+  /// Esperando a hora de publicar
+  SCHEDULED
+  /// Sendo enviado ao Instagram agora
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+// Post do Instagram montado no LeadNexi: legenda, imagens (em ordem) e quando publicar.
+model InstagramPost {
+  id          String              @id @default(uuid())
+  caption     String
+  /// Quando publicar
+  scheduledAt DateTime            @map("scheduled_at")
+  status      InstagramPostStatus @default(SCHEDULED)
+  /// Motivo da falha, em português claro, para a tela
+  error       String?
+  images      InstagramMedia[]
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([status, scheduledAt])
+  @@map("instagram_posts")
+}
+
+// Imagem (JPEG) guardada no armazenamento de arquivos (padrão S3; a chave é o caminho lá).
+// Nasce solta, no upload, e é presa a um post ao agendar; solta há mais de 24 h, o cron apaga.
+model InstagramMedia {
+  id         String         @id @default(uuid())
+  postId     String?        @map("post_id")
+  post       InstagramPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// Ordem no carrossel (0 = capa)
+  position   Int            @default(0)
+  storageKey String         @unique @map("storage_key")
+  width      Int
+  height     Int
+  sizeBytes  Int            @map("size_bytes")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([postId])
+  @@map("instagram_media")
 }

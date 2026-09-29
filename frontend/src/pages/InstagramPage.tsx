@@ -1,4 +1,4 @@
-import { CalendarClock, CircleAlert, CircleCheck, Plus } from 'lucide-react'
+import { CircleAlert, CircleCheck, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { PageHeader } from '../components/PageHeader.tsx'
@@ -6,12 +6,15 @@ import { Button } from '../components/ui/Button.tsx'
 import { AccountCard } from '../features/instagram/components/AccountCard.tsx'
 import { ConnectCard } from '../features/instagram/components/ConnectCard.tsx'
 import { PostComposer } from '../features/instagram/components/PostComposer.tsx'
+import { PostList } from '../features/instagram/components/PostList.tsx'
 import { useInstagramAccount } from '../features/instagram/hooks.ts'
+import { formatDateTime } from '../lib/format.ts'
 
 /** Mensagens da volta do login do Instagram (?conectado=1 ou ?erro=...) */
 const RETURN_ERRORS: Record<string, string> = {
   negado: 'A conexão foi cancelada no Instagram.',
   conta: 'Essa conta não é profissional. Mude para Empresa ou Criador no app do Instagram e tente de novo.',
+  expirado: 'O tempo para concluir a conexão acabou. Clique em "Conectar Instagram" de novo.',
   falha: 'Não foi possível conectar o Instagram. Tente de novo.',
 }
 
@@ -20,10 +23,13 @@ export function InstagramPage() {
   const account = useInstagramAccount()
   const [composerOpen, setComposerOpen] = useState(false)
   const [params, setParams] = useSearchParams()
-  const connected = account.data?.connected === true
+  // Conta conectada e com token valendo: só assim dá para publicar
+  const canPublish = account.data?.connected === true && !account.data.account.needsReconnect
 
   const returned = params.get('conectado') === '1' ? 'ok' : params.get('erro')
   const dismissReturn = () => setParams({}, { replace: true })
+  // Aviso depois de agendar ("Post agendado para amanhã às 09:00.")
+  const [notice, setNotice] = useState<string | null>(null)
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -31,7 +37,7 @@ export function InstagramPage() {
         title="Instagram"
         description="Agende e publique fotos e carrosséis no seu perfil."
         actions={
-          <Button variant={connected ? 'primary' : 'secondary'} onClick={() => setComposerOpen(true)}>
+          <Button variant={canPublish ? 'primary' : 'secondary'} onClick={() => setComposerOpen(true)}>
             <Plus aria-hidden size={18} strokeWidth={1.75} />
             Novo post
           </Button>
@@ -39,25 +45,13 @@ export function InstagramPage() {
       />
 
       {returned && (
-        <div
-          role="status"
-          className={`flex items-center gap-3 rounded-md border px-4 py-3 text-small ${
-            returned === 'ok' ? 'text-success' : 'text-danger'
-          }`}
-        >
-          {returned === 'ok' ? (
-            <CircleCheck aria-hidden size={18} strokeWidth={1.75} className="shrink-0" />
-          ) : (
-            <CircleAlert aria-hidden size={18} strokeWidth={1.75} className="shrink-0" />
-          )}
-          <p className="flex-1">
-            {returned === 'ok' ? 'Instagram conectado.' : (RETURN_ERRORS[returned] ?? RETURN_ERRORS.falha)}
-          </p>
-          <button type="button" onClick={dismissReturn} className="cursor-pointer text-slate-400 hover:text-slate-300">
-            Fechar
-          </button>
-        </div>
+        <Banner
+          ok={returned === 'ok'}
+          message={returned === 'ok' ? 'Instagram conectado.' : (RETURN_ERRORS[returned] ?? RETURN_ERRORS.falha)}
+          onClose={dismissReturn}
+        />
       )}
+      {notice && <Banner ok message={notice} onClose={() => setNotice(null)} />}
 
       {account.isPending ? (
         <div aria-busy="true" aria-label="Carregando conta" className="h-40 animate-pulse rounded-xl border bg-navy-800" />
@@ -75,18 +69,42 @@ export function InstagramPage() {
             <h2 id="posts-title" className="text-ui font-bold text-white">
               Posts agendados
             </h2>
-            <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed px-6 py-10">
-              <CalendarClock aria-hidden size={22} strokeWidth={1.75} className="text-slate-400" />
-              <p className="text-ui font-bold text-white">Nenhum post agendado ainda.</p>
-              <p className="text-small text-slate-400">Clique em "Novo post" para montar o primeiro.</p>
-            </div>
+            <PostList />
           </section>
         </>
       ) : (
         <ConnectCard />
       )}
 
-      <PostComposer open={composerOpen} connected={connected} onClose={() => setComposerOpen(false)} />
+      <PostComposer
+        open={composerOpen}
+        connected={canPublish}
+        onClose={() => setComposerOpen(false)}
+        onScheduled={(post) => {
+          setComposerOpen(false)
+          setNotice(`Post agendado para ${formatDateTime(post.scheduledAt).toLowerCase()}.`)
+        }}
+      />
+    </div>
+  )
+}
+
+/** Faixa de aviso fechável no topo (volta do login, post agendado). */
+function Banner({ ok, message, onClose }: { ok: boolean; message: string; onClose: () => void }) {
+  return (
+    <div
+      role="status"
+      className={`flex items-center gap-3 rounded-md border px-4 py-3 text-small ${ok ? 'text-success' : 'text-danger'}`}
+    >
+      {ok ? (
+        <CircleCheck aria-hidden size={18} strokeWidth={1.75} className="shrink-0" />
+      ) : (
+        <CircleAlert aria-hidden size={18} strokeWidth={1.75} className="shrink-0" />
+      )}
+      <p className="flex-1">{message}</p>
+      <button type="button" onClick={onClose} className="cursor-pointer text-slate-400 hover:text-slate-300">
+        Fechar
+      </button>
     </div>
   )
 }

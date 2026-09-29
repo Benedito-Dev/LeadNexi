@@ -7,5 +7,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    // Os arquivos e2e usam o mesmo banco (ex.: a conta do Instagram): um de cada vez
+    fileParallelism: false,
   },
 });

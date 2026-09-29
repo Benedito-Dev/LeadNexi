@@ -5,7 +5,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import {
+  decryptSecret,
+  encryptSecret,
+  parseEncryptionKey,
+} from '../common/crypto/secret-box.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  InstagramApiClient,
+  InstagramApiError,
+} from './instagram-api.client.js';
 
 /** Permissões pedidas no login: ler o perfil e publicar conteúdo */
 const SCOPES = [
@@ -15,6 +24,25 @@ const SCOPES = [
 
 /** Audiência do JWT usado como `state` do OAuth (não serve como token de acesso) */
 export const OAUTH_STATE_AUDIENCE = 'instagram-oauth';
+
+/** Contas profissionais aceitas pela API (o login oficial só libera essas) */
+const PROFESSIONAL_ACCOUNTS = ['BUSINESS', 'MEDIA_CREATOR'];
+
+/** O cron renova o token quando faltam menos que isso para vencer (dá várias tentativas) */
+export const REFRESH_WINDOW_MS = 10 * 24 * 60 * 60 * 1000;
+/** A Meta só renova tokens com pelo menos 24 h */
+const MIN_TOKEN_AGE_MS = 24 * 60 * 60 * 1000;
+/** Se a Meta não informar a validade, vale a documentada: 60 dias */
+const DEFAULT_TOKEN_TTL_S = 60 * 24 * 60 * 60;
+
+/** Motivo da volta do login, lido pela tela (`/instagram?erro=...`) */
+type ConnectError = 'negado' | 'conta' | 'expirado' | 'falha';
+
+export interface CallbackQuery {
+  code?: unknown;
+  state?: unknown;
+  error?: unknown;
+}
 
 /**
  * Conexão com o Instagram (API com login do Instagram). O login é o fluxo OAuth oficial da Meta:
@@ -28,6 +56,7 @@ export class InstagramService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly api: InstagramApiClient,
   ) {}
 
   /** Conta conectada (sem o token) ou `connected: false`. */
@@ -38,13 +67,17 @@ export class InstagramService {
         name: true,
         profilePictureUrl: true,
         tokenExpiresAt: true,
+        tokenInvalidAt: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
-    return account
-      ? { connected: true as const, account }
-      : { connected: false as const };
+    if (!account) return { connected: false as const };
+
+    const { tokenInvalidAt, ...rest } = account;
+    const needsReconnect =
+      tokenInvalidAt !== null || account.tokenExpiresAt <= new Date();
+    return { connected: true as const, account: { ...rest, needsReconnect } };
   }
 
   /** Desconecta: apaga a conta e o token guardado. */
@@ -58,26 +91,201 @@ export class InstagramService {
    * conferido no retorno para impedir que alguém injete o login de outra conta (CSRF).
    */
   async createAuthorizeUrl(userId: string) {
-    const clientId = this.config.get<string>('INSTAGRAM_APP_ID');
-    const redirectUri = this.config.get<string>('INSTAGRAM_REDIRECT_URI');
-    if (!clientId || !redirectUri) {
-      throw new ServiceUnavailableException(
-        'A integração com o Instagram ainda não foi configurada no servidor.',
-      );
-    }
-
+    this.requireSettings();
     const state = await this.jwtService.signAsync(
       { sub: userId },
       { audience: OAUTH_STATE_AUDIENCE, expiresIn: '10m' },
     );
     const url = new URL('https://www.instagram.com/oauth/authorize');
     url.search = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
+      client_id: this.config.get<string>('INSTAGRAM_APP_ID')!,
+      redirect_uri: this.config.get<string>('INSTAGRAM_REDIRECT_URI')!,
       response_type: 'code',
       scope: SCOPES.join(','),
       state,
     }).toString();
     return { url: url.toString() };
   }
+
+  /**
+   * Volta do login do Instagram: confere o `state`, troca o código pelo token de 60 dias, lê o
+   * perfil e guarda a conta com o token criptografado. Devolve para onde levar o navegador
+   * (a tela do Instagram, com o resultado na URL). Nunca lança: todo erro vira `?erro=`.
+   */
+  async completeConnection(query: CallbackQuery): Promise<string> {
+    try {
+      // Cancelou no Instagram (ex.: error=access_denied)
+      if (query.error !== undefined) return failure('negado');
+      if (typeof query.code !== 'string' || typeof query.state !== 'string') {
+        return failure('falha');
+      }
+
+      const stateError = await this.checkState(query.state);
+      if (stateError) return failure(stateError);
+
+      const key = this.requireSettings();
+      const shortToken = await this.api.exchangeCode(query.code);
+      const longToken = await this.api.exchangeForLongLived(shortToken);
+      const profile = await this.api.getProfile(longToken.accessToken);
+
+      const accountType = profile.accountType?.toUpperCase();
+      if (accountType && !PROFESSIONAL_ACCOUNTS.includes(accountType)) {
+        return failure('conta');
+      }
+
+      const data = {
+        username: profile.username,
+        name: profile.name,
+        profilePictureUrl: profile.profilePictureUrl,
+        accessToken: encryptSecret(longToken.accessToken, key),
+        tokenExpiresAt: expiresAt(longToken.expiresIn),
+        tokenInvalidAt: null,
+      };
+      // Uma conta por vez: conectar outra substitui a anterior
+      await this.prisma.$transaction([
+        this.prisma.instagramAccount.deleteMany({
+          where: { igUserId: { not: profile.userId } },
+        }),
+        this.prisma.instagramAccount.upsert({
+          where: { igUserId: profile.userId },
+          create: { igUserId: profile.userId, ...data },
+          update: data,
+        }),
+      ]);
+      this.logger.log(`Instagram @${profile.username} conectado`);
+      return '/instagram?conectado=1';
+    } catch (error) {
+      this.logger.error(`Falha ao conectar o Instagram: ${describe(error)}`);
+      return failure('falha');
+    }
+  }
+
+  /**
+   * Renova os tokens que vencem nos próximos 10 dias (chamado pelo cron diário). Token recusado
+   * pela Meta marca a conta para reconexão; falha passageira fica para a próxima rodada.
+   */
+  async refreshExpiringTokens(now = new Date()) {
+    const key = this.requireSettings();
+    const accounts = await this.prisma.instagramAccount.findMany({
+      where: {
+        tokenInvalidAt: null,
+        tokenExpiresAt: {
+          gt: now,
+          lte: new Date(now.getTime() + REFRESH_WINDOW_MS),
+        },
+        updatedAt: { lte: new Date(now.getTime() - MIN_TOKEN_AGE_MS) },
+      },
+    });
+
+    const result = { refreshed: 0, invalid: 0, failed: 0 };
+    for (const account of accounts) {
+      try {
+        const token = await this.api.refreshLongLived(
+          this.readToken(account.accessToken, key),
+        );
+        await this.prisma.instagramAccount.update({
+          where: { id: account.id },
+          data: {
+            accessToken: encryptSecret(token.accessToken, key),
+            tokenExpiresAt: expiresAt(token.expiresIn, now),
+          },
+        });
+        result.refreshed++;
+      } catch (error) {
+        if (error instanceof UnreadableTokenError || isInvalidToken(error)) {
+          await this.prisma.instagramAccount.update({
+            where: { id: account.id },
+            data: { tokenInvalidAt: now },
+          });
+          result.invalid++;
+        } else {
+          result.failed++;
+        }
+        this.logger.warn(
+          `Token do Instagram @${account.username} não renovado: ${describe(error)}`,
+        );
+      }
+    }
+    return result;
+  }
+
+  /** Abre o token guardado (criptografado). Se não abre (ex.: chave trocada), só reconectando. */
+  private readToken(stored: string, key: Buffer): string {
+    try {
+      return decryptSecret(stored, key);
+    } catch {
+      throw new UnreadableTokenError();
+    }
+  }
+
+  /** O `state` precisa ser nosso, recente e de um usuário que existe. */
+  private async checkState(state: string): Promise<ConnectError | null> {
+    try {
+      const { sub } = await this.jwtService.verifyAsync<{ sub: string }>(
+        state,
+        { audience: OAUTH_STATE_AUDIENCE },
+      );
+      const user = await this.prisma.user.findUnique({ where: { id: sub } });
+      return user ? null : 'falha';
+    } catch (error) {
+      // Passou dos 10 minutos entre clicar em "Conectar" e voltar
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
+        return 'expirado';
+      }
+      return 'falha';
+    }
+  }
+
+  /**
+   * Tudo que a integração precisa no servidor. Sem isso, "Conectar" avisa que falta configurar
+   * (503) em vez de mandar a pessoa para um login que falharia na volta.
+   */
+  private requireSettings(): Buffer {
+    const key = parseEncryptionKey(
+      this.config.get<string>('TOKEN_ENCRYPTION_KEY'),
+    );
+    const ready =
+      key &&
+      [
+        'INSTAGRAM_APP_ID',
+        'INSTAGRAM_APP_SECRET',
+        'INSTAGRAM_REDIRECT_URI',
+      ].every((name) => this.config.get<string>(name));
+    if (!ready) {
+      throw new ServiceUnavailableException(
+        'A integração com o Instagram ainda não foi configurada no servidor.',
+      );
+    }
+    return key;
+  }
+}
+
+/** O token guardado não pôde ser descriptografado (chave trocada ou dado corrompido). */
+class UnreadableTokenError extends Error {
+  constructor() {
+    super(
+      'Token guardado não pôde ser lido (chave de criptografia diferente?)',
+    );
+  }
+}
+
+function isInvalidToken(error: unknown) {
+  return error instanceof InstagramApiError && error.invalidToken;
+}
+
+function failure(reason: ConnectError) {
+  return `/instagram?erro=${reason}`;
+}
+
+function expiresAt(expiresInSeconds: number, from = new Date()) {
+  const seconds = expiresInSeconds > 0 ? expiresInSeconds : DEFAULT_TOKEN_TTL_S;
+  return new Date(from.getTime() + seconds * 1000);
+}
+
+/** Mensagem de erro para o log, sem dados da requisição (tokens ficam fora) */
+function describe(error: unknown) {
+  if (error instanceof InstagramApiError) {
+    return `${error.message} (HTTP ${error.status}${error.code ? `, código ${error.code}` : ''})`;
+  }
+  return error instanceof Error ? error.message : String(error);
 }
