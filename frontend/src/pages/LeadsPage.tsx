@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageHeader.tsx'
+
 export function LeadsPage() {
-  return <h1>Leads</h1>
+  return <PageHeader title="Leads" />
 }
