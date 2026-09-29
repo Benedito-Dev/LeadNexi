@@ -13,11 +13,12 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
+// Cores = progressão do funil do guia de marca (docs/brand/BRAND.md, seção 4.2)
 const DEFAULT_STAGES = [
-  { name: 'Novo', color: '#64748B' },
-  { name: 'Contato', color: '#3B82F6' },
-  { name: 'Proposta', color: '#F59E0B' },
-  { name: 'Fechado', color: '#22C55E' },
+  { name: 'Novo', color: '#6D5DFB' },
+  { name: 'Contato', color: '#5C8AF6' },
+  { name: 'Proposta', color: '#3DB3F1' },
+  { name: 'Fechado', color: '#22D3EE' },
 ];
 
 function requireEnv(name: string): string {

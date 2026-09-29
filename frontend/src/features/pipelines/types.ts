@@ -6,12 +6,20 @@ export interface Stage {
   color: string | null
   position: number
   pipelineId: string
-  leads?: Lead[]
 }
 
 export interface Pipeline {
   id: string
   name: string
   position: number
-  stages?: Stage[]
+}
+
+/** GET /pipelines: cada pipeline com suas etapas (sem os leads) */
+export interface PipelineSummary extends Pipeline {
+  stages: Stage[]
+}
+
+/** GET /pipelines/:id: tudo que o Kanban precisa, já ordenado */
+export interface PipelineBoard extends Pipeline {
+  stages: (Stage & { leads: Lead[] })[]
 }

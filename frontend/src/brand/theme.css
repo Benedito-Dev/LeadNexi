@@ -85,6 +85,10 @@
   --text-kpi: 28px;
   --text-kpi--line-height: 1.1;
   --text-kpi--font-weight: 500;
+  /* KPI compacto: valores da faixa de KPIs do Kanban (BRAND.md, seção 8) */
+  --text-kpi-sm: 20px;
+  --text-kpi-sm--line-height: 1.2;
+  --text-kpi-sm--font-weight: 500;
 
   --radius-xs: var(--lnx-radius-xs);
   --radius-sm: var(--lnx-radius-sm);

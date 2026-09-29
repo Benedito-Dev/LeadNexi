@@ -1,12 +1,14 @@
 import type { ComponentProps } from 'react'
 
 type ButtonProps = ComponentProps<'button'> & {
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'danger'
 }
 
 const variants = {
   primary: 'bg-violet-600 text-white',
   secondary: 'border border-navy-600 text-white hover:bg-navy-800',
+  // Ação destrutiva: mesmo formato do secundário, texto na cor de erro (BRAND.md, seção 4.3)
+  danger: 'border border-navy-600 text-danger hover:bg-navy-800',
 }
 
 // Botões da marca (BRAND.md, seção 8): altura 44, raio 12, texto 14/700.

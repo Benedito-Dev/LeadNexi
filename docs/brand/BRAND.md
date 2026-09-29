@@ -220,7 +220,8 @@ Google Fonts:
 | UI | 14 / 600–700 | 0 | Menu, nome do lead no card |
 | Small | 13 / 600 | 0 | Metadados, nome do contato |
 | Data | Geist Mono 12–13 / 500 | 0 | "R$ 297", "12 min", contadores |
-| KPI | Geist Mono 28 / 500 | 0 | "R$ 18.400" |
+| KPI | Geist Mono 28 / 500 | 0 | "R$ 18.400" (card KPI isolado) |
+| KPI compacto | Geist Mono 20 / 500 | 0 | Faixa de KPIs do Kanban (`text-kpi-sm`) |
 
 **Regras:** títulos sempre com tracking negativo; valores monetários e tempos sempre em Geist Mono; máximo ~70 caracteres por linha em texto corrido.
 
@@ -282,6 +283,9 @@ Nós: anel (borda 2 px) em `#6D5DFB`, `#6D5DFB`, `#5C8AF6`, `#3DB3F1`; o último
 ### Botão secundário
 Mesmas medidas · fundo transparente · borda 1 px `#2A3352` · texto `#F8FAFC`.
 
+### Botão destrutivo
+Mesmas medidas do secundário · texto `#F87171` (Erro). Ações que apagam dados pedem confirmação em dois passos ("Excluir" → "Confirmar exclusão").
+
 ### Input de busca
 `height 44` · `padding 0 14` · `radius 12` · fundo `#141A2E` · borda `#232B45` · ícone lupa 18 px `#94A3B8` · placeholder `#94A3B8` · foco: outline 2 px `#22D3EE`.
 
@@ -293,16 +297,24 @@ Contador: pílula fundo `#0E3440`, texto `#22D3EE` Geist Mono 11.
 ### Card KPI
 `padding 18 20` · `radius 16` · fundo `#141A2E` · borda `#232B45` · rótulo 13/600 `#94A3B8` · valor Geist Mono 28/500 (valor de receita em `#22D3EE`).
 
+### Faixa de KPIs (topo do Kanban)
+Uma superfície só com 4 indicadores: `radius 16` · fundo `#11172A` · borda e divisórias 1 px `#232B45` · células `padding 14 20`.
+Rótulo 13/600 `#94A3B8` · valor Geist Mono **20**/500 (KPI compacto); receita/fechado em `#22D3EE`.
+Taxa de conversão com barra de 3 px: trilha `#1E2640`, preenchimento no gradiente violeta→cyan.
+No celular: grade 2 × 2.
+
 ### Coluna do Kanban
-`padding 12` · `radius 16` · fundo `#0F1426` · borda `#1B2240` · gap 10.
-Cabeçalho (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem Geist Mono 12 `#94A3B8`.
-Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE`.
+`padding 10` · `radius 16` · fundo `#0F1426` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `#2A3352` · gap 8. As colunas não esticam: cada uma tem a altura do próprio conteúdo.
+Cabeçalho (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem Geist Mono 12 `#94A3B8` + total da etapa em R$ (Geist Mono 12 `#CBD5E1`) à direita + botão "+" (novo lead na etapa).
+Abaixo do cabeçalho, linha de 2 px na cor da etapa.
+Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` (da 5ª etapa em diante, cyan).
 
 ### Card de lead
-`padding 14` · `radius 12` · fundo `#141A2E` · borda `#232B45` · gap 10.
-- Linha 1: nome do negócio 14/700 + tempo (Geist Mono 12 `#94A3B8`) à direita.
-- Linha 2: contato 13 `#94A3B8`.
-- Linha 3: etiqueta de origem à esquerda + valor (Geist Mono 13) à direita.
+`padding 12` · `radius 12` · fundo `#141A2E` · borda `#232B45` (hover `#2A3352`) · gap 4 entre linhas.
+- Linha 1: nome do negócio 14/700 + valor (Geist Mono 12) à direita; sem valor: "—" em `#94A3B8`.
+- Linha 2: contato 13/500 `#94A3B8` + tempo desde a última movimentação (Manrope 12/600 `#94A3B8`) à direita.
+- Linha 3: etiqueta de origem.
+- Geist Mono no card só para dinheiro: o tempo fica em Manrope para não competir com o valor.
 - **Sendo arrastado:** fundo `#161E38`, borda 1 px `#22D3EE`, sombra `0 12px 32px rgba(0,0,0,.45)`, rotação -1.5°, tempo "agora" em cyan.
 - **Fechado:** valor em `#22D3EE`.
 
@@ -329,10 +341,10 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 ### 9.1 Dashboard (1440 × 900)
 ```
 ┌──────────┬───────────────────────────────────────────────────────────┐
-│ Sidebar  │ Funil de vendas                  [🔍 Buscar] [+ Novo lead]│
-│ 248px    │ pipeline · comercial                                      │
-│ #0E1428  ├──────────┬──────────┬──────────┬──────────────────────────┤
-│          │ KPI      │ KPI      │ KPI      │ KPI (receita em cyan)    │
+│ Sidebar  │ Funil de vendas (Vendas)         [🔍 Buscar] [+ Novo lead]│
+│ 248px    ├──────────┬──────────┬──────────┬──────────────────────────┤
+│ #0E1428  │ KPI      │ KPI      │ KPI ▬▬── │ KPI (receita em cyan)    │
+│          │          │          │          │  ← faixa única, 1 bloco   │
 │ Logo     ├──────────┴──────────┴──────────┴──────────────────────────┤
 │ Funil ●  │ Novo lead │ Contato feito │ Proposta │ Fechado            │
 │ Leads    │ [card]    │ [card]        │ [card*]  │ [card]             │
@@ -343,7 +355,7 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 │ Usuário  │                                                           │
 └──────────┴───────────────────────────────────────────────────────────┘
 ```
-Área principal: `padding 28 32`, gap 24. KPIs e colunas: grid de 4 colunas, gap 16. Sidebar com borda direita 1 px `#1E2640`.
+Área principal: `padding 28 32`, gap 20. Faixa de KPIs e colunas: grid de 4 colunas; colunas com gap 16. Sidebar com borda direita 1 px `#1E2640`.
 
 ### 9.2 Site — hero (1440 × 900)
 ```
