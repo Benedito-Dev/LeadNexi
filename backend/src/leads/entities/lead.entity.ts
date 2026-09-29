@@ -19,6 +19,10 @@ export class LeadEntity {
   /** Ordem do card na coluna (0 = topo) */
   position: number;
   stageId: string;
+  /** Próximo contato agendado; null = nenhum */
+  followUpAt: Date | null;
+  /** O que fazer no próximo contato */
+  followUpNote: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

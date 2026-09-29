@@ -368,8 +368,17 @@ Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdo
 - Telefone e e-mail não aparecem no card: ficam no detalhe (a busca continua encontrando por eles).
 - **WhatsApp:** com telefone válido, botão 32 px (ícone cyan, hover `cyan-tint`) no canto superior direito do corpo; abre `wa.me/<número>` em nova aba. No desktop aparece no hover/foco do card, em toque sempre. Fica fora da área arrastável (irmão sobreposto), então clicar ou dar Enter nele não abre a edição nem inicia o arraste; o nome reserva o espaço do botão.
 - **Ícones de origem:** Instagram (violet-300) e WhatsApp (cyan), desenhados em `src/brand/icons.tsx` no traço do Lucide (adaptados do Tabler, MIT); Site = `Globe`, Indicação = `Users`, outras = `Tag`, em `slate-400`.
+- **Próximo contato:** com follow-up agendado, o rodapé troca o tempo por um sino 13 + dia ("Hoje", "Amanhã", "qui., 02/10"), 12/700: `danger` e "Atrasado" se já passou, `warning` se é hoje, `slate-400` se é depois.
 - **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, tempo "agora" em cyan.
 - **Fechado:** valor em verde (`success`: `#34D399` no escuro, `#047857` no claro).
+
+### Painel do lead
+Clicar num lead (card ou linha da tabela) abre um **painel à direita** (`<Drawer>`: `<dialog>` com altura total, largura 480 px ou a tela inteira no celular, fundo `navy-800`, borda esquerda `navy-600`, sombra float). "Novo lead" continua no modal.
+- **Topo:** iniciais + nome (`text-h2`) + etapa (bolinha) · valor; à direita, botão de WhatsApp e fechar.
+- **Abas** (14, ativa 700 com traço inferior de 2 px `violet`): **Histórico** (padrão) e **Dados** (o formulário do lead).
+- **Próximo contato:** sem agendamento, campo "O que fazer?" + atalhos (Amanhã, Em 3 dias, Próxima segunda, às 9h) e "Outra data" (data e hora). Com agendamento, caixa `navy-750` com sino (cor pela situação), data "Amanhã às 09:00", o que fazer e as ações "Marcar como feito" (primário) e "Reagendar"; "×" desmarca.
+- **Nova anotação:** textarea + "Anotar" (Ctrl/⌘ + Enter salva).
+- **Linha do tempo:** mais novo primeiro; ícone num círculo 28 px `slate-tint` ligado por uma linha 1 px `navy-700`. Criado (violet-300), movido "de → para", anotação (em caixa `navy-750`, apagável com confirmação), contato agendado (cyan) e contato feito (`success`). Tempo relativo ("há 2 h") com a data completa na dica.
 
 ### Tabela (lista de leads)
 Superfície `radius 16` · fundo `navy-750` · borda `navy-700`. Mesmo vocabulário do card do Kanban.

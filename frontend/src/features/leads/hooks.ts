@@ -2,12 +2,43 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { applyLeadMove } from '../pipelines/board.ts'
 import { pipelineKeys } from '../pipelines/hooks.ts'
 import type { PipelineBoard } from '../pipelines/types.ts'
-import { createLead, deleteLead, getLeads, moveLead, updateLead } from './api.ts'
-import type { CreateLeadInput, LeadInput, LeadListQuery } from './types.ts'
+import {
+  addLeadNote,
+  cancelFollowUp,
+  completeFollowUp,
+  createLead,
+  deleteLead,
+  getLead,
+  getLeadActivities,
+  getLeads,
+  moveLead,
+  removeLeadNote,
+  scheduleFollowUp,
+  updateLead,
+} from './api.ts'
+import type { CreateLeadInput, Lead, LeadInput, LeadListQuery } from './types.ts'
 
 export const leadKeys = {
   all: ['leads'] as const,
   list: (query: LeadListQuery) => ['leads', 'list', query] as const,
+  detail: (id: string) => ['leads', 'detail', id] as const,
+  activities: (id: string) => ['leads', 'activities', id] as const,
+}
+
+/** Lead atualizado do servidor; `initial` (ex.: o card clicado) aparece na hora, sem esperar. */
+export function useLead(id: string, initial?: Lead) {
+  return useQuery({
+    queryKey: leadKeys.detail(id),
+    // O card do Kanban não traz o resumo da etapa: aqui só se usa o que é comum a Lead
+    queryFn: (): Promise<Lead> => getLead(id),
+    initialData: initial,
+    // O card pode estar desatualizado: busca de novo mesmo com o dado inicial
+    initialDataUpdatedAt: 0,
+  })
+}
+
+export function useLeadActivities(id: string) {
+  return useQuery({ queryKey: leadKeys.activities(id), queryFn: () => getLeadActivities(id) })
 }
 
 export function useLeads(query: LeadListQuery) {
@@ -51,6 +82,37 @@ export function useDeleteLead() {
     mutationFn: (id: string) => deleteLead(id),
     onSuccess: invalidate,
   })
+}
+
+// Histórico e próximo contato: qualquer mudança recarrega lead, histórico, quadros e listas
+// (todas as chaves de lead começam com 'leads').
+
+export function useAddLeadNote(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({ mutationFn: (text: string) => addLeadNote(id, text), onSuccess: invalidate })
+}
+
+export function useRemoveLeadNote(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({ mutationFn: (activityId: string) => removeLeadNote(id, activityId), onSuccess: invalidate })
+}
+
+export function useScheduleFollowUp(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({
+    mutationFn: (input: { dueAt: string; note?: string }) => scheduleFollowUp(id, input),
+    onSuccess: invalidate,
+  })
+}
+
+export function useCompleteFollowUp(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({ mutationFn: () => completeFollowUp(id), onSuccess: invalidate })
+}
+
+export function useCancelFollowUp(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({ mutationFn: () => cancelFollowUp(id), onSuccess: invalidate })
 }
 
 /**

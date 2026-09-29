@@ -1,8 +1,15 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Clock } from 'lucide-react'
+import { Bell, Clock } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import { formatCurrency, formatElapsed, whatsappUrl } from '../../../lib/format.ts'
+import {
+  followUpTone,
+  formatCurrency,
+  formatDateTime,
+  formatDay,
+  formatElapsed,
+  whatsappUrl,
+} from '../../../lib/format.ts'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
 import { WhatsAppLink } from '../../leads/components/WhatsAppLink.tsx'
@@ -49,16 +56,39 @@ export function LeadCard({
         ) : (
           <span className="text-xs font-semibold text-slate-400">Sem valor</span>
         )}
-        <time
-          dateTime={lead.updatedAt}
-          title="Última movimentação"
-          className={`flex shrink-0 items-center gap-1 text-xs font-semibold ${dragging ? 'text-cyan' : 'text-slate-400'}`}
-        >
-          <Clock aria-hidden size={13} strokeWidth={1.75} />
-          {dragging ? 'agora' : formatElapsed(lead.updatedAt)}
-        </time>
+        {lead.followUpAt && !dragging ? (
+          <FollowUpBadge dueAt={lead.followUpAt} note={lead.followUpNote} />
+        ) : (
+          <time
+            dateTime={lead.updatedAt}
+            title="Última movimentação"
+            className={`flex shrink-0 items-center gap-1 text-xs font-semibold ${dragging ? 'text-cyan' : 'text-slate-400'}`}
+          >
+            <Clock aria-hidden size={13} strokeWidth={1.75} />
+            {dragging ? 'agora' : formatElapsed(lead.updatedAt)}
+          </time>
+        )}
       </div>
     </div>
+  )
+}
+
+const FOLLOW_UP_TONE = { overdue: 'text-danger', today: 'text-warning', future: 'text-slate-400' } as const
+
+/** Próximo contato no rodapé do card: vermelho se atrasado, amarelo se hoje (BRAND.md, seção 8 · "Card de lead"). */
+function FollowUpBadge({ dueAt, note }: { dueAt: string; note: string | null }) {
+  const tone = followUpTone(dueAt)
+  const label = tone === 'overdue' ? 'Atrasado' : formatDay(new Date(dueAt))
+  return (
+    <time
+      dateTime={dueAt}
+      title={`Próximo contato: ${formatDateTime(dueAt)}${note ? ` · ${note}` : ''}`}
+      className={`flex shrink-0 items-center gap-1 text-xs font-bold ${FOLLOW_UP_TONE[tone]}`}
+    >
+      <Bell aria-hidden size={13} strokeWidth={1.75} />
+      <span className="sr-only">Próximo contato: </span>
+      {label}
+    </time>
   )
 }
 

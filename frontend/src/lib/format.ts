@@ -53,3 +53,40 @@ export function whatsappUrl(phone: string): string | null {
   const full = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits
   return full.length >= 12 && full.length <= 15 ? `https://wa.me/${full}` : null
 }
+
+const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+
+/** Dia relativo curto: "Hoje", "Amanhã", "Ontem" ou "qui., 02/10" */
+export function formatDay(date: Date, now = new Date()): string {
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (sameDay(date, now)) return 'Hoje'
+  if (sameDay(date, tomorrow)) return 'Amanhã'
+  if (sameDay(date, yesterday)) return 'Ontem'
+  return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+}
+
+/** "Hoje às 14:00", "qui., 02/10 às 09:00" */
+export function formatDateTime(iso: string, now = new Date()): string {
+  const date = new Date(iso)
+  const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `${formatDay(date, now)} às ${time}`
+}
+
+/** Tempo desde a data, para histórico: "agora", "há 12 min", "há 3 h", "há 5 d", "12/03" */
+export function formatAgo(iso: string, now = Date.now()): string {
+  const elapsed = formatElapsed(iso, now)
+  return elapsed === 'agora' || elapsed.includes('/') ? elapsed : `há ${elapsed}`
+}
+
+export type FollowUpTone = 'overdue' | 'today' | 'future'
+
+/** Situação do próximo contato: atrasado (já passou), hoje ou futuro. */
+export function followUpTone(iso: string, now = new Date()): FollowUpTone {
+  const date = new Date(iso)
+  if (date.getTime() < now.getTime()) return 'overdue'
+  return sameDay(date, now) ? 'today' : 'future'
+}

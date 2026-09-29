@@ -14,7 +14,7 @@ LeadNexi/
 │       ├── auth/          # login JWT (usuário único) + guard global
 │       ├── pipelines/     # funis do Kanban
 │       ├── stages/        # etapas (colunas) e reordenação
-│       ├── leads/         # CRUD, busca/paginação e movimentação dos cards
+│       ├── leads/         # CRUD, busca/paginação, movimentação dos cards e histórico
 │       ├── health/        # health check público
 │       ├── common/        # filtro de erros do Prisma, utilitários de posição
 │       ├── prisma/        # PrismaService (global)
@@ -58,8 +58,10 @@ A documentação completa (com "Try it out") está em **http://localhost:3000/ap
 | Pipelines | `GET /pipelines` · `GET /pipelines/:id` (Kanban completo) · `POST` · `PATCH /:id` · `DELETE /:id` |
 | Stages | `POST /pipelines/:id/stages` · `PATCH /pipelines/:id/stages/reorder` · `PATCH /stages/:id` · `DELETE /stages/:id` |
 | Leads | `GET /leads?search&pipelineId&stageId&source&page&limit` · `GET /leads/:id` · `POST` · `PATCH /:id` · `PATCH /:id/move` · `DELETE /:id` |
+| Histórico do lead | `GET /leads/:id/activities` · `POST /leads/:id/notes` · `DELETE /leads/:id/notes/:activityId` · `PUT /leads/:id/follow-up` · `POST /leads/:id/follow-up/complete` · `DELETE /leads/:id/follow-up` |
 
 **Regras:** etapas e pipelines com leads não podem ser apagados (409); as posições de colunas e cards são sempre contíguas (0, 1, 2…) e recalculadas a cada movimento.
+O histórico registra sozinho a criação e cada troca de etapa (com o nome das etapas no momento); só anotações podem ser apagadas. Cada lead tem no máximo um próximo contato agendado (`followUpAt`).
 
 ## Testes
 

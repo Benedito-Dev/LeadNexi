@@ -72,14 +72,25 @@ export class LeadsService {
     return lead;
   }
 
-  /** Cria o lead no fim da coluna informada. */
+  /** Cria o lead no fim da coluna informada e registra "Criado" no histórico. */
   async create(dto: CreateLeadDto) {
-    await this.stagesService.findOrFail(dto.stageId);
+    const stage = await this.stagesService.findOrFail(dto.stageId);
     const position = await this.prisma.lead.count({
       where: { stageId: dto.stageId },
     });
+    // Escrita aninhada: lead e evento são gravados juntos (atômico)
     return this.prisma.lead.create({
-      data: { ...dto, position },
+      data: {
+        ...dto,
+        position,
+        activities: {
+          create: {
+            type: 'CREATED',
+            text: dto.source ?? null,
+            toStage: stage.name,
+          },
+        },
+      },
       include: { stage: stageSummary },
     });
   }
@@ -95,11 +106,12 @@ export class LeadsService {
 
   /**
    * Move o card para `stageId` na `position` informada (arrastar no Kanban).
-   * Reordena a coluna de origem e a de destino na mesma transação.
+   * Reordena a coluna de origem e a de destino na mesma transação; trocar de etapa
+   * registra "de → para" no histórico, também na mesma transação.
    */
   async move(id: string, { stageId, position }: MoveLeadDto) {
     const lead = await this.findOne(id);
-    await this.stagesService.findOrFail(stageId);
+    const targetStage = await this.stagesService.findOrFail(stageId);
 
     await this.prisma.$transaction(async (tx) => {
       if (lead.stageId === stageId) {
@@ -120,6 +132,14 @@ export class LeadsService {
       const target = await this.columnOf(tx, stageId);
 
       await tx.lead.update({ where: { id }, data: { stageId } });
+      await tx.leadActivity.create({
+        data: {
+          leadId: id,
+          type: 'STAGE_CHANGED',
+          fromStage: lead.stage.name,
+          toStage: targetStage.name,
+        },
+      });
       await this.applyPositions(
         tx,
         source,

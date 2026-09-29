@@ -9,8 +9,29 @@ export interface Lead {
   notes: string | null
   position: number
   stageId: string
+  /** Próximo contato agendado (ISO); null = nenhum */
+  followUpAt: string | null
+  /** O que fazer no próximo contato */
+  followUpNote: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type LeadActivityType = 'CREATED' | 'STAGE_CHANGED' | 'NOTE' | 'FOLLOW_UP_SCHEDULED' | 'FOLLOW_UP_DONE'
+
+/** Item do histórico do lead (GET /leads/:id/activities, mais novo primeiro) */
+export interface LeadActivity {
+  id: string
+  leadId: string
+  type: LeadActivityType
+  /** Texto da nota, origem (na criação) ou descrição do follow-up */
+  text: string | null
+  /** Nomes das etapas no momento da mudança */
+  fromStage: string | null
+  toStage: string | null
+  /** Data do follow-up agendado/concluído (ISO) */
+  dueAt: string | null
+  createdAt: string
 }
 
 /**
