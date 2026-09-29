@@ -11,9 +11,9 @@ import { stageColorClass } from '../stageColor.ts'
 import type { Stage } from '../types.ts'
 import { SortableLeadCard } from './LeadCard.tsx'
 
-// Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso, com a altura do
-// próprio conteúdo; borda Navy 600 ao receber um card. Cabeçalho: bolinha, nome, contagem e ações (no desktop,
-// só aparecem no hover/foco); abaixo, o total da etapa em R$.
+// Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso, todas com a mesma
+// altura (até o fim da tela); borda Navy 600 ao receber um card. Faixa de 2px na cor da etapa no
+// topo. Cabeçalho numa linha: nome, contagem, total em R$ e ações (no desktop, só no hover/foco).
 export function KanbanColumn({
   stage,
   index,
@@ -46,13 +46,13 @@ export function KanbanColumn({
   return (
     <section
       aria-label={`Etapa ${stage.name}`}
-      className={`group flex min-w-62 flex-1 basis-0 flex-col gap-3 rounded-lg border bg-navy-850 p-2.5 transition-colors ${
+      className={`group relative flex min-h-80 min-w-62 flex-1 basis-0 flex-col gap-2.5 rounded-lg border bg-navy-850 p-2.5 pt-3 transition-colors lg:min-h-[calc(100dvh-16rem)] ${
         isOver ? 'border-navy-600' : 'border-transparent'
       }`}
     >
-      <header className="px-1">
+      <span aria-hidden className={`absolute inset-x-4 top-0 h-0.5 rounded-b-full ${color}`} />
+      <header className="px-1.5">
         <div className="flex min-h-8 items-center gap-2">
-          <span aria-hidden className={`size-2 shrink-0 rounded-full ${color}`} />
           {renaming ? (
             <StageNameForm
               initialName={stage.name}
@@ -88,36 +88,38 @@ export function KanbanColumn({
                 <span className="sr-only">Leads: </span>
                 {leads.length}
               </span>
-              <span className="flex-1" />
-              <span className="-mr-1 flex shrink-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 has-aria-expanded:opacity-100 [@media(hover:hover)]:opacity-0">
-                <button
-                  type="button"
-                  onClick={() => onAddLead(stage.id)}
-                  aria-label={`Novo lead em ${stage.name}`}
-                  title="Novo lead"
-                  className="grid size-7 cursor-pointer place-items-center rounded-xs text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
-                >
-                  <Plus aria-hidden size={16} strokeWidth={1.75} />
-                </button>
-                <StageActions
-                  stage={stage}
-                  index={index}
-                  stageCount={stageCount}
-                  leadCount={stageLeadCount}
-                  onRename={() => setRenaming(true)}
-                />
+              {/* No desktop as ações aparecem por cima do total (hover/foco); em toque ficam ao lado */}
+              <span className="relative ml-auto flex shrink-0 items-center gap-1">
+                <span className="text-small text-slate-400 tabular-nums transition-opacity [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:opacity-0 [@media(hover:hover)]:group-has-aria-expanded:opacity-0">
+                  <span className="sr-only">Total: </span>
+                  {formatCurrency(total)}
+                </span>
+                <span className="-mr-1 flex shrink-0 bg-navy-850 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 has-aria-expanded:opacity-100 [@media(hover:hover)]:absolute [@media(hover:hover)]:right-0 [@media(hover:hover)]:opacity-0">
+                  <button
+                    type="button"
+                    onClick={() => onAddLead(stage.id)}
+                    aria-label={`Novo lead em ${stage.name}`}
+                    title="Novo lead"
+                    className="grid size-7 cursor-pointer place-items-center rounded-xs text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
+                  >
+                    <Plus aria-hidden size={16} strokeWidth={1.75} />
+                  </button>
+                  <StageActions
+                    stage={stage}
+                    index={index}
+                    stageCount={stageCount}
+                    leadCount={stageLeadCount}
+                    onRename={() => setRenaming(true)}
+                  />
+                </span>
               </span>
             </>
           )}
         </div>
-        <p className="pl-4 text-small text-slate-400 tabular-nums">
-          <span className="sr-only">Total: </span>
-          {formatCurrency(total)}
-        </p>
       </header>
 
       <SortableContext items={leads.map((lead) => lead.id)} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="flex min-h-24 flex-col gap-2">
+        <div ref={setNodeRef} className="flex min-h-24 flex-1 flex-col gap-2">
           {leads.map((lead) => (
             <SortableLeadCard
               key={lead.id}

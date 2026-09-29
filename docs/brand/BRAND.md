@@ -340,10 +340,9 @@ Quatro cards compactos (grade de 4 no desktop, 2 no tablet, 1 no celular, gap 16
 Gráficos só com dado real (nada de série inventada). Barras com dica nativa (`title`) e rótulo acessível.
 
 ### Coluna do Kanban
-`padding 10` · `radius 16` · fundo `navy-850` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `navy-600` · gap 12 entre cabeçalho e cards, 8 entre cards. As colunas têm a altura do próprio conteúdo; gap 16 entre colunas.
-Cabeçalho:
-- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem (só o número, 13 `slate-400`) + botões "+" (novo lead na etapa) e "⋯" (ações), 28 px, ícone 16. No desktop os botões só aparecem no hover/foco da coluna (ou com o menu aberto); em tela de toque ficam sempre visíveis.
-- Linha 2: total da etapa em R$ (13 `slate-400`), alinhado ao nome.
+`padding 10` (topo 12) · `radius 16` · fundo `navy-850` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `navy-600` · gap 10 entre cabeçalho e cards, 8 entre cards. **Todas as colunas têm a mesma altura**: descem até o fim da tela (mínimo 320 px), e a coluna inteira aceita soltar card. Gap 16 entre colunas.
+No topo, faixa de 2 px na cor da etapa (recuada 16 px das bordas, pontas arredondadas embaixo). É a identidade da etapa na coluna; não há bolinha.
+Cabeçalho numa linha (altura 32): nome 14/700 + contagem (só o número, 13 `slate-400`) à esquerda e total da etapa em R$ (13 `slate-400`) à direita. No desktop, os botões "+" (novo lead na etapa) e "⋯" (ações), 28 px, aparecem **no lugar do total** no hover/foco da coluna (ou com o menu aberto); em tela de toque ficam sempre visíveis, ao lado do total.
 Largura mínima 248 px; as colunas dividem o espaço. No fim do quadro, botão "+" de 32 px (só ícone, `aria-label` "Nova etapa") alinhado ao cabeçalho; ao clicar vira um campo.
 Coluna vazia: caixa tracejada "Arraste um card para cá." em 13/600 `slate-400`.
 Ações da etapa (menu "⋯"): Renomear (o nome vira campo: Enter salva, Esc cancela), Mover para a esquerda/direita (a cor acompanha a nova posição) e Excluir etapa (desativado enquanto houver leads, com a explicação; confirma em modal).
@@ -399,7 +398,8 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 │ #0E1428  │ [6    ▁▁█] [R$ 3.897 █▁▆] [50%  ◔] [R$ 2.650,50 verde]    │
 │          │  ← 4 cards de KPI compactos, gráfico à direita            │
 │ Logo     │                                                           │
-│ Funil ●  │ ● Novo 1  │ ● Contato 1   │ ● Proposta│ ● Fechado 3  + Nova│
+│ Funil ●  │ ━━━━━━━━━ │ ━━━━━━━━━━━━━ │ ━━━━━━━━━ │ ━━━━━━━━━━━  +    │
+│          │ Novo 1  $ │ Contato 1   $ │ Prop. 1 $ │ Fechado 3  $      │
 │ Leads    │ [card]    │ [card]        │ [card*]  │ [card]             │
 │ Conversas│ [card]    │ [card]        │ [card]   │ [card]             │
 │ Agenda   │ [card]    │ [card]        │          │                    │
@@ -408,7 +408,7 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 │ Usuário  │                                                           │
 └──────────┴───────────────────────────────────────────────────────────┘
 ```
-Área principal: `padding 28 32`, gap 24. Cards de KPI em grade de 4; colunas com fundo `navy-850` e gap 16. Sidebar com borda direita 1 px `#1E2640`.
+Área principal: `padding 28 32`, gap 24. Cards de KPI em grade de 4; colunas com fundo `navy-850`, mesma altura até o fim da tela, gap 16. Sidebar com borda direita 1 px `#1E2640`.
 
 ### 9.2 Site — hero (1440 × 900)
 ```

@@ -183,7 +183,7 @@ export function KanbanBoard({
         },
       }}
     >
-      <div className="flex items-start gap-4 overflow-x-auto pb-2">
+      <div className="flex items-stretch gap-4 overflow-x-auto pb-2">
         {board.stages.map((stage, index) => (
           <KanbanColumn
             key={stage.id}
