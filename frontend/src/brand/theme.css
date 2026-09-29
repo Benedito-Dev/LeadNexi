@@ -87,7 +87,7 @@
   --text-kpi: 28px;
   --text-kpi--line-height: 1.1;
   --text-kpi--font-weight: 500;
-  /* KPI compacto: valores do resumo do funil no Kanban (BRAND.md, seção 8). Manrope + tabular-nums */
+  /* KPI compacto (BRAND.md, seção 5): Manrope 20/700, reservado */
   --text-kpi-sm: 20px;
   --text-kpi-sm--line-height: 1.2;
   --text-kpi-sm--letter-spacing: -0.02em;

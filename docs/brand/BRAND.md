@@ -22,7 +22,7 @@ Arquivos que acompanham este guia:
 3. **Tema padrão é escuro** (fundo `#0B1020`). Versão clara só quando pedida.
 4. **Botão primário = `#5B4BEA`** (Violet 600) com texto branco. Nunca `#6D5DFB` com texto branco em texto pequeno (contraste 4.56:1, no limite do AA).
 5. **Texto secundário no escuro = `#94A3B8`** (Slate 400) ou `#CBD5E1` (Slate 300). Nunca `#64748B` sobre navy (contraste 3.98:1).
-6. **Cyan é conexão/interação**: nós, links, foco, valores fechados, badges de WhatsApp. Não usar cyan em blocos grandes.
+6. **Cyan é conexão/interação**: nós, links, foco, WhatsApp. Não usar cyan em blocos grandes. **Dinheiro fechado é verde** (`success`), não cyan.
 7. **Gradiente violeta→cyan só em linhas finas** (≤ 4px) e barras de progresso. Nunca em fundos, botões ou cards.
 8. **Ângulos de linha: 0°, 90° e 45°.** Nada de curvas orgânicas, ondas ou blobs.
 9. **Sem emoji na interface. Ícones = traço 1.75, cantos arredondados** (estilo seção 7).
@@ -141,7 +141,7 @@ Símbolo acima, nome abaixo, centralizados. Nome ≈ 0.43 × altura do símbolo;
 |---|---|---|
 | Deep Navy | `#0B1020` | Base. Fundo principal do app e do site. |
 | Electric Violet | `#6D5DFB` | Identidade. Símbolo, destaques, estados ativos de marca. |
-| Cyan Accent | `#22D3EE` | Conexão e interação. Nós, links, foco, valores fechados. |
+| Cyan Accent | `#22D3EE` | Conexão e interação. Nós, links, foco, WhatsApp. |
 | White | `#F8FAFC` | Texto principal no escuro, fundo claro. |
 | Slate | `#64748B` | Neutro de apoio (ícones inativos, divisores no claro). |
 
@@ -248,9 +248,11 @@ Google Fonts:
 | Small | 13 / 600 | 0 | Metadados, nome do contato |
 | Data | Geist Mono 12–13 / 500 | 0 | "R$ 297", "12 min", contadores |
 | KPI | Geist Mono 28 / 500 | 0 | "R$ 18.400" (card KPI isolado) |
-| KPI compacto | Geist Mono 20 / 500 | 0 | Resumo do funil no Kanban (`text-kpi-sm`) |
+| KPI compacto | Manrope 20 / 700 | -0.02em | Reservado (`text-kpi-sm`) |
+| Valor de card KPI | Manrope 24 / 700 (`text-h2`) | -0.02em | Cards de KPI do Kanban |
 
-**Regras:** títulos sempre com tracking negativo; valores monetários e tempos sempre em Geist Mono; máximo ~70 caracteres por linha em texto corrido.
+**Regras:** títulos sempre com tracking negativo; máximo ~70 caracteres por linha em texto corrido.
+**Números:** no Kanban (cards de KPI, colunas e cards de lead) valores e contagens ficam em **Manrope** (`tabular-nums` quando empilhados em coluna): a Geist Mono espaçava demais os valores em R$. Tabelas, paginação e rótulos técnicos seguem em Geist Mono.
 
 ---
 
@@ -324,19 +326,26 @@ Contador: pílula fundo `#0E3440`, texto `#22D3EE` Geist Mono 11.
 ### Card KPI
 `padding 18 20` · `radius 16` · fundo `#141A2E` · borda `#232B45` · rótulo 13/600 `#94A3B8` · valor Geist Mono 28/500 (valor de receita em `#22D3EE`).
 
-### Resumo do funil (topo do Kanban)
-Quatro números soltos, **sem superfície nem borda** em volta: rótulo 13/600 `#94A3B8` em cima, valor Geist Mono **20**/500 (KPI compacto) embaixo; fechado em `#22D3EE`.
-Espaço de 40 px entre os indicadores; abaixo, divisória 1 px `#232B45` com 20 px de respiro separando o resumo do quadro.
-No celular: grade 2 × 2.
+### Cards de KPI (topo do Kanban)
+Quatro cards compactos (grade de 4 no desktop, 2 no tablet, 1 no celular, gap 16): fundo `navy-800` · borda `navy-700` · `radius 16` · `padding 14 16`.
+À esquerda: rótulo 13/600 `slate-400`, valor Manrope 24/700 e legenda 12/600 `slate-400`. À direita, alinhado à base, um gráfico pequeno (≈ 36 px de altura):
+
+| Card | Gráfico | Legenda |
+|---|---|---|
+| Leads no funil | barrinhas dos leads criados por dia (14 dias); hoje em violeta, demais `navy-600`, dia vazio = traço `slate-tint` | "N novos em 7 dias" |
+| Em negociação | uma barrinha violeta por etapa aberta (dica com nome e valor) | "N leads abertos" |
+| Taxa de conversão | anel 40 px, traço 4, trilha `slate-tint`, preenchimento violeta | "N de M em Fechado" |
+| Fechado | sem gráfico; valor em verde (`success`) | "Ticket médio R$ …" |
+
+Gráficos só com dado real (nada de série inventada). Barras com dica nativa (`title`) e rótulo acessível.
 
 ### Coluna do Kanban
-**Sem fundo e sem borda em repouso**: só os cards têm superfície (uma camada de contorno por vez). Ao receber um card arrastado, a coluna ganha fundo `#0F1426` e borda 1 px `#2A3352` · `padding 8` · `radius 16` · gap 12 entre cabeçalho e cards, 8 entre cards. As colunas não esticam: cada uma tem a altura do próprio conteúdo.
+`padding 10` · `radius 16` · fundo `navy-850` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `navy-600` · gap 12 entre cabeçalho e cards, 8 entre cards. As colunas têm a altura do próprio conteúdo; gap 16 entre colunas.
 Cabeçalho:
-- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem (só o número, Geist Mono 12 `#94A3B8`) + botões "+" (novo lead na etapa) e "⋯" (ações da etapa) à direita, 28 px, ícone 16 `#94A3B8`.
-- Linha 2: total da etapa em R$ (Geist Mono 12 `#94A3B8`), alinhado ao nome.
-- Sem linha colorida sob o cabeçalho: a cor da etapa aparece só na bolinha.
-Largura mínima 248 px; as colunas dividem o espaço, com 20 px entre os conteúdos. No fim do quadro, botão de texto "+ Nova etapa" (13/600 `#94A3B8`, hover fundo `#141A2E`) alinhado ao cabeçalho; ao clicar vira um campo.
-Coluna vazia: caixa tracejada "Arraste um card para cá." em 13/600 `#94A3B8`.
+- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem (só o número, 13 `slate-400`) + botões "+" (novo lead na etapa) e "⋯" (ações), 28 px, ícone 16. No desktop os botões só aparecem no hover/foco da coluna (ou com o menu aberto); em tela de toque ficam sempre visíveis.
+- Linha 2: total da etapa em R$ (13 `slate-400`), alinhado ao nome.
+Largura mínima 248 px; as colunas dividem o espaço. No fim do quadro, botão "+" de 32 px (só ícone, `aria-label` "Nova etapa") alinhado ao cabeçalho; ao clicar vira um campo.
+Coluna vazia: caixa tracejada "Arraste um card para cá." em 13/600 `slate-400`.
 Ações da etapa (menu "⋯"): Renomear (o nome vira campo: Enter salva, Esc cancela), Mover para a esquerda/direita (a cor acompanha a nova posição) e Excluir etapa (desativado enquanto houver leads, com a explicação; confirma em modal).
 
 ### Menu suspenso
@@ -346,14 +355,13 @@ Teclado: setas navegam, Home/End vão às pontas, Esc fecha e devolve o foco ao 
 Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` (da 5ª etapa em diante, cyan).
 
 ### Card de lead
-`padding 12` · `radius 12` · fundo `#141A2E` · borda `#232B45` (hover `#2A3352`). Lido de cima para baixo, tudo alinhado à esquerda:
-- Nome do negócio 14/700 (até 2 linhas).
-- Valor logo abaixo, Geist Mono 13 `#CBD5E1`, gap 4. Sem valor: a linha some (nada de "—").
-- Rodapé, 12 px abaixo: etiqueta de origem à esquerda e tempo desde a última movimentação (Manrope 12/600 `#94A3B8`) à direita.
-- Telefone e e-mail não aparecem no card: ficam no detalhe do lead (a busca continua encontrando por eles).
-- Geist Mono no card só para dinheiro: o tempo fica em Manrope para não competir com o valor.
-- **Sendo arrastado:** fundo `#161E38`, borda 1 px `#22D3EE`, sombra `0 12px 32px rgba(0,0,0,.45)`, rotação -1.5°, tempo "agora" em cyan.
-- **Fechado:** valor em `#22D3EE`.
+`radius 12` · fundo `navy-800` · borda `navy-700` (hover `navy-600`). Duas partes:
+- **Corpo** (`padding 14 14 12`): iniciais do lead num círculo de 32 px (fundo `slate-tint`, 12/800 `slate-300`) + nome 14/700 (até 2 linhas) + origem 12/600 `slate-400` com o ícone do canal (14 px, traço 1.75).
+- **Rodapé** (divisória 1 px `navy-700`, `padding 10 14`): valor 14/700 à esquerda (sem valor: "Sem valor" 12/600 `slate-400`) e tempo desde a última movimentação à direita (ícone relógio 13 + 12/600 `slate-400`).
+- Telefone e e-mail não aparecem no card: ficam no detalhe (a busca continua encontrando por eles).
+- **Ícones de origem:** Instagram (violet-300) e WhatsApp (cyan), desenhados em `src/brand/icons.tsx` no traço do Lucide (adaptados do Tabler, MIT); Site = `Globe`, Indicação = `Users`, outras = `Tag`, em `slate-400`.
+- **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, tempo "agora" em cyan.
+- **Fechado:** valor em verde (`success`: `#34D399` no escuro, `#047857` no claro).
 
 ### Tabela (lista de leads)
 Superfície `radius 16` · fundo `#11172A` · borda `#232B45`.
@@ -388,9 +396,9 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 ┌──────────┬───────────────────────────────────────────────────────────┐
 │ Sidebar  │ Funil de vendas                  [🔍 Buscar] [+ Novo lead]│
 │ 248px    │                                                           │
-│ #0E1428  │ Leads   Em negociação   Conversão   Fechado (cyan)        │
-│          │ 6       R$ 3.897        50%         R$ 2.650,50           │
-│ Logo     │ ───────────────────────────────────────────────────────── │
+│ #0E1428  │ [6    ▁▁█] [R$ 3.897 █▁▆] [50%  ◔] [R$ 2.650,50 verde]    │
+│          │  ← 4 cards de KPI compactos, gráfico à direita            │
+│ Logo     │                                                           │
 │ Funil ●  │ ● Novo 1  │ ● Contato 1   │ ● Proposta│ ● Fechado 3  + Nova│
 │ Leads    │ [card]    │ [card]        │ [card*]  │ [card]             │
 │ Conversas│ [card]    │ [card]        │ [card]   │ [card]             │
@@ -400,7 +408,7 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 │ Usuário  │                                                           │
 └──────────┴───────────────────────────────────────────────────────────┘
 ```
-Área principal: `padding 28 32`, gap 24. Resumo do funil sem superfície; colunas sem fundo, 20 px entre os conteúdos. Sidebar com borda direita 1 px `#1E2640`.
+Área principal: `padding 28 32`, gap 24. Cards de KPI em grade de 4; colunas com fundo `navy-850` e gap 16. Sidebar com borda direita 1 px `#1E2640`.
 
 ### 9.2 Site — hero (1440 × 900)
 ```
@@ -444,7 +452,8 @@ Fundo: navy + grade de nós 32 px (`#161D35`) + uma trilha 45° discreta em `#1E
 - [ ] Fundo `#0B1020` e superfícies nos tons navy da tabela
 - [ ] Botão primário `#5B4BEA`, não `#6D5DFB`
 - [ ] Nenhum texto em `#64748B` sobre fundo escuro
-- [ ] Números e valores em Geist Mono
+- [ ] Números: Manrope no Kanban, Geist Mono em tabelas e dados técnicos
+- [ ] Dinheiro fechado em verde (`success`), cyan só em conexão/interação
 - [ ] Títulos Manrope com tracking negativo
 - [ ] Cyan só em pontos de conexão/interação
 - [ ] Gradiente só em linhas finas

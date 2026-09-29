@@ -6,11 +6,11 @@ CRM que conecta Instagram → Lead → Kanban → WhatsApp → Venda. Monorepo c
 
 Antes de criar ou alterar tela, componente, estilo, ícone ou texto de interface, **leia `docs/brand/BRAND.md`** — é a fonte da verdade (seção 0 = regras, seção 8 = componentes, seção 11 = checklist de revisão). Os erros mais comuns:
 
-- Tema escuro por padrão (fundo `navy`). Superfícies e bordas só nos tons navy do guia.
+- Tema escuro por padrão (fundo `navy`), com tema claro opcional (seção 4.6): use os tokens de papel, nunca cor fixa. Texto sobre violeta = `text-on-accent`.
 - Botão primário `bg-violet-600` (nunca `bg-violet` com texto branco).
 - Texto secundário `text-slate-400` / `text-slate-300` — nunca `text-slate` sobre navy.
-- Cyan só em conexão/interação (foco, links, nós, valor fechado, WhatsApp); gradiente `bg-flow` só em linhas ≤ 4px.
-- Números, valores em R$ e tempos em `font-mono` (Geist Mono).
+- Cyan só em conexão/interação (foco, links, nós, WhatsApp); dinheiro fechado em verde (`text-success`). Gradiente `bg-flow` só em linhas ≤ 4px.
+- Números: Manrope no Kanban (KPIs, colunas, cards); Geist Mono (`font-mono`) em tabelas e dados técnicos.
 - Símbolo e logo só via `<LeadNexiMark>` / `<LeadNexiLogo>` — nunca redesenhar.
 - Sem emoji. Ícones Lucide com `strokeWidth={1.75}`.
 - Textos em português do Brasil, sentence case ("Novo lead").
