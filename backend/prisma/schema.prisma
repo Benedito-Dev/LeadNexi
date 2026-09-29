@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Usuário único do sistema (login simples)
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+// Funil de vendas (Kanban) customizável
+model Pipeline {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int      @default(0)
+  stages    Stage[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pipelines")
+}
+
+// Coluna do Kanban
+model Stage {
+  id         String   @id @default(uuid())
+  name       String
+  color      String?
+  position   Int      @default(0)
+  pipelineId String   @map("pipeline_id")
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads      Lead[]
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([pipelineId])
+  @@map("stages")
+}
+
+// Card do Kanban
+model Lead {
+  id             String   @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?
+  source         String?
+  estimatedValue Decimal? @map("estimated_value") @db.Decimal(12, 2)
+  notes          String?
+  position       Int      @default(0)
+  stageId        String   @map("stage_id")
+  stage          Stage    @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([stageId])
+  @@map("leads")
+}

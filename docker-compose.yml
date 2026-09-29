@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: leadnexi-postgres
+    environment:
+      POSTGRES_USER: leadnexi
+      POSTGRES_PASSWORD: leadnexi
+      POSTGRES_DB: leadnexi
+    ports:
+      - "5435:5432"
+    volumes:
+      - leadnexi-pgdata:/var/lib/postgresql/data
+
+volumes:
+  leadnexi-pgdata:
