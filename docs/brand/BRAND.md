@@ -305,8 +305,17 @@ No celular: grade 2 × 2.
 
 ### Coluna do Kanban
 `padding 10` · `radius 16` · fundo `#0F1426` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `#2A3352` · gap 8. As colunas não esticam: cada uma tem a altura do próprio conteúdo.
-Cabeçalho (altura 32): bolinha 8 px na cor da etapa + nome 14/700 + contagem Geist Mono 12 `#94A3B8` + total da etapa em R$ (Geist Mono 12 `#CBD5E1`) à direita + botão "+" (novo lead na etapa).
-Abaixo do cabeçalho, linha de 2 px na cor da etapa.
+Cabeçalho em duas linhas, para o nome da etapa nunca ser cortado pelos números:
+- Linha 1 (altura 32): bolinha 8 px na cor da etapa + nome 14/700 (ocupa o espaço livre) + botões "+" (novo lead na etapa) e "⋯" (ações da etapa), 28 px, ícone 16 `#94A3B8`.
+- Linha 2: contagem ("3 leads", Geist Mono 12 `#94A3B8`) à esquerda e total da etapa em R$ (Geist Mono 12 `#CBD5E1`) à direita.
+- Abaixo, linha de 2 px na cor da etapa.
+Largura mínima 248 px; as colunas dividem o espaço. No fim do quadro, botão "+" tracejado de 44 px (borda `#2A3352`) para criar etapa; ao clicar vira um campo.
+Ações da etapa (menu "⋯"): Renomear (o nome vira campo: Enter salva, Esc cancela), Mover para a esquerda/direita (a cor acompanha a nova posição) e Excluir etapa (desativado enquanto houver leads, com a explicação; confirma em modal).
+
+### Menu suspenso
+Flutuante: fundo `#141A2E` · borda `#2A3352` · `radius 12` · sombra float · padding 4 · largura 224.
+Itens: ícone 18 + texto 14/600 `#CBD5E1` (hover/foco: fundo `#11172A`, texto `#F8FAFC`) · destrutivo em `#F87171` · desativado em `#94A3B8` com a explicação em 12/500 abaixo.
+Teclado: setas navegam, Home/End vão às pontas, Esc fecha e devolve o foco ao botão.
 Cores das etapas (progressão do funil): `#6D5DFB` → `#5C8AF6` → `#3DB3F1` → `#22D3EE` (da 5ª etapa em diante, cyan).
 
 ### Card de lead

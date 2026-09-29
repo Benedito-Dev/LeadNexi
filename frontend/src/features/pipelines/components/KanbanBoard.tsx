@@ -17,6 +17,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Lead } from '../../leads/types.ts'
+import { NewStageColumn } from '../../stages/components/NewStageColumn.tsx'
 import type { PipelineBoard } from '../types.ts'
 import { KanbanColumn } from './KanbanColumn.tsx'
 import { LeadCard } from './LeadCard.tsx'
@@ -182,12 +183,14 @@ export function KanbanBoard({
         },
       }}
     >
-      <div className="grid auto-cols-[minmax(256px,1fr)] grid-flow-col items-start gap-4 overflow-x-auto pb-2">
+      <div className="flex items-start gap-4 overflow-x-auto pb-2">
         {board.stages.map((stage, index) => (
           <KanbanColumn
             key={stage.id}
             stage={stage}
             index={index}
+            stageCount={board.stages.length}
+            stageLeadCount={stage.leads.length}
             leads={(columns[stage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible)}
             closed={stage.id === lastStageId}
             dragDisabled={query !== ''}
@@ -195,6 +198,7 @@ export function KanbanBoard({
             onOpenLead={onOpenLead}
           />
         ))}
+        <NewStageColumn pipelineId={board.id} />
       </div>
 
       <DragOverlay>

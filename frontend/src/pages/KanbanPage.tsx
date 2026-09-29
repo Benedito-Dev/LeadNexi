@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Input.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
 import { useMoveLead } from '../features/leads/hooks.ts'
 import { KanbanBoard } from '../features/pipelines/components/KanbanBoard.tsx'
+import { NewStageColumn } from '../features/stages/components/NewStageColumn.tsx'
 import { PipelineKpis } from '../features/pipelines/components/PipelineKpis.tsx'
 import { usePipelineBoard, usePipelines } from '../features/pipelines/hooks.ts'
 import type { PipelineBoard } from '../features/pipelines/types.ts'
@@ -115,7 +116,10 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
       )}
 
       {board.stages.length === 0 ? (
-        <p className="text-body text-slate-400">Este funil ainda não tem etapas.</p>
+        <div className="flex max-w-sm flex-col gap-4">
+          <p className="text-body text-slate-400">Este funil ainda não tem etapas. Crie a primeira coluna.</p>
+          <NewStageColumn pipelineId={board.id} />
+        </div>
       ) : (
         <KanbanBoard
           board={board}

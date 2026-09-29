@@ -1,17 +1,24 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
+import { useState } from 'react'
 import { formatCurrency } from '../../../lib/format.ts'
 import type { Lead } from '../../leads/types.ts'
+import { StageActions } from '../../stages/components/StageActions.tsx'
+import { StageNameForm } from '../../stages/components/StageNameForm.tsx'
+import { useRenameStage } from '../../stages/hooks.ts'
 import { stageColorClass } from '../stageColor.ts'
 import type { Stage } from '../types.ts'
 import { SortableLeadCard } from './LeadCard.tsx'
 
 // Coluna do Kanban (BRAND.md, seção 8): fundo Navy 850 sem borda em repouso; borda Navy 600
-// ao receber um card. Cabeçalho com bolinha, nome, contagem, total em R$ e linha da etapa.
+// ao receber um card. Cabeçalho: bolinha, nome e ações; abaixo, contagem e total em R$;
+// por fim, a linha da etapa.
 export function KanbanColumn({
   stage,
   index,
+  stageCount,
+  stageLeadCount,
   leads,
   closed,
   dragDisabled,
@@ -20,6 +27,10 @@ export function KanbanColumn({
 }: {
   stage: Stage
   index: number
+  stageCount: number
+  /** Total real de leads na etapa (sem o filtro da busca): decide se ela pode ser excluída */
+  stageLeadCount: number
+  /** Leads exibidos (podem estar filtrados pela busca) */
   leads: Lead[]
   closed: boolean
   dragDisabled: boolean
@@ -29,35 +40,81 @@ export function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { type: 'stage' } })
   const color = stageColorClass(index)
   const total = leads.reduce((sum, lead) => sum + Number(lead.estimatedValue ?? 0), 0)
+  const [renaming, setRenaming] = useState(false)
+  const rename = useRenameStage()
 
   return (
     <section
       aria-label={`Etapa ${stage.name}`}
-      className={`flex flex-col gap-2 rounded-lg border bg-navy-850 p-2.5 transition-colors ${
+      className={`flex min-w-62 flex-1 basis-0 flex-col gap-2 rounded-lg border bg-navy-850 p-2.5 transition-colors ${
         isOver ? 'border-navy-600' : 'border-transparent'
       }`}
     >
       <header className="px-1 pt-0.5 pb-1.5">
-        <div className="flex h-8 items-center gap-2">
+        <div className="flex min-h-8 items-center gap-2">
           <span aria-hidden className={`size-2 shrink-0 rounded-full ${color}`} />
-          <h2 className="truncate text-ui font-bold text-white">{stage.name}</h2>
-          <span className="font-mono text-xs text-slate-400" aria-label={`${leads.length} leads`}>
-            {leads.length}
+          {renaming ? (
+            <StageNameForm
+              initialName={stage.name}
+              label={`Novo nome da etapa ${stage.name}`}
+              saving={rename.isPending}
+              error={rename.error}
+              onSubmit={(name) =>
+                rename.mutate(
+                  { id: stage.id, name },
+                  {
+                    onSuccess: () => {
+                      rename.reset()
+                      setRenaming(false)
+                    },
+                  },
+                )
+              }
+              onCancel={() => {
+                rename.reset()
+                setRenaming(false)
+              }}
+            />
+          ) : (
+            <>
+              <h2
+                className="min-w-0 flex-1 truncate text-ui font-bold text-white"
+                title={stage.name}
+                onDoubleClick={() => setRenaming(true)}
+              >
+                {stage.name}
+              </h2>
+              <span className="-mr-1 flex shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onAddLead(stage.id)}
+                  aria-label={`Novo lead em ${stage.name}`}
+                  title="Novo lead"
+                  className="grid size-7 cursor-pointer place-items-center rounded-xs text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
+                >
+                  <Plus aria-hidden size={16} strokeWidth={1.75} />
+                </button>
+                <StageActions
+                  stage={stage}
+                  index={index}
+                  stageCount={stageCount}
+                  leadCount={stageLeadCount}
+                  onRename={() => setRenaming(true)}
+                />
+              </span>
+            </>
+          )}
+        </div>
+        <p className="flex items-center justify-between gap-2 pl-4 font-mono text-xs">
+          <span className="text-slate-400">
+            {leads.length} {leads.length === 1 ? 'lead' : 'leads'}
           </span>
-          <span className="ml-auto font-mono text-xs text-slate-300" aria-label={`Total ${formatCurrency(total)}`}>
+          <span className="text-slate-300">
+            <span className="sr-only">Total: </span>
             {formatCurrency(total)}
           </span>
-          <button
-            type="button"
-            onClick={() => onAddLead(stage.id)}
-            aria-label={`Novo lead em ${stage.name}`}
-            title="Novo lead"
-            className="-mr-1 grid size-7 cursor-pointer place-items-center rounded-xs text-slate-400 transition-colors hover:bg-navy-800 hover:text-slate-300"
-          >
-            <Plus aria-hidden size={16} strokeWidth={1.75} />
-          </button>
-        </div>
-        <div aria-hidden className={`mt-2 h-0.5 rounded-full ${color}`} />
+        </p>
+        <div aria-hidden className={`mt-2.5 h-0.5 rounded-full ${color}`} />
       </header>
 
       <SortableContext items={leads.map((lead) => lead.id)} strategy={verticalListSortingStrategy}>
