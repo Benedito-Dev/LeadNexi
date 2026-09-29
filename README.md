@@ -33,7 +33,7 @@ cd backend
 cp .env.example .env
 npm install
 npx prisma migrate dev
-npm run start:dev          # http://localhost:3000/api
+npm run start:dev          # http://localhost:3000/api  (Swagger: /api/docs)
 
 cd ../frontend
 npm install

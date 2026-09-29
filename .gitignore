@@ -8,3 +8,4 @@ coverage/
 backend/src/generated/
 *.log
 .DS_Store
+*.tsbuildinfo
