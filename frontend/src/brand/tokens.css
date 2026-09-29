@@ -1,0 +1,89 @@
+/* LeadNexi — design tokens (fonte da verdade para CSS). Guia: docs/brand/BRAND.md */
+/* Fontes (Manrope + Geist Mono) carregadas no <head> do frontend/index.html. */
+
+:root {
+  /* Marca */
+  --lnx-navy: #0B1020;        /* base / fundo principal */
+  --lnx-violet: #6D5DFB;      /* identidade (símbolo, destaques) */
+  --lnx-cyan: #22D3EE;        /* conexão / interação / sucesso de funil */
+  --lnx-white: #F8FAFC;       /* texto principal no escuro, fundo claro */
+  --lnx-slate: #64748B;       /* neutro (NÃO usar para texto no navy) */
+
+  /* Apoio */
+  --lnx-navy-900: #0E1428;    /* sidebar */
+  --lnx-navy-850: #0F1426;    /* fundo de coluna do kanban */
+  --lnx-navy-800: #141A2E;    /* superfície (cards, inputs) */
+  --lnx-navy-750: #11172A;    /* painel */
+  --lnx-navy-700: #232B45;    /* bordas */
+  --lnx-navy-600: #2A3352;    /* bordas fortes / pontos */
+  --lnx-nav-active: #1B2242;  /* item ativo do menu */
+  --lnx-violet-600: #5B4BEA;  /* botões com texto branco (contraste 5.8:1) */
+  --lnx-violet-300: #A99FFD;  /* texto violeta sobre escuro */
+  --lnx-violet-tint: #241F5C; /* fundo de etiqueta violeta */
+  --lnx-cyan-600: #0891B2;    /* cyan sobre fundo claro */
+  --lnx-cyan-tint: #0E3440;   /* fundo de etiqueta cyan */
+  --lnx-slate-300: #CBD5E1;   /* texto secundário forte */
+  --lnx-slate-400: #94A3B8;   /* texto secundário / legendas no escuro */
+  --lnx-slate-tint: #1E2640;  /* fundo de etiqueta neutra, borda da sidebar, trilha discreta */
+  --lnx-navy-drag: #161E38;   /* fundo do card de lead sendo arrastado */
+  --lnx-kanban-border: #1B2240; /* borda da coluna do kanban */
+  --lnx-violet-deep: #2A2468; /* avatar, balão de mensagem enviada */
+  --lnx-grid-dot: #161D35;    /* pontos da grade de nós sobre o fundo navy */
+  --lnx-trail: #3B4470;       /* trilhas secundárias da linguagem gráfica */
+
+  /* Etapas do funil (progressão violeta → cyan) */
+  --lnx-stage-1: var(--lnx-violet);
+  --lnx-stage-2: #5C8AF6;
+  --lnx-stage-3: #3DB3F1;
+  --lnx-stage-4: var(--lnx-cyan);
+
+  /* Estados */
+  --lnx-success: #34D399;
+  --lnx-warning: #FBBF24;
+  --lnx-danger:  #F87171;
+
+  /* Gradiente (uso discreto: só linhas finas, barras de progresso) */
+  --lnx-gradient-flow: linear-gradient(90deg, #6D5DFB, #22D3EE);
+
+  /* Tipografia */
+  --lnx-font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lnx-font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --lnx-text-display: 800 56px/1 var(--lnx-font-sans);   /* tracking -0.04em */
+  --lnx-text-h1:      700 36px/1.1 var(--lnx-font-sans); /* tracking -0.03em */
+  --lnx-text-h2:      700 24px/1.2 var(--lnx-font-sans); /* tracking -0.02em */
+  --lnx-text-body:    500 16px/1.6 var(--lnx-font-sans);
+  --lnx-text-small:   600 13px/1.4 var(--lnx-font-sans);
+  --lnx-text-data:    500 13px/1.4 var(--lnx-font-mono);
+
+  /* Raios */
+  --lnx-radius-xs: 8px;   /* barras, swatches pequenos */
+  --lnx-radius-sm: 10px;  /* itens de menu */
+  --lnx-radius-md: 12px;  /* cards de lead, inputs, botões */
+  --lnx-radius-lg: 16px;  /* colunas do kanban, KPIs */
+  --lnx-radius-xl: 20px;  /* painéis */
+  --lnx-radius-2xl: 24px; /* containers de destaque, mock do produto */
+  --lnx-radius-pill: 999px;
+
+  /* Espaçamento (base 4) */
+  --lnx-space-1: 4px;  --lnx-space-2: 8px;  --lnx-space-3: 12px;
+  --lnx-space-4: 16px; --lnx-space-5: 20px; --lnx-space-6: 24px;
+  --lnx-space-8: 32px; --lnx-space-10: 40px; --lnx-space-16: 64px; --lnx-space-20: 80px;
+
+  /* Sombras (só em elementos flutuantes) */
+  --lnx-shadow-float: 0 20px 50px rgba(0, 0, 0, 0.55);
+  --lnx-shadow-drag:  0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* Grade de nós (padrão de fundo) */
+  --lnx-dot-grid: radial-gradient(circle, var(--lnx-grid-dot) 1.4px, transparent 1.6px) 0 0 / 32px 32px;
+}
+
+body {
+  margin: 0;
+  background: var(--lnx-navy);
+  color: var(--lnx-white);
+  font-family: var(--lnx-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 2px solid var(--lnx-cyan); outline-offset: 2px; }

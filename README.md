@@ -7,6 +7,7 @@ CRM pessoal: gestão de leads, pipelines Kanban customizáveis e, futuramente, W
 ```
 LeadNexi/
 ├── docker-compose.yml     # Postgres local (porta 5435)
+├── docs/brand/BRAND.md    # guia de marca e interface (fonte da verdade visual)
 ├── backend/               # NestJS + Prisma 7
 │   ├── prisma/            # schema.prisma e migrations
 │   └── src/
@@ -18,8 +19,10 @@ LeadNexi/
 │       ├── common/        # filtro de erros do Prisma, utilitários de posição
 │       ├── prisma/        # PrismaService (global)
 │       └── generated/     # Prisma Client (gerado, fora do git)
-└── frontend/              # React + Vite
+└── frontend/              # React + Vite + Tailwind v4
+    ├── public/brand/      # SVGs da marca (símbolo, logo, favicon, ícones de app)
     └── src/
+        ├── brand/         # tokens.css, tema do Tailwind e <LeadNexiMark>/<LeadNexiLogo>
         ├── app/           # App, providers e rotas
         ├── pages/         # telas (Login, Kanban, Leads)
         ├── features/      # auth, leads, pipelines (tipos, chamadas à API, hooks)

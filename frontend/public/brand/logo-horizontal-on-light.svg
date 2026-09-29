@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64" role="img" aria-label="LeadNexi">
+  <defs>
+    <mask id="lnx-gap-logo" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M16 16L48 48" stroke="#000" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="16" cy="16" r="10" fill="#000"/>
+      <circle cx="48" cy="48" r="10" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#lnx-gap-logo)" fill="#6D5DFB">
+    <path d="M10 16A6 6 0 0 1 22 16V42H26A6 6 0 0 1 26 54H16A6 6 0 0 1 10 48Z"/>
+    <rect x="42" y="10" width="12" height="44" rx="6"/>
+  </g>
+  <path d="M16 16L48 48" stroke="#0891B2" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="7" fill="#0891B2"/>
+  <circle cx="48" cy="48" r="7" fill="#0891B2"/>
+  <text x="76" y="51" font-family="Manrope, system-ui, sans-serif" font-weight="800" font-size="50" letter-spacing="-2.25" fill="#0B1020">LeadNexi</text>
+</svg>

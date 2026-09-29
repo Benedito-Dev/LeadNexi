@@ -1,0 +1,109 @@
+/* LeadNexi — tokens da marca expostos ao Tailwind v4.
+   Os valores moram em tokens.css; aqui só se mapeia para classes (bg-navy-800, text-h1, rounded-md...).
+   A paleta padrão do Tailwind é desligada: só existem as cores do docs/brand/BRAND.md. */
+
+@theme inline {
+  --color-*: initial;
+
+  --color-navy: var(--lnx-navy);
+  --color-navy-900: var(--lnx-navy-900);
+  --color-navy-850: var(--lnx-navy-850);
+  --color-navy-800: var(--lnx-navy-800);
+  --color-navy-750: var(--lnx-navy-750);
+  --color-navy-700: var(--lnx-navy-700);
+  --color-navy-600: var(--lnx-navy-600);
+  --color-navy-active: var(--lnx-nav-active);
+  --color-navy-drag: var(--lnx-navy-drag);
+  --color-kanban-border: var(--lnx-kanban-border);
+  --color-grid-dot: var(--lnx-grid-dot);
+  --color-trail: var(--lnx-trail);
+
+  --color-violet: var(--lnx-violet);
+  --color-violet-600: var(--lnx-violet-600);
+  --color-violet-300: var(--lnx-violet-300);
+  --color-violet-tint: var(--lnx-violet-tint);
+  --color-violet-deep: var(--lnx-violet-deep);
+
+  --color-cyan: var(--lnx-cyan);
+  --color-cyan-600: var(--lnx-cyan-600);
+  --color-cyan-tint: var(--lnx-cyan-tint);
+
+  --color-white: var(--lnx-white);
+  --color-slate: var(--lnx-slate);
+  --color-slate-300: var(--lnx-slate-300);
+  --color-slate-400: var(--lnx-slate-400);
+  --color-slate-tint: var(--lnx-slate-tint);
+
+  --color-stage-1: var(--lnx-stage-1);
+  --color-stage-2: var(--lnx-stage-2);
+  --color-stage-3: var(--lnx-stage-3);
+  --color-stage-4: var(--lnx-stage-4);
+
+  --color-success: var(--lnx-success);
+  --color-warning: var(--lnx-warning);
+  --color-danger: var(--lnx-danger);
+
+  --font-sans: var(--lnx-font-sans);
+  --font-mono: var(--lnx-font-mono);
+
+  /* Escala tipográfica (BRAND.md, seção 5). Valores e tempos usam também font-mono. */
+  --text-hero: 68px;
+  --text-hero--line-height: 1.02;
+  --text-hero--letter-spacing: -0.045em;
+  --text-hero--font-weight: 800;
+  --text-display: 56px;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.04em;
+  --text-display--font-weight: 800;
+  --text-h1: 36px;
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h1--font-weight: 700;
+  --text-app-title: 26px;
+  --text-app-title--line-height: 1.1;
+  --text-app-title--letter-spacing: -0.03em;
+  --text-app-title--font-weight: 800;
+  --text-h2: 24px;
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 700;
+  --text-lead: 20px;
+  --text-lead--line-height: 1.55;
+  --text-lead--font-weight: 500;
+  --text-body: 16px;
+  --text-body--line-height: 1.6;
+  --text-body--font-weight: 500;
+  --text-ui: 14px;
+  --text-ui--line-height: 1.4;
+  --text-ui--font-weight: 600;
+  --text-small: 13px;
+  --text-small--line-height: 1.4;
+  --text-small--font-weight: 600;
+  --text-data: 13px;
+  --text-data--line-height: 1.4;
+  --text-data--font-weight: 500;
+  --text-kpi: 28px;
+  --text-kpi--line-height: 1.1;
+  --text-kpi--font-weight: 500;
+
+  --radius-xs: var(--lnx-radius-xs);
+  --radius-sm: var(--lnx-radius-sm);
+  --radius-md: var(--lnx-radius-md);
+  --radius-lg: var(--lnx-radius-lg);
+  --radius-xl: var(--lnx-radius-xl);
+  --radius-2xl: var(--lnx-radius-2xl);
+
+  --shadow-float: var(--lnx-shadow-float);
+  --shadow-drag: var(--lnx-shadow-drag);
+}
+
+/* Gradiente violeta → cyan: só em linhas finas (≤ 4px) e barras de progresso. */
+@utility bg-flow {
+  background-image: var(--lnx-gradient-flow);
+}
+
+/* Grade de nós (fundo do site/hero). */
+@utility bg-dot-grid {
+  background-image: radial-gradient(circle, var(--lnx-grid-dot) 1.4px, transparent 1.6px);
+  background-size: 32px 32px;
+}
