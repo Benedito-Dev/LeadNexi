@@ -32,7 +32,11 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Token não informado');
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      const payload = await this.jwtService.verifyAsync<
+        JwtPayload & { aud?: unknown }
+      >(token);
+      // Tokens com audiência são de outro uso (ex.: `state` do OAuth do Instagram), nunca de acesso
+      if (payload.aud !== undefined) throw new Error('Token de outro uso');
       request.user = { id: payload.sub, email: payload.email };
       return true;
     } catch {

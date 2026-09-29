@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '../components/AppLayout.tsx'
 import { RequireAuth } from '../features/auth/RequireAuth.tsx'
+import { InstagramPage } from '../pages/InstagramPage.tsx'
 import { KanbanPage } from '../pages/KanbanPage.tsx'
 import { LeadsPage } from '../pages/LeadsPage.tsx'
 import { LoginPage } from '../pages/LoginPage.tsx'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
           { path: '/hoje', element: <TodayPage /> },
           { path: '/kanban', element: <KanbanPage /> },
           { path: '/leads', element: <LeadsPage /> },
+          { path: '/instagram', element: <InstagramPage /> },
         ],
       },
     ],

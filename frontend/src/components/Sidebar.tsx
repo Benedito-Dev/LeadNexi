@@ -1,7 +1,7 @@
 import { CalendarCheck, LogOut, Moon, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
-import { KanbanIcon } from '../brand/icons.tsx'
+import { InstagramIcon, KanbanIcon } from '../brand/icons.tsx'
 import { useLogout, useMe } from '../features/auth/hooks.ts'
 import { useFollowUps } from '../features/leads/hooks.ts'
 import { followUpTone } from '../lib/format.ts'
@@ -13,6 +13,7 @@ const NAV_ITEMS: { to: string; label: string; icon: NavIcon }[] = [
   { to: '/hoje', label: 'Hoje', icon: CalendarCheck },
   { to: '/kanban', label: 'Funil', icon: KanbanIcon },
   { to: '/leads', label: 'Leads', icon: Users },
+  { to: '/instagram', label: 'Instagram', icon: InstagramIcon },
 ]
 
 // Conteúdo da sidebar (BRAND.md, seções 8 e 9.1), usado no desktop e no menu do celular.
