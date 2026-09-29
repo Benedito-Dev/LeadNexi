@@ -5,17 +5,12 @@ import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { Dropdown } from '../components/ui/Dropdown.tsx'
 import { Input } from '../components/ui/Input.tsx'
-import {
-  LeadFormDialog,
-  type LeadFormTarget,
-  type StageOption,
-} from '../features/leads/components/LeadFormDialog.tsx'
-import { LeadsTable, type StageInfo } from '../features/leads/components/LeadsTable.tsx'
+import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
+import { LeadsTable } from '../features/leads/components/LeadsTable.tsx'
 import { SourceIcon } from '../features/leads/components/SourceIcon.tsx'
 import { useLeads } from '../features/leads/hooks.ts'
 import { LEAD_SOURCES } from '../features/leads/sources.ts'
-import { usePipelines } from '../features/pipelines/hooks.ts'
-import { stageColorClass } from '../features/pipelines/stageColor.ts'
+import { useStageOptions } from '../features/pipelines/useStageOptions.ts'
 import { useDebouncedValue } from '../lib/useDebouncedValue.ts'
 
 const PAGE_SIZE = 20
@@ -32,7 +27,7 @@ export function LeadsPage() {
   const search = useDebouncedValue(searchInput.trim())
 
   const [formTarget, setFormTarget] = useState<LeadFormTarget | null>(null)
-  const pipelines = usePipelines()
+  const { stageOptions, stageInfo } = useStageOptions()
   const leads = useLeads({ search, stageId, source, page, limit: PAGE_SIZE })
 
   const updateParams = useCallback(
@@ -59,27 +54,6 @@ export function LeadsPage() {
     previousSearch.current = search
     updateParams({ busca: search, pagina: '' })
   }, [search, updateParams])
-
-  // Etapas de todos os funis: com mais de um funil, o rótulo leva o nome dele
-  const allPipelines = pipelines.data ?? []
-  const multiplePipelines = allPipelines.length > 1
-  const stageOptions: StageOption[] = allPipelines.flatMap((pipeline) =>
-    pipeline.stages.map((stage) => ({
-      id: stage.id,
-      label: multiplePipelines ? `${pipeline.name} · ${stage.name}` : stage.name,
-    })),
-  )
-  const stageIndex = new Map(
-    allPipelines.flatMap((pipeline) => pipeline.stages.map((stage, index) => [stage.id, index] as const)),
-  )
-  // A última etapa de cada funil é o "fechado" (mesma regra do Kanban)
-  const closedStageIds = new Set(allPipelines.flatMap((pipeline) => pipeline.stages.at(-1)?.id ?? []))
-  const stageLabel = new Map(stageOptions.map((option) => [option.id, option.label]))
-  const stageInfo = (id: string, fallbackName: string): StageInfo => ({
-    label: stageLabel.get(id) ?? fallbackName,
-    colorClass: stageColorClass(stageIndex.get(id) ?? 0),
-    closed: closedStageIds.has(id),
-  })
 
   const hasFilters = search !== '' || stageId !== '' || source !== ''
   const meta = leads.data?.meta
@@ -134,9 +108,7 @@ export function LeadsPage() {
               ...stageOptions.map((option) => ({
                 value: option.id,
                 label: option.label,
-                icon: (
-                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${stageInfo(option.id, '').colorClass}`} />
-                ),
+                icon: <span aria-hidden className={`size-2 shrink-0 rounded-full ${option.colorClass}`} />,
               })),
             ]}
           />
@@ -221,7 +193,7 @@ export function LeadsPage() {
 
       <LeadFormDialog
         target={formTarget}
-        stages={stageOptions.map((option) => ({ ...option, colorClass: stageInfo(option.id, '').colorClass }))}
+        stages={stageOptions}
         onClose={() => setFormTarget(null)}
       />
     </div>

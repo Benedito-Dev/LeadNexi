@@ -430,7 +430,22 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 ```
 Área principal: `padding 28 32`, gap 24. Cards de KPI em grade de 4; colunas com fundo `navy-850`, mesma altura até o fim da tela, gap 16. Sidebar com borda direita 1 px `#1E2640`.
 
-### 9.2 Site — hero (1440 × 900)
+### 9.2 Tela "Hoje" (agenda de contatos)
+Página inicial do app (`/hoje`, primeiro item do menu, com contador `cyan-tint` de atrasados + hoje). Coluna única de até 768 px.
+```
+Hoje
+Terça-feira, 29 de setembro · 2 contatos pendentes
+Atrasados 1                                         ← danger
+┌────────────────────────────────────────────────────────────┐
+│ (TA) Teste Atrasado                  Ontem, 10:00  [◎] [✓ Feito] │
+│      Mandar proposta · ● Contato                            │
+└────────────────────────────────────────────────────────────┘
+Hoje 1                                              ← warning
+Amanhã 1 · Próximos dias 1                          ← slate-300
+```
+Linha: superfície `navy-800`, borda `navy-700` (hover `navy-600`), `radius 16`; iniciais + nome 14/700 + o que fazer · etapa; hora 13/700 (atrasado em `danger`); WhatsApp e "Feito" (secundário 36 px). Clicar no lead abre o painel. No celular a hora vai para baixo do nome e "Feito" vira só o ícone. Vazio: caixa tracejada explicando como agendar.
+
+### 9.2.1 Site — hero (1440 × 900)
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ [logo]          Produto  Integrações  Preços        Entrar [Criar conta]│  88px

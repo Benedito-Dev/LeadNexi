@@ -9,6 +9,7 @@ import {
   createLead,
   deleteLead,
   getLead,
+  getFollowUps,
   getLeadActivities,
   getLeads,
   moveLead,
@@ -23,6 +24,7 @@ export const leadKeys = {
   list: (query: LeadListQuery) => ['leads', 'list', query] as const,
   detail: (id: string) => ['leads', 'detail', id] as const,
   activities: (id: string) => ['leads', 'activities', id] as const,
+  followUps: ['leads', 'follow-ups'] as const,
 }
 
 /** Lead atualizado do servidor; `initial` (ex.: o card clicado) aparece na hora, sem esperar. */
@@ -35,6 +37,11 @@ export function useLead(id: string, initial?: Lead) {
     // O card pode estar desatualizado: busca de novo mesmo com o dado inicial
     initialDataUpdatedAt: 0,
   })
+}
+
+/** Agenda de contatos (tela "Hoje" e contador do menu). Atualiza sozinha a cada minuto. */
+export function useFollowUps() {
+  return useQuery({ queryKey: leadKeys.followUps, queryFn: getFollowUps, refetchInterval: 60_000 })
 }
 
 export function useLeadActivities(id: string) {

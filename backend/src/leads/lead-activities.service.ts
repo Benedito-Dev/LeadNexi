@@ -15,6 +15,9 @@ const stageSummary = {
 /** Limite do histórico devolvido de uma vez (os mais recentes). */
 const HISTORY_LIMIT = 200;
 
+/** Limite da agenda de contatos (os mais próximos, atrasados primeiro). */
+const FOLLOW_UPS_LIMIT = 500;
+
 /**
  * Histórico do lead (anotações e eventos) e o próximo contato agendado (follow-up).
  * Criação e mudança de etapa são registradas pelo LeadsService, na mesma transação do movimento.
@@ -22,6 +25,16 @@ const HISTORY_LIMIT = 200;
 @Injectable()
 export class LeadActivitiesService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Leads com próximo contato agendado, do mais atrasado para o mais distante (tela "Hoje"). */
+  listFollowUps() {
+    return this.prisma.lead.findMany({
+      where: { followUpAt: { not: null } },
+      include: { stage: stageSummary },
+      orderBy: { followUpAt: 'asc' },
+      take: FOLLOW_UPS_LIMIT,
+    });
+  }
 
   /** Histórico do lead, do mais novo para o mais antigo. */
   async list(leadId: string) {

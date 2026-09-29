@@ -120,6 +120,28 @@ describe('Histórico do lead (e2e)', () => {
     expect(events[4]).toMatchObject({ text: 'Site', toStage: stages[0].name });
   });
 
+  it('lista os contatos agendados, atrasados primeiro', async () => {
+    await api()
+      .put(`/leads/${leadId}/follow-up`)
+      .set(auth)
+      .send({ dueAt: '2000-01-01T12:00:00.000Z', note: 'Atrasado' })
+      .expect(200);
+
+    const agenda = await api().get('/leads/follow-ups').set(auth).expect(200);
+    const leads = agenda.body as { id: string; followUpAt: string | null }[];
+    expect(leads[0]).toMatchObject({
+      id: leadId,
+      followUpAt: '2000-01-01T12:00:00.000Z',
+    });
+    expect(leads.every((lead) => lead.followUpAt !== null)).toBe(true);
+
+    await api().delete(`/leads/${leadId}/follow-up`).set(auth).expect(200);
+    const after = await api().get('/leads/follow-ups').set(auth).expect(200);
+    expect((after.body as { id: string }[]).some((l) => l.id === leadId)).toBe(
+      false,
+    );
+  });
+
   it('só apaga anotações', async () => {
     const history = await api()
       .get(`/leads/${leadId}/activities`)

@@ -1,19 +1,28 @@
-import { LogOut, Moon, Sun, Users } from 'lucide-react'
+import { CalendarCheck, LogOut, Moon, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { KanbanIcon } from '../brand/icons.tsx'
 import { useLogout, useMe } from '../features/auth/hooks.ts'
+import { useFollowUps } from '../features/leads/hooks.ts'
+import { followUpTone } from '../lib/format.ts'
 import { setTheme, useTheme } from '../lib/theme.ts'
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
 
 const NAV_ITEMS: { to: string; label: string; icon: NavIcon }[] = [
+  { to: '/hoje', label: 'Hoje', icon: CalendarCheck },
   { to: '/kanban', label: 'Funil', icon: KanbanIcon },
   { to: '/leads', label: 'Leads', icon: Users },
 ]
 
 // Conteúdo da sidebar (BRAND.md, seções 8 e 9.1), usado no desktop e no menu do celular.
 export function Sidebar({ header, onNavigate }: { header: ReactNode; onNavigate?: () => void }) {
+  // Contatos atrasados ou de hoje: contador no item "Hoje"
+  const followUps = useFollowUps()
+  const pending = (followUps.data ?? []).filter(
+    (lead) => lead.followUpAt && followUpTone(lead.followUpAt) !== 'future',
+  ).length
+
   return (
     <div className="flex h-full flex-col px-4 py-6">
       {/* Recuo que alinha o logo com os ícones do menu */}
@@ -39,6 +48,12 @@ export function Sidebar({ header, onNavigate }: { header: ReactNode; onNavigate?
                   className={isActive ? 'text-cyan' : 'text-slate-300'}
                 />
                 {label}
+                {to === '/hoje' && pending > 0 && (
+                  <span className="ml-auto rounded-full bg-cyan-tint px-2 py-0.5 text-xs leading-4 font-bold text-cyan tabular-nums">
+                    <span className="sr-only">Pendentes: </span>
+                    {pending}
+                  </span>
+                )}
               </>
             )}
           </NavLink>

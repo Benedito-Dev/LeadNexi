@@ -4,6 +4,7 @@ import { RequireAuth } from '../features/auth/RequireAuth.tsx'
 import { KanbanPage } from '../pages/KanbanPage.tsx'
 import { LeadsPage } from '../pages/LeadsPage.tsx'
 import { LoginPage } from '../pages/LoginPage.tsx'
+import { TodayPage } from '../pages/TodayPage.tsx'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -13,7 +14,8 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Navigate to="/kanban" replace /> },
+          { index: true, element: <Navigate to="/hoje" replace /> },
+          { path: '/hoje', element: <TodayPage /> },
           { path: '/kanban', element: <KanbanPage /> },
           { path: '/leads', element: <LeadsPage /> },
         ],

@@ -40,6 +40,11 @@ export function getLead(id: string) {
 
 // Histórico e próximo contato
 
+/** Leads com próximo contato agendado, atrasados primeiro (tela "Hoje") */
+export function getFollowUps() {
+  return api<LeadWithStage[]>('/leads/follow-ups')
+}
+
 export function getLeadActivities(id: string) {
   return api<LeadActivity[]>(`/leads/${id}/activities`)
 }

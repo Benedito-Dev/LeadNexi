@@ -28,19 +28,33 @@ import {
   LeadWithStageEntity,
   PaginatedLeadsEntity,
 } from './entities/lead.entity.js';
+import { LeadActivitiesService } from './lead-activities.service.js';
 import { LeadsService } from './leads.service.js';
 
 @ApiTags('Leads')
 @ApiBearerAuth()
 @Controller('leads')
 export class LeadsController {
-  constructor(private readonly leadsService: LeadsService) {}
+  constructor(
+    private readonly leadsService: LeadsService,
+    private readonly activities: LeadActivitiesService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Lista leads com busca, filtros e paginação' })
   @ApiOkResponse({ type: PaginatedLeadsEntity })
   findAll(@Query() query: QueryLeadsDto) {
     return this.leadsService.findAll(query);
+  }
+
+  // Antes de ':id', para "follow-ups" não ser lido como id
+  @Get('follow-ups')
+  @ApiOperation({
+    summary: 'Leads com próximo contato agendado (atrasados primeiro)',
+  })
+  @ApiOkResponse({ type: [LeadWithStageEntity] })
+  listFollowUps() {
+    return this.activities.listFollowUps();
   }
 
   @Get(':id')
