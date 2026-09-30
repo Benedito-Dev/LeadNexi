@@ -3,10 +3,13 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsDateString,
+  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 /** Limites do Instagram para um post (foto única ou carrossel) */
@@ -24,11 +27,17 @@ export class CreateInstagramPostDto {
   caption: string;
 
   /**
-   * Quando publicar (ISO 8601, com fuso)
+   * Quando publicar (ISO 8601, com fuso). Ignorado com `publishNow`.
    * @example "2026-10-02T12:00:00.000Z"
    */
+  @ValidateIf((dto: CreateInstagramPostDto) => !dto.publishNow)
   @IsDateString()
-  scheduledAt: string;
+  scheduledAt?: string;
+
+  /** Publicar agora, sem agendar: a resposta já vem publicada (ou com o motivo da falha) */
+  @IsOptional()
+  @IsBoolean()
+  publishNow?: boolean;
 
   /** Imagens já enviadas (POST /instagram/media), na ordem do carrossel: a primeira é a capa */
   @IsArray()

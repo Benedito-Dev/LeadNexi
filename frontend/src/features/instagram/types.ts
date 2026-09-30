@@ -29,15 +29,29 @@ export interface InstagramPost {
   status: InstagramPostStatus
   /** Motivo da falha, quando status = FAILED */
   error: string | null
+  publishedAt: string | null
+  /** Link do post no Instagram, depois de publicado */
+  permalink: string | null
   createdAt: string
   /** Na ordem do carrossel: a primeira é a capa */
   images: InstagramPostImage[]
 }
 
+/** POST /instagram/posts: o post criado; `alarmFailed` = o despertador não respondeu ao agendar */
+export type CreatedInstagramPost = InstagramPost & { alarmFailed?: boolean }
+
 export interface CreateInstagramPostInput {
   caption: string
-  scheduledAt: string
   mediaIds: string[]
+  /** ISO 8601 (para agendar) */
+  scheduledAt?: string
+  /** Publicar na hora: a resposta já vem publicada ou com o motivo da falha */
+  publishNow?: boolean
+}
+
+/** GET /instagram/publishing: os agendados saem sozinhos na hora marcada? */
+export interface InstagramPublishing {
+  automatic: boolean
 }
 
 /** GET /instagram/settings: app da Meta usado no login (a chave secreta nunca vem) */

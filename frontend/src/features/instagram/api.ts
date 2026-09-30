@@ -1,10 +1,12 @@
 import { api } from '../../lib/api.ts'
 import type {
+  CreatedInstagramPost,
   CreateInstagramPostInput,
   InstagramAccountStatus,
   InstagramAppSettings,
   InstagramPost,
   InstagramPostImage,
+  InstagramPublishing,
   SaveInstagramAppSettingsInput,
 } from './types.ts'
 
@@ -37,11 +39,20 @@ export function uploadInstagramMedia(image: Blob) {
 }
 
 export function createInstagramPost(input: CreateInstagramPostInput) {
-  return api<InstagramPost>('/instagram/posts', { method: 'POST', body: JSON.stringify(input) })
+  return api<CreatedInstagramPost>('/instagram/posts', { method: 'POST', body: JSON.stringify(input) })
 }
 
 export function listInstagramPosts() {
   return api<InstagramPost[]>('/instagram/posts')
+}
+
+/** "Publicar agora" num agendado ou "Tentar de novo" num que falhou */
+export function publishInstagramPost(id: string) {
+  return api<InstagramPost>(`/instagram/posts/${id}/publish`, { method: 'POST' })
+}
+
+export function getInstagramPublishing() {
+  return api<InstagramPublishing>('/instagram/publishing')
 }
 
 export function cancelInstagramPost(id: string) {

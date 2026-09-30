@@ -19,17 +19,21 @@ export class CronSecretGuard implements CanActivate {
   constructor(private readonly config: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const secret = this.config.get<string>('CRON_SECRET');
-    // Sem segredo configurado, ninguém chama (nem a Vercel)
-    if (!secret) {
-      throw new ServiceUnavailableException('CRON_SECRET não configurado');
-    }
-    const request = context.switchToHttp().getRequest<Request>();
-    const header = request.headers.authorization ?? '';
-    if (!sameText(header, `Bearer ${secret}`)) {
-      throw new UnauthorizedException('Cron não autorizado');
-    }
+    checkCronSecret(this.config, context.switchToHttp().getRequest<Request>());
     return true;
+  }
+}
+
+/** Confere o `Authorization: Bearer <CRON_SECRET>`; lança 503 (sem segredo) ou 401. */
+export function checkCronSecret(config: ConfigService, request: Request) {
+  const secret = config.get<string>('CRON_SECRET');
+  // Sem segredo configurado, ninguém chama (nem a Vercel)
+  if (!secret) {
+    throw new ServiceUnavailableException('CRON_SECRET não configurado');
+  }
+  const header = request.headers.authorization ?? '';
+  if (!sameText(header, `Bearer ${secret}`)) {
+    throw new UnauthorizedException('Cron não autorizado');
   }
 }
 

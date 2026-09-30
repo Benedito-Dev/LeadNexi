@@ -1,9 +1,21 @@
-import { CalendarClock, CircleAlert, CircleCheck, Images, LoaderCircle, X } from 'lucide-react'
+import {
+  CalendarClock,
+  CircleAlert,
+  CircleCheck,
+  ExternalLink,
+  Images,
+  LoaderCircle,
+  RotateCw,
+  Send,
+  TriangleAlert,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ApiError } from '../../../lib/api.ts'
 import { formatDateTime } from '../../../lib/format.ts'
-import { useCancelPost, useInstagramPosts } from '../hooks.ts'
+import { useCancelPost, useInstagramPosts, useInstagramPublishing, usePublishPost } from '../hooks.ts'
 import type { InstagramPost, InstagramPostStatus } from '../types.ts'
 
 const STATUS: Record<InstagramPostStatus, { label: string; tone: string }> = {
@@ -13,10 +25,12 @@ const STATUS: Record<InstagramPostStatus, { label: string; tone: string }> = {
   FAILED: { label: 'Falhou', tone: 'text-danger' },
 }
 
-// Posts do Instagram (BRAND.md, seção 9.5): do mais próximo ao mais distante, com capa, legenda,
-// quando sai, status e "Cancelar" (confirma com segundo clique) enquanto não foi publicado.
+// Posts do Instagram (BRAND.md, seção 9.5): primeiro os que ainda não saíram (do mais próximo ao mais
+// distante), depois os publicados. Capa, legenda, quando sai, status e as ações: "Publicar agora"
+// (ou "Tentar de novo") e "Cancelar" enquanto não saiu, "Ver no Instagram" depois de publicado.
 export function PostList() {
   const posts = useInstagramPosts()
+  const publishing = useInstagramPublishing()
 
   if (posts.isPending) {
     return (
@@ -46,27 +60,34 @@ export function PostList() {
       </div>
     )
   }
+  const waiting = posts.data.some((post) => post.status === 'SCHEDULED')
   return (
-    <ul className="flex flex-col gap-2">
-      {posts.data.map((post) => (
-        <PostItem key={post.id} post={post} />
-      ))}
-    </ul>
+    <>
+      {waiting && publishing.data?.automatic === false && (
+        <p className="flex items-start gap-2 text-small text-slate-300">
+          <TriangleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0 text-warning" />
+          Com a publicação automática desligada, os posts agendados não saem sozinhos. Use "Publicar agora" em cada um.
+        </p>
+      )}
+      <ul className="flex flex-col gap-2">
+        {posts.data.map((post) => (
+          <PostItem key={post.id} post={post} />
+        ))}
+      </ul>
+    </>
   )
 }
 
 function PostItem({ post }: { post: InstagramPost }) {
   const cancel = useCancelPost()
-  const [confirming, setConfirming] = useState(false)
+  const publish = usePublishPost()
   const cover = post.images[0]
   const status = STATUS[post.status]
-  const cancelable = post.status === 'SCHEDULED' || post.status === 'FAILED'
-  const cancelError =
-    cancel.error instanceof ApiError && cancel.error.status === 409
-      ? cancel.error.message
-      : cancel.error
-        ? 'Não foi possível cancelar. Tente de novo.'
-        : null
+  const pending = post.status === 'SCHEDULED' || post.status === 'FAILED'
+  const busy = cancel.isPending || publish.isPending
+  const actionError =
+    errorMessage(cancel.error, 'Não foi possível cancelar. Tente de novo.') ??
+    errorMessage(publish.error, 'Não foi possível publicar. Tente de novo.')
 
   return (
     <li className="flex items-start gap-4 rounded-xl border bg-navy-800 p-3">
@@ -93,42 +114,109 @@ function PostItem({ post }: { post: InstagramPost }) {
           <span aria-hidden className="hidden sm:inline">
             ·
           </span>
-          <span>{formatDateTime(post.scheduledAt)}</span>
+          {/* Publicado: quando saiu; nos outros, quando está marcado para sair */}
+          <span>{formatDateTime(post.publishedAt ?? post.scheduledAt)}</span>
           <span aria-hidden className="hidden sm:inline">
             ·
           </span>
           <span>{post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}</span>
         </p>
         {post.status === 'FAILED' && post.error && <p className="mt-1 text-small text-danger">{post.error}</p>}
-        {cancelError && (
+        {actionError && (
           <p role="alert" className="mt-1 text-small text-danger">
-            {cancelError}
+            {actionError}
           </p>
         )}
       </div>
 
-      {cancelable && (
-        <button
-          type="button"
-          disabled={cancel.isPending}
-          onClick={() => (confirming ? cancel.mutate(post.id) : setConfirming(true))}
-          onBlur={() => setConfirming(false)}
-          title="Cancelar post"
-          className={`inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm px-3 text-small transition-colors hover:bg-navy-750 disabled:cursor-not-allowed ${
-            confirming ? 'text-danger' : 'text-slate-400 hover:text-slate-300'
-          }`}
+      {post.status === 'PUBLISHED' && post.permalink && (
+        <a
+          href={post.permalink}
+          target="_blank"
+          rel="noreferrer"
+          title="Ver no Instagram"
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-sm px-3 text-small text-cyan transition-colors hover:bg-navy-750"
         >
-          {cancel.isPending ? (
-            <LoaderCircle aria-hidden size={16} strokeWidth={1.75} className="animate-spin" />
-          ) : (
-            <X aria-hidden size={16} strokeWidth={1.75} />
-          )}
-          {/* No celular fica só o ícone (o texto segue para leitores de tela); "Confirmar" sempre aparece */}
-          {confirming ? 'Confirmar' : <span className="sr-only sm:not-sr-only">Cancelar</span>}
-        </button>
+          <ExternalLink aria-hidden size={16} strokeWidth={1.75} />
+          <span className="sr-only sm:not-sr-only">Ver no Instagram</span>
+        </a>
+      )}
+      {pending && (
+        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+          <ConfirmButton
+            label={post.status === 'FAILED' ? 'Tentar de novo' : 'Publicar agora'}
+            icon={post.status === 'FAILED' ? RotateCw : Send}
+            pending={publish.isPending}
+            disabled={busy}
+            onConfirm={() => publish.mutate(post.id)}
+          />
+          <ConfirmButton
+            label="Cancelar"
+            title="Cancelar post"
+            icon={X}
+            danger
+            pending={cancel.isPending}
+            disabled={busy}
+            onConfirm={() => cancel.mutate(post.id)}
+          />
+        </div>
       )}
     </li>
   )
+}
+
+/**
+ * Ação que confirma com segundo clique ("Confirmar"). No celular fica só o ícone (o texto segue
+ * para leitores de tela); "Confirmar" sempre aparece.
+ */
+function ConfirmButton({
+  label,
+  title = label,
+  icon: Icon,
+  danger = false,
+  pending,
+  disabled,
+  onConfirm,
+}: {
+  label: string
+  title?: string
+  icon: LucideIcon
+  /** Ação destrutiva: "Confirmar" em vermelho */
+  danger?: boolean
+  pending: boolean
+  disabled: boolean
+  onConfirm: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (!confirming) return setConfirming(true)
+        setConfirming(false)
+        onConfirm()
+      }}
+      onBlur={() => setConfirming(false)}
+      title={title}
+      className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm px-3 text-small transition-colors hover:bg-navy-750 disabled:cursor-not-allowed ${
+        confirming ? (danger ? 'text-danger' : 'text-white') : 'text-slate-400 hover:text-slate-300'
+      }`}
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden size={16} strokeWidth={1.75} className="animate-spin" />
+      ) : (
+        <Icon aria-hidden size={16} strokeWidth={1.75} />
+      )}
+      {confirming ? 'Confirmar' : <span className="sr-only sm:not-sr-only">{label}</span>}
+    </button>
+  )
+}
+
+/** Erro de uma ação da lista: o motivo do servidor (409/404) ou uma mensagem genérica. */
+function errorMessage(error: Error | null, fallback: string) {
+  if (!error) return null
+  return error instanceof ApiError && (error.status === 409 || error.status === 404) ? error.message : fallback
 }
 
 function StatusIcon({ status }: { status: InstagramPostStatus }) {

@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
   StreamableFile,
   UploadedFile,
   UseInterceptors,
@@ -25,12 +26,15 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
+import { stableOrigin } from '../common/utils/public-origin.js';
 import { CreateInstagramPostDto } from './dto/create-instagram-post.dto.js';
 import {
   InstagramPostsService,
   type UploadedImage,
 } from './instagram-posts.service.js';
+import { InstagramPublisherService } from './instagram-publisher.service.js';
 
 /** Limite por imagem: abaixo dos 4,5 MB que a Vercel aceita por requisição */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -39,7 +43,10 @@ const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 @ApiBearerAuth()
 @Controller('instagram')
 export class InstagramPostsController {
-  constructor(private readonly posts: InstagramPostsService) {}
+  constructor(
+    private readonly posts: InstagramPostsService,
+    private readonly publisher: InstagramPublisherService,
+  ) {}
 
   @Post('media')
   @UseInterceptors(
@@ -80,17 +87,41 @@ export class InstagramPostsController {
 
   @Get('posts')
   @ApiOperation({
-    summary: 'Posts do Instagram, do mais próximo ao mais distante',
+    summary:
+      'Posts do Instagram: os que ainda não saíram (do mais próximo ao mais distante) e depois os publicados',
   })
   list() {
     return this.posts.list();
   }
 
+  @Get('publishing')
+  @ApiOperation({
+    summary:
+      'Publicação automática: { automatic } diz se os agendados saem sozinhos na hora marcada',
+  })
+  publishing() {
+    return this.publisher.status();
+  }
+
   @Post('posts')
-  @ApiOperation({ summary: 'Agenda um post com imagens já enviadas' })
+  @ApiOperation({
+    summary:
+      'Agenda um post com imagens já enviadas, ou publica na hora (publishNow: a resposta traz o resultado)',
+  })
   @ApiConflictResponse({ description: 'Instagram não conectado' })
-  create(@Body() dto: CreateInstagramPostDto) {
-    return this.posts.create(dto);
+  create(@Body() dto: CreateInstagramPostDto, @Req() request: Request) {
+    return this.publisher.create(dto, stableOrigin(request));
+  }
+
+  @Post('posts/:id/publish')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Publica agora um post agendado ou tenta de novo um que falhou (a resposta traz o resultado)',
+  })
+  @ApiConflictResponse({ description: 'O post já foi enviado ao Instagram' })
+  publish(@Param('id', ParseUUIDPipe) id: string, @Req() request: Request) {
+    return this.publisher.publishNow(id, stableOrigin(request));
   }
 
   @Delete('posts/:id')
