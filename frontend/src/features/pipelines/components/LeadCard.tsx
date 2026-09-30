@@ -36,7 +36,7 @@ export function LeadCard({
       }`}
     >
       <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-3">
-        <LeadAvatar name={lead.name} />
+        <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
         <div className={`min-w-0 flex-1 ${actionSpace ? 'pr-8' : ''}`}>
           <p className="line-clamp-2 text-ui font-bold text-white">{lead.name}</p>
           {lead.source && (

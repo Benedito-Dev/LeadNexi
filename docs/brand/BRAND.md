@@ -363,7 +363,7 @@ Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdo
 
 ### Card de lead
 `radius 12` · fundo `navy-800` · borda `navy-700` (hover `navy-600`). Duas partes:
-- **Corpo** (`padding 14 14 12`): iniciais do lead num círculo de 32 px (fundo `slate-tint`, 12/800 `slate-300`) + nome 14/700 (até 2 linhas) + origem 12/600 `slate-400` com o ícone do canal (14 px, traço 1.75).
+- **Corpo** (`padding 14 14 12`): foto do lead num círculo de 32 px (`LeadAvatar`: a foto de perfil do Instagram, quando o lead veio do direct, recortada em círculo; sem foto, ou se ela não carregar, as iniciais 12/800 `slate-300` sobre `slate-tint`) + nome 14/700 (até 2 linhas) + origem 12/600 `slate-400` com o ícone do canal (14 px, traço 1.75).
 - **Rodapé** (divisória 1 px `navy-700`, `padding 10 14`): valor 14/700 à esquerda (sem valor: "Sem valor" 12/600 `slate-400`) e tempo desde a última movimentação à direita (ícone relógio 13 + 12/600 `slate-400`).
 - Telefone e e-mail não aparecem no card: ficam no detalhe (a busca continua encontrando por eles).
 - **WhatsApp:** com telefone válido, botão 32 px (ícone cyan, hover `cyan-tint`) no canto superior direito do corpo; abre `wa.me/<número>` em nova aba. No desktop aparece no hover/foco do card, em toque sempre. Fica fora da área arrastável (irmão sobreposto), então clicar ou dar Enter nele não abre a edição nem inicia o arraste; o nome reserva o espaço do botão.

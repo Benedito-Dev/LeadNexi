@@ -66,6 +66,10 @@ model Lead {
   instagramUsername String?        @map("instagram_username")
   /// Quem mandou direct (ID da pessoa no Instagram, IGSID): liga as mensagens novas ao lead
   instagramUserId   String?        @unique @map("instagram_user_id")
+  /// Foto de perfil guardada no armazenamento (leads/avatars/<id>.jpg); troca de ID a cada foto nova
+  avatarId          String?        @map("avatar_id")
+  /// Quando a foto foi conferida pela última vez (o LeadNexi atualiza no máximo uma vez por semana)
+  avatarUpdatedAt   DateTime?      @map("avatar_updated_at")
   activities        LeadActivity[]
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")

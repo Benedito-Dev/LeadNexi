@@ -53,7 +53,7 @@ export function LeadsTable({
               >
                 <td className="h-15 max-w-72 px-5">
                   <span className="flex min-w-0 items-center gap-3">
-                    <LeadAvatar name={lead.name} />
+                    <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
                     {/* Botão dá acesso pelo teclado; a linha inteira também abre com clique */}
                     <button
                       type="button"
@@ -128,7 +128,7 @@ export function LeadsTable({
                 onClick={() => onOpen(lead)}
                 className="flex min-w-0 flex-1 cursor-pointer gap-3 py-3.5 pl-4 text-left"
               >
-                <LeadAvatar name={lead.name} />
+                <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
                 <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
                   <span className="truncate text-ui font-bold text-white">{lead.name}</span>
                   <span className={`text-ui font-bold tabular-nums ${stage.closed ? 'text-success' : 'text-white'}`}>

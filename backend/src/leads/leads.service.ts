@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import {
   changedPositions,
@@ -7,10 +7,12 @@ import {
 } from '../common/utils/positions.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StagesService } from '../stages/stages.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { CreateLeadDto } from './dto/create-lead.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
+import { avatarKey } from './lead-avatar.js';
 
 const stageSummary = {
   select: { id: true, name: true, pipelineId: true },
@@ -20,9 +22,12 @@ type Tx = Prisma.TransactionClient;
 
 @Injectable()
 export class LeadsService {
+  private readonly logger = new Logger(LeadsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stagesService: StagesService,
+    private readonly storage: StorageService,
   ) {}
 
   async findAll({
@@ -179,6 +184,14 @@ export class LeadsService {
         column.map((row) => row.id),
       );
     });
+    // A foto de perfil guardada vai junto (se falhar, fica só um arquivo solto)
+    if (lead.avatarId && this.storage.configured) {
+      await this.storage
+        .deleteMany([avatarKey(lead.avatarId)])
+        .catch((error: Error) =>
+          this.logger.warn(`Foto do lead ${id} não apagada: ${error.message}`),
+        );
+    }
   }
 
   /** Cards de uma coluna, ordenados pela posição atual. */

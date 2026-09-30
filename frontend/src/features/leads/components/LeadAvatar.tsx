@@ -1,10 +1,29 @@
+import { useState } from 'react'
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase()
 }
 
-/** Iniciais do lead num círculo de 32px (BRAND.md, seção 8 · "Card de lead" e "Tabela"). */
-export function LeadAvatar({ name }: { name: string }) {
+/**
+ * Foto do lead num círculo de 32px (BRAND.md, seção 8 · "Card de lead" e "Tabela"): a foto de
+ * perfil do Instagram, quando o lead veio do direct; senão (ou se a foto não carregar), as iniciais.
+ */
+export function LeadAvatar({ name, avatarId }: { name: string; avatarId?: string | null }) {
+  // Guarda qual foto falhou: foto nova (outro ID) tenta de novo
+  const [failedId, setFailedId] = useState<string | null>(null)
+
+  if (avatarId && failedId !== avatarId) {
+    return (
+      <img
+        src={`/api/leads/avatars/${avatarId}`}
+        alt=""
+        loading="lazy"
+        onError={() => setFailedId(avatarId)}
+        className="size-8 shrink-0 rounded-full bg-slate-tint object-cover"
+      />
+    )
+  }
   return (
     <span
       aria-hidden

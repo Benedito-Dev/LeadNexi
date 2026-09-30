@@ -123,7 +123,7 @@ function FollowUpRow({
   return (
     <li className="flex items-center gap-3 rounded-lg border bg-navy-800 py-3 pr-3 pl-4 transition-colors hover:border-navy-600">
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left">
-        <LeadAvatar name={lead.name} />
+        <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-ui font-bold text-white">{lead.name}</span>
           <span className="mt-0.5 flex items-center gap-2 text-small text-slate-400">
