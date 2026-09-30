@@ -19,6 +19,8 @@ export function LeadAvatar({ name, avatarId }: { name: string; avatarId?: string
         src={`/api/leads/avatars/${avatarId}`}
         alt=""
         loading="lazy"
+        // Sem o arraste nativo de imagem do navegador: ele "roubava" o arraste do card no Funil
+        draggable={false}
         onError={() => setFailedId(avatarId)}
         className="size-8 shrink-0 rounded-full bg-slate-tint object-cover"
       />

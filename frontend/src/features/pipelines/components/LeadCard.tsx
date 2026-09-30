@@ -136,9 +136,12 @@ export function SortableLeadCard({
         {...listeners}
         onKeyDown={handleKeyDown}
         onClick={() => onOpen(lead)}
+        // Bloqueia o arraste nativo do navegador (foto, texto selecionado): no Chrome ele para os
+        // eventos do mouse e o card não sai do lugar
+        onDragStart={(event) => event.preventDefault()}
         aria-roledescription={disabled ? undefined : 'card arrastável'}
         aria-label={disabled ? `${lead.name}. Enter para editar.` : `${lead.name}. Enter para editar, Espaço para mover.`}
-        className={`rounded-md transition-colors hover:[&>div]:border-navy-600 ${
+        className={`rounded-md transition-colors select-none hover:[&>div]:border-navy-600 ${
           disabled ? 'cursor-pointer' : 'cursor-grab'
         }`}
       >
