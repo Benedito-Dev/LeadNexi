@@ -4,7 +4,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: a assinatura dos avisos da Meta (webhook do Instagram) é conferida sobre o corpo original
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
   // Atrás do proxy da Vercel: o IP real vem do X-Forwarded-For (limite de tentativas por IP)
   if (process.env.VERCEL) {

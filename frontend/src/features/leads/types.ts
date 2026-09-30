@@ -13,18 +13,27 @@ export interface Lead {
   followUpAt: string | null
   /** O que fazer no próximo contato */
   followUpNote: string | null
+  /** @ do Instagram (sem o @) */
+  instagramUsername: string | null
   createdAt: string
   updatedAt: string
 }
 
-export type LeadActivityType = 'CREATED' | 'STAGE_CHANGED' | 'NOTE' | 'FOLLOW_UP_SCHEDULED' | 'FOLLOW_UP_DONE'
+export type LeadActivityType =
+  | 'CREATED'
+  | 'STAGE_CHANGED'
+  | 'NOTE'
+  | 'FOLLOW_UP_SCHEDULED'
+  | 'FOLLOW_UP_DONE'
+  /** Mensagem recebida no direct do Instagram */
+  | 'INSTAGRAM_MESSAGE'
 
 /** Item do histórico do lead (GET /leads/:id/activities, mais novo primeiro) */
 export interface LeadActivity {
   id: string
   leadId: string
   type: LeadActivityType
-  /** Texto da nota, origem (na criação) ou descrição do follow-up */
+  /** Texto da nota, origem (na criação), descrição do follow-up ou mensagem do direct */
   text: string | null
   /** Nomes das etapas no momento da mudança */
   fromStage: string | null
@@ -43,6 +52,8 @@ export interface LeadInput {
   phone?: string | null
   email?: string | null
   source?: string | null
+  /** @ do Instagram (com ou sem o @) */
+  instagramUsername?: string | null
   estimatedValue?: number | null
   notes?: string | null
 }

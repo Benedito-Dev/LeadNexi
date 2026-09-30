@@ -42,6 +42,12 @@ export class LeadsService {
             { name: { contains: search, mode: 'insensitive' } },
             { email: { contains: search, mode: 'insensitive' } },
             { phone: { contains: search } },
+            {
+              instagramUsername: {
+                contains: search.replace(/^@/, ''),
+                mode: 'insensitive',
+              },
+            },
           ]
         : undefined,
     };

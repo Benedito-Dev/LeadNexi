@@ -6,6 +6,8 @@ export interface InstagramAccount {
   createdAt: string
   /** O token não vale mais (revogado ou vencido): precisa conectar de novo para publicar */
   needsReconnect: boolean
+  /** O direct vira lead (avisos de mensagem ligados); falso: conectar de novo dá a permissão */
+  messagesEnabled: boolean
 }
 
 /** GET /instagram/account */
@@ -63,6 +65,9 @@ export interface InstagramAppSettings {
   configured: boolean
   /** Endereço a cadastrar no app da Meta (URLs de redirecionamento OAuth) */
   redirectUri: string
+  /** "Configurar webhooks" no app da Meta: URL de callback e token de verificação */
+  webhookUrl: string
+  webhookVerifyToken: string | null
 }
 
 export interface SaveInstagramAppSettingsInput {

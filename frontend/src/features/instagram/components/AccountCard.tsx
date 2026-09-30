@@ -1,4 +1,4 @@
-import { CircleAlert, LoaderCircle, LogOut } from 'lucide-react'
+import { CircleAlert, LoaderCircle, LogOut, MessageCircle } from 'lucide-react'
 import { useState } from 'react'
 import { InstagramIcon } from '../../../brand/icons.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
@@ -7,7 +7,8 @@ import { useConnectInstagram, useDisconnectInstagram } from '../hooks.ts'
 import type { InstagramAccount } from '../types.ts'
 
 // Conta conectada: foto, @usuário, status e "Desconectar" (pede confirmação com um segundo clique).
-// Se a Meta não aceita mais o token (revogado ou vencido), pede para conectar de novo.
+// Se a Meta não aceita mais o token (revogado ou vencido), pede para conectar de novo. Se o direct
+// ainda não vira lead (conexão sem a permissão de mensagens), convida a conectar de novo.
 export function AccountCard({ account }: { account: InstagramAccount }) {
   const disconnect = useDisconnectInstagram()
   const [confirming, setConfirming] = useState(false)
@@ -51,27 +52,40 @@ export function AccountCard({ account }: { account: InstagramAccount }) {
           {confirming ? 'Confirmar' : <span className="sr-only sm:not-sr-only">Desconectar</span>}
         </button>
       </div>
-      {account.needsReconnect && <Reconnect />}
+      {account.needsReconnect ? <Reconnect /> : !account.messagesEnabled && <Reconnect forMessages />}
     </section>
   )
 }
 
-function Reconnect() {
+/** "Conectar de novo": conexão expirada (aviso `warning`) ou para ligar o direct (convite, `cyan`). */
+function Reconnect({ forMessages = false }: { forMessages?: boolean }) {
   const connect = useConnectInstagram()
   const error =
     connect.error instanceof ApiError && connect.error.status === 503
-      ? 'A integração com o Instagram ainda não foi configurada no servidor.'
+      ? connect.error.message
       : connect.error
         ? 'Não foi possível iniciar a conexão. Tente de novo.'
         : null
 
   return (
     <div className="mt-4 flex flex-col items-start gap-3 border-t pt-4">
-      <p className="flex items-start gap-2 text-small text-slate-300">
-        <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0 text-warning" />
-        O Instagram não aceita mais o acesso do LeadNexi a esta conta. Conecte de novo para voltar a publicar.
-      </p>
-      <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
+      {forMessages ? (
+        <p className="flex items-start gap-2 text-small text-slate-300">
+          <MessageCircle aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0 text-cyan" />
+          Para cada direct virar lead, conecte de novo e aceite a permissão de mensagens (e configure o webhook no
+          cartão “App da Meta”).
+        </p>
+      ) : (
+        <p className="flex items-start gap-2 text-small text-slate-300">
+          <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0 text-warning" />
+          O Instagram não aceita mais o acesso do LeadNexi a esta conta. Conecte de novo para voltar a publicar.
+        </p>
+      )}
+      <Button
+        variant={forMessages ? 'secondary' : 'primary'}
+        onClick={() => connect.mutate()}
+        disabled={connect.isPending}
+      >
         {connect.isPending ? (
           <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />
         ) : (

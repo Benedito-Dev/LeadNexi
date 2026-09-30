@@ -8,8 +8,10 @@ import { AppSettingsCard } from '../features/instagram/components/AppSettingsCar
 import { ConnectCard } from '../features/instagram/components/ConnectCard.tsx'
 import { PostComposer } from '../features/instagram/components/PostComposer.tsx'
 import { PostList } from '../features/instagram/components/PostList.tsx'
+import { ViewToggle } from '../features/instagram/components/ViewToggle.tsx'
 import { useInstagramAccount, useInstagramPublishing, useInstagramSettings } from '../features/instagram/hooks.ts'
 import type { CreatedInstagramPost } from '../features/instagram/types.ts'
+import { usePostView } from '../features/instagram/view.ts'
 import { formatDateTime } from '../lib/format.ts'
 
 /** Mensagens da volta do login do Instagram (?conectado=1 ou ?erro=...) */
@@ -25,6 +27,7 @@ export function InstagramPage() {
   const account = useInstagramAccount()
   const settings = useInstagramSettings()
   const [composerOpen, setComposerOpen] = useState(false)
+  const [view, setView] = usePostView()
   const [params, setParams] = useSearchParams()
   // Conta conectada e com token valendo: só assim dá para publicar
   const canPublish = account.data?.connected === true && !account.data.account.needsReconnect
@@ -72,13 +75,16 @@ export function InstagramPage() {
         <>
           <AccountCard account={account.data.account} />
           <section aria-labelledby="posts-title" className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <h2 id="posts-title" className="text-ui font-bold text-white">
                 Posts
               </h2>
-              <AutoPublishStatus />
+              <div className="flex items-center gap-4">
+                <AutoPublishStatus />
+                <ViewToggle view={view} onChange={setView} />
+              </div>
             </div>
-            <PostList />
+            <PostList view={view} />
           </section>
           {/* Dá para trocar o app da Meta a qualquer hora (ex.: nova chave secreta) */}
           <AppSettingsCard settings={settings.data} />

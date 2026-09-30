@@ -8,10 +8,11 @@ import {
 } from './instagram-api.client.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
-/** Permissões pedidas no login: ler o perfil e publicar conteúdo */
+/** Permissões pedidas no login: ler o perfil, publicar conteúdo e receber o direct */
 const SCOPES = [
   'instagram_business_basic',
   'instagram_business_content_publish',
+  'instagram_business_manage_messages',
 ];
 
 /** Audiência do JWT usado como `state` do OAuth (não serve como token de acesso) */
@@ -60,16 +61,25 @@ export class InstagramService {
         profilePictureUrl: true,
         tokenExpiresAt: true,
         tokenInvalidAt: true,
+        messagesEnabledAt: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
     if (!account) return { connected: false as const };
 
-    const { tokenInvalidAt, ...rest } = account;
+    const { tokenInvalidAt, messagesEnabledAt, ...rest } = account;
     const needsReconnect =
       tokenInvalidAt !== null || account.tokenExpiresAt <= new Date();
-    return { connected: true as const, account: { ...rest, needsReconnect } };
+    return {
+      connected: true as const,
+      account: {
+        ...rest,
+        needsReconnect,
+        /** O direct vira lead (avisos de mensagem ligados nesta conexão) */
+        messagesEnabled: messagesEnabledAt !== null,
+      },
+    };
   }
 
   /** Desconecta: apaga a conta e o token guardado. */
@@ -142,6 +152,7 @@ export class InstagramService {
         accessToken: encryptSecret(longToken.accessToken, key),
         tokenExpiresAt: expiresAt(longToken.expiresIn),
         tokenInvalidAt: null,
+        messagesEnabledAt: await this.enableMessages(longToken.accessToken),
       };
       // Uma conta por vez: conectar outra substitui a anterior
       await this.prisma.$transaction([
@@ -159,6 +170,23 @@ export class InstagramService {
     } catch (error) {
       this.logger.error(`Falha ao conectar o Instagram: ${describe(error)}`);
       return failure('falha');
+    }
+  }
+
+  /**
+   * Liga os avisos do direct para a conta. Falha (ex.: permissão de mensagens não concedida ou
+   * webhook ainda não configurado no app) não impede a conexão: a tela avisa, e conectar de novo
+   * tenta outra vez.
+   */
+  private async enableMessages(token: string): Promise<Date | null> {
+    try {
+      await this.api.subscribeToMessages(token);
+      return new Date();
+    } catch (error) {
+      this.logger.warn(
+        `Avisos do direct não ligados para a conta: ${describe(error)}`,
+      );
+      return null;
     }
   }
 

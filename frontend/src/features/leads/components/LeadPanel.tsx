@@ -12,7 +12,8 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, type ComponentType, type FormEvent, type KeyboardEvent } from 'react'
+import { InstagramIcon } from '../../../brand/icons.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Drawer } from '../../../components/ui/Drawer.tsx'
 import { Textarea } from '../../../components/ui/Field.tsx'
@@ -29,6 +30,7 @@ import {
 } from '../hooks.ts'
 import type { Lead, LeadActivity } from '../types.ts'
 import { LeadAvatar } from './LeadAvatar.tsx'
+import { InstagramLink } from './InstagramLink.tsx'
 import { LeadForm, type StageOption } from './LeadForm.tsx'
 import { WhatsAppLink } from './WhatsAppLink.tsx'
 
@@ -76,8 +78,15 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
                 <span className="font-bold text-white">{formatCurrency(lead.estimatedValue)}</span>
               </>
             )}
+            {lead.instagramUsername && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="truncate">@{lead.instagramUsername}</span>
+              </>
+            )}
           </p>
         </div>
+        <InstagramLink name={lead.name} username={lead.instagramUsername} />
         <WhatsAppLink name={lead.name} phone={lead.phone} />
         <button
           type="button"
@@ -414,8 +423,20 @@ function Timeline({ leadId }: { leadId: string }) {
   )
 }
 
-/** Ícone, cor e frase de cada tipo de evento */
-function describe(activity: LeadActivity): { icon: LucideIcon; tone: string; title: string; detail?: string } {
+type TimelineIcon = ComponentType<{ size?: number; strokeWidth?: number; 'aria-hidden'?: boolean }>
+
+/**
+ * Ícone, cor e frase de cada tipo de evento. `bubble`: o texto é do lead ou seu (nota, mensagem)
+ * e aparece num balão; `label`: de onde veio, ao lado da hora.
+ */
+function describe(activity: LeadActivity): {
+  icon: TimelineIcon
+  tone: string
+  title: string
+  detail?: string
+  bubble?: boolean
+  label?: string
+} {
   switch (activity.type) {
     case 'CREATED':
       return {
@@ -431,7 +452,15 @@ function describe(activity: LeadActivity): { icon: LucideIcon; tone: string; tit
         title: `Movido de ${activity.fromStage ?? '—'} para ${activity.toStage ?? '—'}`,
       }
     case 'NOTE':
-      return { icon: NotebookPen, tone: 'text-slate-300', title: activity.text ?? '' }
+      return { icon: NotebookPen, tone: 'text-slate-300', title: activity.text ?? '', bubble: true }
+    case 'INSTAGRAM_MESSAGE':
+      return {
+        icon: InstagramIcon,
+        tone: 'text-violet-300',
+        title: activity.text ?? '',
+        bubble: true,
+        label: 'Direct do Instagram',
+      }
     case 'FOLLOW_UP_SCHEDULED':
       return {
         icon: CalendarClock,
@@ -450,7 +479,7 @@ function describe(activity: LeadActivity): { icon: LucideIcon; tone: string; tit
 }
 
 function TimelineItem({ leadId, activity, last }: { leadId: string; activity: LeadActivity; last: boolean }) {
-  const { icon: Icon, tone, title, detail } = describe(activity)
+  const { icon: Icon, tone, title, detail, bubble, label } = describe(activity)
   const isNote = activity.type === 'NOTE'
 
   return (
@@ -463,8 +492,8 @@ function TimelineItem({ leadId, activity, last }: { leadId: string; activity: Le
       <div className="min-w-0 flex-1 pt-0.5">
         <p
           className={
-            isNote
-              ? 'rounded-md border bg-navy-750 px-3 py-2 text-ui font-medium whitespace-pre-wrap text-white'
+            bubble
+              ? 'rounded-md border bg-navy-750 px-3 py-2 text-ui font-medium break-words whitespace-pre-wrap text-white'
               : 'text-ui text-white'
           }
         >
@@ -472,6 +501,12 @@ function TimelineItem({ leadId, activity, last }: { leadId: string; activity: Le
         </p>
         {detail && <p className="mt-0.5 text-small text-slate-400">{detail}</p>}
         <p className="mt-1 flex items-center gap-2 text-xs font-semibold text-slate-400">
+          {label && (
+            <>
+              <span>{label}</span>
+              <span aria-hidden>·</span>
+            </>
+          )}
           <time dateTime={activity.createdAt} title={new Date(activity.createdAt).toLocaleString('pt-BR')}>
             {formatAgo(activity.createdAt)}
           </time>

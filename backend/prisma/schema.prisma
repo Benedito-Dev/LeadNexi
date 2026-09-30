@@ -49,22 +49,26 @@ model Stage {
 
 // Card do Kanban
 model Lead {
-  id             String         @id @default(uuid())
-  name           String
-  phone          String?
-  email          String?
-  source         String?
-  estimatedValue Decimal?       @map("estimated_value") @db.Decimal(12, 2)
-  notes          String?
-  position       Int            @default(0)
-  stageId        String         @map("stage_id")
-  stage          Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  id                String         @id @default(uuid())
+  name              String
+  phone             String?
+  email             String?
+  source            String?
+  estimatedValue    Decimal?       @map("estimated_value") @db.Decimal(12, 2)
+  notes             String?
+  position          Int            @default(0)
+  stageId           String         @map("stage_id")
+  stage             Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
   /// Próximo contato agendado (um por lead); null = nenhum
-  followUpAt     DateTime?      @map("follow_up_at")
-  followUpNote   String?        @map("follow_up_note")
-  activities     LeadActivity[]
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  followUpAt        DateTime?      @map("follow_up_at")
+  followUpNote      String?        @map("follow_up_note")
+  /// @ do Instagram (sem o @)
+  instagramUsername String?        @map("instagram_username")
+  /// Quem mandou direct (ID da pessoa no Instagram, IGSID): liga as mensagens novas ao lead
+  instagramUserId   String?        @unique @map("instagram_user_id")
+  activities        LeadActivity[]
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   @@index([stageId])
   @@index([followUpAt])
@@ -77,22 +81,26 @@ enum LeadActivityType {
   NOTE
   FOLLOW_UP_SCHEDULED
   FOLLOW_UP_DONE
+  /// Mensagem recebida no direct do Instagram
+  INSTAGRAM_MESSAGE
 }
 
 // Histórico do lead: uma linha por acontecimento, da mais nova para a mais antiga
 model LeadActivity {
-  id        String           @id @default(uuid())
-  leadId    String           @map("lead_id")
-  lead      Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  type      LeadActivityType
+  id         String           @id @default(uuid())
+  leadId     String           @map("lead_id")
+  lead       Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type       LeadActivityType
   /// Texto da nota, ou descrição do follow-up
-  text      String?
+  text       String?
   /// Nomes das etapas no momento da mudança (sobrevivem a renomear/apagar a etapa)
-  fromStage String?          @map("from_stage")
-  toStage   String?          @map("to_stage")
+  fromStage  String?          @map("from_stage")
+  toStage    String?          @map("to_stage")
   /// Data do follow-up agendado
-  dueAt     DateTime?        @map("due_at")
-  createdAt DateTime         @default(now()) @map("created_at")
+  dueAt      DateTime?        @map("due_at")
+  /// ID da mensagem na Meta: a mesma mensagem avisada duas vezes entra uma vez só
+  externalId String?          @unique @map("external_id")
+  createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([leadId, createdAt])
   @@map("lead_activities")
@@ -131,6 +139,8 @@ model InstagramAccount {
   tokenExpiresAt    DateTime  @map("token_expires_at")
   /// Quando a Meta recusou o token (revogado ou vencido): a conta precisa ser reconectada
   tokenInvalidAt    DateTime? @map("token_invalid_at")
+  /// Quando os avisos do direct foram ligados para a conta (webhook de mensagens na Meta)
+  messagesEnabledAt DateTime? @map("messages_enabled_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 

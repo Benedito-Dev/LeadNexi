@@ -22,7 +22,7 @@ export interface StageOption {
   colorClass?: string
 }
 
-type Field = 'name' | 'email' | 'estimatedValue'
+type Field = 'name' | 'email' | 'instagramUsername' | 'estimatedValue'
 
 /** Formulário de lead: usado no modal "Novo lead" e na aba "Dados" do painel. */
 export function LeadForm({
@@ -57,9 +57,10 @@ export function LeadForm({
 
     const name = text('name')
     const email = text('email')
+    const instagramUsername = text('instagramUsername').replace(/^@/, '')
     const estimatedValue = parseCurrency(text('estimatedValue'))
 
-    const invalid = validate(name, email, estimatedValue)
+    const invalid = validate(name, email, instagramUsername, estimatedValue)
     setFieldError(invalid)
     if (invalid) {
       ;(form.elements.namedItem(invalid.field) as HTMLInputElement).focus()
@@ -73,6 +74,7 @@ export function LeadForm({
       name,
       phone: optional(text('phone')),
       email: optional(email),
+      instagramUsername: optional(instagramUsername),
       source: optional(text('source')),
       notes: optional(text('notes')),
       estimatedValue: optional(estimatedValue),
@@ -121,6 +123,19 @@ export function LeadForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Instagram" htmlFor="lead-instagram">
+          <Input
+            id="lead-instagram"
+            name="instagramUsername"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            maxLength={31}
+            defaultValue={lead?.instagramUsername ? `@${lead.instagramUsername}` : ''}
+            placeholder="@usuario"
+            aria-invalid={fieldError?.field === 'instagramUsername'}
+          />
+        </Field>
         <Field label="Origem" htmlFor="lead-source">
           <Dropdown
             id="lead-source"
@@ -136,37 +151,38 @@ export function LeadForm({
             ]}
           />
         </Field>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Valor estimado" htmlFor="lead-value">
           <Input
             id="lead-value"
             name="estimatedValue"
             inputMode="decimal"
             className="tabular-nums"
-            defaultValue={
-              lead?.estimatedValue ? formatCurrency(lead.estimatedValue).replace(/R\$\s/, '') : ''
-            }
+            defaultValue={lead?.estimatedValue ? formatCurrency(lead.estimatedValue).replace(/R\$\s/, '') : ''}
             placeholder="0,00"
             aria-invalid={fieldError?.field === 'estimatedValue'}
           />
         </Field>
-      </div>
 
-      {!lead && (
-        <Field label="Etapa" htmlFor="lead-stage">
-          <Dropdown
-            id="lead-stage"
-            name="stageId"
-            defaultValue={target.mode === 'create' ? target.stageId : (stages[0]?.id ?? '')}
-            options={stages.map((stage) => ({
-              value: stage.id,
-              label: stage.label,
-              icon: stage.colorClass && (
-                <span aria-hidden className={`size-2 shrink-0 rounded-full ${stage.colorClass}`} />
-              ),
-            }))}
-          />
-        </Field>
-      )}
+        {!lead && (
+          <Field label="Etapa" htmlFor="lead-stage">
+            <Dropdown
+              id="lead-stage"
+              name="stageId"
+              defaultValue={target.mode === 'create' ? target.stageId : (stages[0]?.id ?? '')}
+              options={stages.map((stage) => ({
+                value: stage.id,
+                label: stage.label,
+                icon: stage.colorClass && (
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${stage.colorClass}`} />
+                ),
+              }))}
+            />
+          </Field>
+        )}
+      </div>
 
       <Field label="Observações" htmlFor="lead-notes">
         <Textarea
@@ -217,11 +233,15 @@ export function LeadForm({
 function validate(
   name: string,
   email: string,
+  instagramUsername: string,
   estimatedValue: number | null,
 ): { field: Field; message: string } | null {
   if (!name) return { field: 'name', message: 'Informe o nome do lead.' }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { field: 'email', message: 'Digite um e-mail válido.' }
+  }
+  if (instagramUsername && !/^[A-Za-z0-9._]{1,30}$/.test(instagramUsername)) {
+    return { field: 'instagramUsername', message: 'O @ do Instagram tem só letras, números, ponto e sublinhado.' }
   }
   if (Number.isNaN(estimatedValue)) {
     return { field: 'estimatedValue', message: 'Digite um valor válido, como 1.500,00.' }

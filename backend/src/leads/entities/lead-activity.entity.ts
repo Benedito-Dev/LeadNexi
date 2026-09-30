@@ -8,7 +8,7 @@ export class LeadActivityEntity {
   @ApiProperty({ enum: LeadActivityType, enumName: 'LeadActivityType' })
   type: LeadActivityType;
 
-  /** Texto da nota, origem (na criação) ou descrição do follow-up */
+  /** Texto da nota, origem (na criação), descrição do follow-up ou mensagem do direct */
   text: string | null;
   /** Nome da etapa de origem, no momento da mudança */
   fromStage: string | null;

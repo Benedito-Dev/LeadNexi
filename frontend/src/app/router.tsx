@@ -3,6 +3,8 @@ import { AppLayout } from '../components/AppLayout.tsx'
 import { RequireAuth } from '../features/auth/RequireAuth.tsx'
 import { InstagramPage } from '../pages/InstagramPage.tsx'
 import { KanbanPage } from '../pages/KanbanPage.tsx'
+import { DataDeletionPage } from '../pages/legal/DataDeletionPage.tsx'
+import { PrivacyPage } from '../pages/legal/PrivacyPage.tsx'
 import { LeadsPage } from '../pages/LeadsPage.tsx'
 import { LoginPage } from '../pages/LoginPage.tsx'
 import { NotFoundPage } from '../pages/NotFoundPage.tsx'
@@ -10,6 +12,9 @@ import { TodayPage } from '../pages/TodayPage.tsx'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // Páginas públicas exigidas pela Meta (app que conecta o Instagram): abrem sem login
+  { path: '/privacidade', element: <PrivacyPage /> },
+  { path: '/exclusao-de-dados', element: <DataDeletionPage /> },
   {
     element: <RequireAuth />,
     children: [

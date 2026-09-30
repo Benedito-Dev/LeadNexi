@@ -23,6 +23,10 @@ export class LeadEntity {
   followUpAt: Date | null;
   /** O que fazer no próximo contato */
   followUpNote: string | null;
+  /** @ do Instagram (sem o @) */
+  instagramUsername: string | null;
+  /** ID de quem mandou direct (liga as mensagens novas ao lead) */
+  instagramUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
