@@ -7,6 +7,7 @@ import type {
   InstagramPost,
   InstagramPostImage,
   InstagramPublishing,
+  InstagramSyncResult,
   SaveInstagramAppSettingsInput,
 } from './types.ts'
 
@@ -44,6 +45,11 @@ export function createInstagramPost(input: CreateInstagramPostInput) {
 
 export function listInstagramPosts() {
   return api<InstagramPost[]>('/instagram/posts')
+}
+
+/** Confere os publicados com o perfil: apagado lá vira REMOVED (e volta se reaparecer) */
+export function syncInstagramPosts() {
+  return api<InstagramSyncResult>('/instagram/posts/sync', { method: 'POST' })
 }
 
 /** "Publicar agora" num agendado ou "Tentar de novo" num que falhou */

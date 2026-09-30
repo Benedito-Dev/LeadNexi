@@ -35,6 +35,7 @@ import {
   type UploadedImage,
 } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
+import { InstagramSyncService } from './instagram-sync.service.js';
 
 /** Limite por imagem: abaixo dos 4,5 MB que a Vercel aceita por requisição */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -46,6 +47,7 @@ export class InstagramPostsController {
   constructor(
     private readonly posts: InstagramPostsService,
     private readonly publisher: InstagramPublisherService,
+    private readonly sync: InstagramSyncService,
   ) {}
 
   @Post('media')
@@ -94,6 +96,16 @@ export class InstagramPostsController {
     return this.posts.list();
   }
 
+  @Post('posts/sync')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Confere os publicados com o perfil: apagado ou arquivado no Instagram vira REMOVED (e volta se reaparecer)',
+  })
+  syncPosts() {
+    return this.sync.syncPublished();
+  }
+
   @Get('publishing')
   @ApiOperation({
     summary:
@@ -126,8 +138,11 @@ export class InstagramPostsController {
 
   @Delete('posts/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Cancela um post que ainda não foi publicado' })
-  @ApiNoContentResponse({ description: 'Post cancelado e imagens apagadas' })
+  @ApiOperation({
+    summary:
+      'Cancela um post que ainda não foi publicado, ou tira da lista um removido do Instagram',
+  })
+  @ApiNoContentResponse({ description: 'Post apagado, com as imagens' })
   @ApiConflictResponse({ description: 'O post já foi enviado ao Instagram' })
   cancel(@Param('id', ParseUUIDPipe) id: string) {
     return this.posts.cancel(id);

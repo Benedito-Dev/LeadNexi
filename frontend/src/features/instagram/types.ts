@@ -13,7 +13,8 @@ export interface InstagramAccount {
 /** GET /instagram/account */
 export type InstagramAccountStatus = { connected: false } | { connected: true; account: InstagramAccount }
 
-export type InstagramPostStatus = 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED'
+/** REMOVED: publicado, mas apagado (ou arquivado) no Instagram depois */
+export type InstagramPostStatus = 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED' | 'REMOVED'
 
 export interface InstagramPostImage {
   id: string
@@ -37,6 +38,12 @@ export interface InstagramPost {
   createdAt: string
   /** Na ordem do carrossel: a primeira é a capa */
   images: InstagramPostImage[]
+}
+
+/** POST /instagram/posts/sync: quantos saíram do perfil e quantos voltaram */
+export interface InstagramSyncResult {
+  removed: number
+  restored: number
 }
 
 /** POST /instagram/posts: o post criado; `alarmFailed` = o despertador não respondeu ao agendar */

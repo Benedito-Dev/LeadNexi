@@ -11,6 +11,7 @@ import {
   publishInstagramPost,
   saveInstagramSettings,
   startInstagramConnect,
+  syncInstagramPosts,
   uploadInstagramMedia,
 } from './api.ts'
 import type { InstagramPost } from './types.ts'
@@ -20,6 +21,7 @@ export const instagramKeys = {
   posts: ['instagram', 'posts'] as const,
   settings: ['instagram', 'settings'] as const,
   publishing: ['instagram', 'publishing'] as const,
+  sync: ['instagram', 'sync'] as const,
 }
 
 export function useInstagramSettings() {
@@ -73,6 +75,28 @@ export function useInstagramPosts() {
       }
       return posts.some((post) => post.status === 'SCHEDULED') ? 60_000 : false
     },
+  })
+}
+
+/**
+ * Confere os publicados com o perfil do Instagram (a Meta não avisa quando um post é apagado lá).
+ * Roda ao abrir a tela e ao voltar para a aba (ex.: depois de apagar no app), no máximo 1 vez por
+ * minuto. Mudou algo: recarrega a lista.
+ */
+export function useSyncInstagramPosts() {
+  const queryClient = useQueryClient()
+  return useQuery({
+    queryKey: instagramKeys.sync,
+    queryFn: async () => {
+      const result = await syncInstagramPosts()
+      if (result.removed || result.restored) {
+        await queryClient.invalidateQueries({ queryKey: instagramKeys.posts })
+      }
+      return result
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
   })
 }
 

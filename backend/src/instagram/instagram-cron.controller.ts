@@ -15,6 +15,7 @@ import { QstashOrCronGuard } from '../common/guards/qstash-or-cron.guard.js';
 import { stableOrigin } from '../common/utils/public-origin.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
+import { InstagramSyncService } from './instagram-sync.service.js';
 import { InstagramService } from './instagram.service.js';
 
 /**
@@ -29,12 +30,14 @@ export class InstagramCronController {
     private readonly instagram: InstagramService,
     private readonly posts: InstagramPostsService,
     private readonly publisher: InstagramPublisherService,
+    private readonly sync: InstagramSyncService,
   ) {}
 
   /**
    * Uma vez por dia: renova o token do Instagram antes de vencer, apaga imagens enviadas que
-   * nunca entraram num post e confere a publicação (interrompidas e despertador perdido). Uma
-   * tarefa não impede a outra; cada uma informa o próprio resultado.
+   * nunca entraram num post, confere a publicação (interrompidas e despertador perdido) e confere
+   * os publicados com o perfil (apagados no Instagram). Uma tarefa não impede a outra; cada uma
+   * informa o próprio resultado.
    */
   @Get('instagram-daily')
   @UseGuards(CronSecretGuard)
@@ -45,6 +48,7 @@ export class InstagramCronController {
       publishing: await this.publisher
         .maintain(stableOrigin(request))
         .catch(failure),
+      removedFromProfile: await this.sync.syncPublished().catch(failure),
     };
   }
 

@@ -1,4 +1,14 @@
-import { ChevronLeft, ChevronRight, CircleAlert, ExternalLink, LoaderCircle, RotateCw, Send, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  ExternalLink,
+  LoaderCircle,
+  RotateCw,
+  Send,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Drawer } from '../../../components/ui/Drawer.tsx'
@@ -13,6 +23,7 @@ const TITLES: Record<InstagramPostStatus, string> = {
   PUBLISHING: 'Publicando post',
   PUBLISHED: 'Post publicado',
   FAILED: 'Post não publicado',
+  REMOVED: 'Post removido do Instagram',
 }
 
 // Detalhes do post (BRAND.md, seção 9.5), aberto pela grade: imagens (carrossel com setas e
@@ -57,6 +68,9 @@ function DetailsContent({ post, onClose }: { post: InstagramPost; onClose: () =>
             <span>{post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}</span>
           </p>
           {post.status === 'FAILED' && post.error && <p className="text-small text-danger">{post.error}</p>}
+          {post.status === 'REMOVED' && (
+            <p className="text-small text-slate-400">Não está mais no seu perfil (apagado ou arquivado).</p>
+          )}
         </div>
 
         <section aria-labelledby="details-caption" className="flex flex-col gap-2">
@@ -122,7 +136,7 @@ function ImageViewer({ images }: { images: InstagramPost['images'] }) {
 
 /**
  * Rodapé: enquanto não saiu, "Cancelar post" e "Publicar agora" (ou "Tentar de novo"), cada um
- * confirma com segundo clique; publicado, "Ver no Instagram".
+ * confirma com segundo clique; publicado, "Ver no Instagram"; removido do Instagram, "Tirar da lista".
  */
 function DetailsActions({ post }: { post: InstagramPost }) {
   const cancel = useCancelPost()
@@ -130,8 +144,20 @@ function DetailsActions({ post }: { post: InstagramPost }) {
   const [confirming, setConfirming] = useState<'cancel' | 'publish' | null>(null)
   const busy = cancel.isPending || publish.isPending
   const error =
-    actionErrorMessage(cancel.error, 'Não foi possível cancelar. Tente de novo.') ??
+    actionErrorMessage(
+      cancel.error,
+      post.status === 'REMOVED'
+        ? 'Não foi possível tirar da lista. Tente de novo.'
+        : 'Não foi possível cancelar. Tente de novo.',
+    ) ??
     actionErrorMessage(publish.error, 'Não foi possível publicar. Tente de novo.')
+
+  function act(action: 'cancel' | 'publish') {
+    if (confirming !== action) return setConfirming(action)
+    setConfirming(null)
+    if (action === 'cancel') cancel.mutate(post.id)
+    else publish.mutate(post.id)
+  }
 
   if (post.status === 'PUBLISHED' && post.permalink) {
     return (
@@ -148,14 +174,34 @@ function DetailsActions({ post }: { post: InstagramPost }) {
       </footer>
     )
   }
-  if (!isPending(post)) return null
-
-  function act(action: 'cancel' | 'publish') {
-    if (confirming !== action) return setConfirming(action)
-    setConfirming(null)
-    if (action === 'cancel') cancel.mutate(post.id)
-    else publish.mutate(post.id)
+  if (post.status === 'REMOVED') {
+    return (
+      <footer className="flex flex-col gap-3 border-t px-5 py-4">
+        {error && (
+          <p role="alert" className="flex items-start gap-2 text-small text-danger">
+            <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0" />
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end">
+          <Button
+            variant={confirming === 'cancel' ? 'danger' : 'secondary'}
+            disabled={busy}
+            onClick={() => act('cancel')}
+            onBlur={() => setConfirming(null)}
+          >
+            {cancel.isPending ? (
+              <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />
+            ) : (
+              <Trash2 aria-hidden size={18} strokeWidth={1.75} />
+            )}
+            {confirming === 'cancel' ? 'Confirmar' : 'Tirar da lista'}
+          </Button>
+        </div>
+      </footer>
+    )
   }
+  if (!isPending(post)) return null
 
   const retry = post.status === 'FAILED'
   return (

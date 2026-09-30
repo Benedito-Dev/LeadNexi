@@ -171,6 +171,8 @@ enum InstagramPostStatus {
   PUBLISHING
   PUBLISHED
   FAILED
+  /// Publicado, mas não está mais no perfil (apagado ou arquivado no Instagram)
+  REMOVED
 }
 
 // Post do Instagram montado no LeadNexi: legenda, imagens (em ordem) e quando publicar.

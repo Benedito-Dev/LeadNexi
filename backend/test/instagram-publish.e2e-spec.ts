@@ -55,6 +55,7 @@ describe('Publicação no Instagram (e2e)', () => {
     getContainerStatus: vi.fn(),
     publishContainer: vi.fn(),
     getPermalink: vi.fn(),
+    listProfileMedia: vi.fn(),
   };
   const qstash = vi.fn<typeof fetch>();
   const QSTASH_ENV = {
@@ -572,6 +573,95 @@ describe('Publicação no Instagram (e2e)', () => {
     expect(list.body[1]).toMatchObject({
       status: 'PUBLISHED',
       permalink: 'https://www.instagram.com/p/abc/',
+    });
+  });
+
+  describe('conferência com o perfil (post apagado no Instagram)', () => {
+    /** Publica e deixa como se tivesse saído há uma hora (`mediaId`: ID no Instagram) */
+    async function publishedPost(mediaId: string) {
+      meta.publishContainer.mockResolvedValueOnce(mediaId);
+      const post = await publishNow(await uploadMany(1));
+      await prisma.instagramPost.update({
+        where: { id: post.id },
+        data: { publishedAt: new Date(Date.now() - 60 * 60_000) },
+      });
+      return post.id;
+    }
+    const onProfile = (...ids: string[]) =>
+      meta.listProfileMedia.mockResolvedValue({
+        ids: new Set(ids),
+        complete: true,
+        oldest: null,
+      });
+    const sync = () =>
+      api().post('/instagram/posts/sync').set(auth).expect(200);
+
+    it('apagado no Instagram vira "Removido"; voltando ao perfil, "Publicado" de novo', async () => {
+      const kept = await publishedPost('m-1');
+      const deleted = await publishedPost('m-2');
+      onProfile('m-1');
+
+      expect((await sync()).body).toEqual({ removed: 1, restored: 0 });
+      const [token, since] = meta.listProfileMedia.mock.calls[0] as [
+        string,
+        Date,
+      ];
+      expect(token).toBe('token-real');
+      // Até um pouco antes do publicado mais antigo
+      expect(since.getTime()).toBeLessThan(Date.now() - 60 * 60_000);
+
+      const list = await api().get('/instagram/posts').set(auth).expect(200);
+      const status = (id: string) =>
+        list.body.find((post: { id: string }) => post.id === id).status;
+      expect(status(kept)).toBe('PUBLISHED');
+      expect(status(deleted)).toBe('REMOVED');
+
+      onProfile('m-1', 'm-2');
+      expect((await sync()).body).toEqual({ removed: 0, restored: 1 });
+    });
+
+    it('recém-publicado e fora do trecho lido do perfil não contam como apagados', async () => {
+      const old = await publishedPost('m-1');
+      await prisma.instagramPost.update({
+        where: { id: old },
+        data: { publishedAt: new Date(Date.now() - 10 * DAY) },
+      });
+      meta.publishContainer.mockResolvedValueOnce('m-2');
+      await publishNow(await uploadMany(1));
+      // Perfil grande: a leitura parou 2 dias atrás
+      meta.listProfileMedia.mockResolvedValue({
+        ids: new Set(),
+        complete: false,
+        oldest: new Date(Date.now() - 2 * DAY),
+      });
+
+      expect((await sync()).body).toEqual({ removed: 0, restored: 0 });
+    });
+
+    it('removido pode ser tirado da lista; falha da Meta não muda nada', async () => {
+      const id = await publishedPost('m-1');
+      meta.listProfileMedia.mockRejectedValueOnce(
+        new InstagramApiError('Sem resposta da Meta', 0),
+      );
+      expect((await sync()).body).toMatchObject({
+        removed: 0,
+        skipped: expect.any(String),
+      });
+
+      onProfile();
+      await sync();
+      await api().delete(`/instagram/posts/${id}`).set(auth).expect(204);
+      expect(await prisma.instagramPost.count()).toBe(0);
+    });
+
+    it('token recusado: a conta passa a pedir reconexão', async () => {
+      await publishedPost('m-1');
+      meta.listProfileMedia.mockRejectedValueOnce(
+        new InstagramApiError('Token expirado', 400, 190),
+      );
+      await sync();
+      const account = await api().get('/instagram/account').set(auth);
+      expect(account.body.account.needsReconnect).toBe(true);
     });
   });
 

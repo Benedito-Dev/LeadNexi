@@ -5,6 +5,7 @@ import {
   LoaderCircle,
   RotateCw,
   Send,
+  Trash2,
   TriangleAlert,
   X,
   type LucideIcon,
@@ -12,30 +13,40 @@ import {
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { formatDateTime } from '../../../lib/format.ts'
-import { useCancelPost, useInstagramPosts, useInstagramPublishing, usePublishPost } from '../hooks.ts'
+import {
+  useCancelPost,
+  useInstagramPosts,
+  useInstagramPublishing,
+  usePublishPost,
+  useSyncInstagramPosts,
+} from '../hooks.ts'
 import { actionErrorMessage, isPending, POST_STATUS, postDate } from '../status.ts'
 import type { InstagramPost } from '../types.ts'
 import type { PostView } from '../view.ts'
 import { PostDetails } from './PostDetails.tsx'
-import { PostGrid } from './PostGrid.tsx'
+import { GRID_COLUMNS, PostGrid } from './PostGrid.tsx'
 import { StatusIcon } from './StatusIcon.tsx'
 
 // Posts do Instagram (BRAND.md, seção 9.5): primeiro os que ainda não saíram (do mais próximo ao mais
 // distante), depois os publicados. Em lista: capa, legenda, quando sai, status e as ações ("Publicar
-// agora" ou "Tentar de novo" e "Cancelar" enquanto não saiu, "Ver no Instagram" depois de publicado).
-// Em grade: só as capas; clicar abre os detalhes, com as mesmas ações.
+// agora" ou "Tentar de novo" e "Cancelar" enquanto não saiu, "Ver no Instagram" depois de publicado,
+// "Tirar da lista" se foi apagado no Instagram). Em grade: só as capas; clicar abre os detalhes.
+// Abrir a tela confere os publicados com o perfil (apagado lá vira "Removido do Instagram").
 export function PostList({ view }: { view: PostView }) {
   const posts = useInstagramPosts()
   const publishing = useInstagramPublishing()
+  useSyncInstagramPosts()
   // Post aberto nos detalhes (pela grade). Se ele sumir da lista (cancelado), o painel fecha.
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (posts.isPending) {
     return view === 'grade' ? (
-      <div aria-busy="true" aria-label="Carregando posts" className="grid grid-cols-3 gap-1 sm:gap-2">
-        {[0, 1, 2].map((tile) => (
-          <div key={tile} className="aspect-[4/5] animate-pulse rounded-sm bg-navy-800" />
-        ))}
+      <div className="@container">
+        <div aria-busy="true" aria-label="Carregando posts" className={GRID_COLUMNS}>
+          {[0, 1, 2].map((tile) => (
+            <div key={tile} className="aspect-[4/5] animate-pulse rounded-sm bg-navy-800" />
+          ))}
+        </div>
       </div>
     ) : (
       <div aria-busy="true" aria-label="Carregando posts" className="flex flex-col gap-2">
@@ -74,7 +85,9 @@ export function PostList({ view }: { view: PostView }) {
         </p>
       )}
       {view === 'grade' ? (
-        <PostGrid posts={posts.data} onOpen={setOpenId} />
+        <div className="@container">
+          <PostGrid posts={posts.data} onOpen={setOpenId} />
+        </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {posts.data.map((post) => (
@@ -95,7 +108,12 @@ function PostItem({ post }: { post: InstagramPost }) {
   const pending = isPending(post)
   const busy = cancel.isPending || publish.isPending
   const actionError =
-    actionErrorMessage(cancel.error, 'Não foi possível cancelar. Tente de novo.') ??
+    actionErrorMessage(
+      cancel.error,
+      post.status === 'REMOVED'
+        ? 'Não foi possível tirar da lista. Tente de novo.'
+        : 'Não foi possível cancelar. Tente de novo.',
+    ) ??
     actionErrorMessage(publish.error, 'Não foi possível publicar. Tente de novo.')
 
   return (
@@ -131,6 +149,9 @@ function PostItem({ post }: { post: InstagramPost }) {
           <span>{post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}</span>
         </p>
         {post.status === 'FAILED' && post.error && <p className="mt-1 text-small text-danger">{post.error}</p>}
+        {post.status === 'REMOVED' && (
+          <p className="mt-1 text-small text-slate-400">Não está mais no seu perfil (apagado ou arquivado).</p>
+        )}
         {actionError && (
           <p role="alert" className="mt-1 text-small text-danger">
             {actionError}
@@ -149,6 +170,18 @@ function PostItem({ post }: { post: InstagramPost }) {
           <ExternalLink aria-hidden size={16} strokeWidth={1.75} />
           <span className="sr-only sm:not-sr-only">Ver no Instagram</span>
         </a>
+      )}
+      {post.status === 'REMOVED' && (
+        <div className="flex shrink-0">
+          <ConfirmButton
+            label="Tirar da lista"
+            icon={Trash2}
+            danger
+            pending={cancel.isPending}
+            disabled={busy}
+            onConfirm={() => cancel.mutate(post.id)}
+          />
+        </div>
       )}
       {pending && (
         <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">

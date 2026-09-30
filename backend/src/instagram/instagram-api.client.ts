@@ -56,6 +56,15 @@ export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 export type ContainerStatus =
   'FINISHED' | 'IN_PROGRESS' | 'ERROR' | 'EXPIRED' | 'PUBLISHED';
 
+/** Posts no perfil (ver listProfileMedia) */
+export interface ProfileMedia {
+  ids: Set<string>;
+  /** A lista cobre tudo desde `since` (ou o perfil inteiro) */
+  complete: boolean;
+  /** Data do post mais antigo lido (até onde a lista cobre, se incompleta) */
+  oldest: Date | null;
+}
+
 export interface InstagramProfile {
   /** ID da conta profissional: é o usado para publicar */
   userId: string;
@@ -260,6 +269,44 @@ export class InstagramApiClient {
       access_token: token,
     }).toString();
     return optionalString((await this.request(url)).permalink);
+  }
+
+  /**
+   * Posts que estão no perfil agora, do mais recente ao mais antigo, até chegar em `since` (ou
+   * acabar o perfil, ou `maxPages` páginas). Apagado ou arquivado no Instagram não aparece.
+   * `complete`: chegou em `since` ou no fim do perfil (quem não está na lista saiu mesmo).
+   */
+  async listProfileMedia(
+    token: string,
+    since: Date,
+    maxPages = 10,
+  ): Promise<ProfileMedia> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/media`,
+    );
+    url.search = new URLSearchParams({
+      fields: 'id,timestamp',
+      limit: '50',
+      access_token: token,
+    }).toString();
+
+    const ids = new Set<string>();
+    let next: string | null = url.toString();
+    let oldest: Date | null = null;
+    for (let page = 0; next && page < maxPages; page++) {
+      const body = await this.request(next);
+      const items = Array.isArray(body.data) ? (body.data as Json[]) : [];
+      for (const item of items) {
+        const id = optionalString(item.id);
+        if (id) ids.add(id);
+        const at = new Date(String(item.timestamp));
+        if (!Number.isNaN(at.getTime())) oldest = at;
+      }
+      if (oldest && oldest < since) return { ids, complete: true, oldest };
+      const paging = body.paging as Json | undefined;
+      next = paging ? optionalString(paging.next) : null;
+    }
+    return { ids, complete: next === null, oldest };
   }
 
   /** POST na Graph API que devolve `{ id }` */

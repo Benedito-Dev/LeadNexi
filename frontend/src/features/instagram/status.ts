@@ -7,6 +7,7 @@ export const POST_STATUS: Record<InstagramPostStatus, { label: string; tone: str
   PUBLISHING: { label: 'Publicando', tone: 'text-slate-300' },
   PUBLISHED: { label: 'Publicado', tone: 'text-success' },
   FAILED: { label: 'Falhou', tone: 'text-danger' },
+  REMOVED: { label: 'Removido do Instagram', tone: 'text-slate-300' },
 }
 
 /** Ainda não saiu: dá para publicar agora (ou tentar de novo) e cancelar */

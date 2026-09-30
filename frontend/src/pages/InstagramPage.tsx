@@ -22,7 +22,8 @@ const RETURN_ERRORS: Record<string, string> = {
   falha: 'Não foi possível conectar o Instagram. Tente de novo.',
 }
 
-// Tela Instagram (BRAND.md, seção 9.5): conectar a conta, montar e agendar posts.
+// Tela Instagram (BRAND.md, seção 9.5): conectar a conta, montar e agendar posts. Conectada, usa a
+// largura toda: posts na coluna principal e, a partir do xl, conta e app da Meta numa coluna à direita.
 export function InstagramPage() {
   const account = useInstagramAccount()
   const settings = useInstagramSettings()
@@ -38,7 +39,7 @@ export function InstagramPage() {
   const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null)
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Instagram"
         description="Agende e publique fotos e carrosséis no seu perfil."
@@ -72,9 +73,15 @@ export function InstagramPage() {
           </Button>
         </div>
       ) : account.data.connected ? (
-        <>
-          <AccountCard account={account.data.account} />
-          <section aria-labelledby="posts-title" className="flex flex-col gap-3">
+        // Celular e tablet: conta, posts, app da Meta. xl: posts à esquerda; conta e app à direita.
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:grid-rows-[auto_1fr]">
+          <div className="xl:col-start-2 xl:row-start-1">
+            <AccountCard account={account.data.account} />
+          </div>
+          <section
+            aria-labelledby="posts-title"
+            className="flex flex-col gap-3 xl:col-start-1 xl:row-span-2 xl:row-start-1"
+          >
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <h2 id="posts-title" className="text-ui font-bold text-white">
                 Posts
@@ -87,14 +94,16 @@ export function InstagramPage() {
             <PostList view={view} />
           </section>
           {/* Dá para trocar o app da Meta a qualquer hora (ex.: nova chave secreta) */}
-          <AppSettingsCard settings={settings.data} />
-        </>
+          <div className="xl:col-start-2 xl:row-start-2">
+            <AppSettingsCard settings={settings.data} />
+          </div>
+        </div>
       ) : (
-        <>
-          {/* Passo 1: app da Meta · Passo 2: conectar a conta */}
+        // Passo 1: app da Meta · Passo 2: conectar a conta (formulários: coluna de até 768 px)
+        <div className="flex max-w-3xl flex-col gap-6">
           <AppSettingsCard settings={settings.data} />
           <ConnectCard configured={settings.data.configured} />
-        </>
+        </div>
       )}
 
       <PostComposer

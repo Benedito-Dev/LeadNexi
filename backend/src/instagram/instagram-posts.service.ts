@@ -31,8 +31,10 @@ const MEDIA_URL_TTL = '1h';
 /** Imagem enviada e não usada em post por mais que isso: o cron diário apaga */
 export const ORPHAN_MEDIA_MS = 24 * 60 * 60 * 1000;
 
-/** Só o que ainda não foi para o Instagram pode ser cancelado */
-const CANCELABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED'];
+/** Pode ser cancelado: o que ainda não foi para o Instagram, ou o que já saiu de lá (tira da lista) */
+const CANCELABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED', 'REMOVED'];
+/** Já foram para o Instagram (os removidos de lá seguem na lista, marcados, até alguém tirar) */
+const SENT: InstagramPostStatus[] = ['PUBLISHED', 'REMOVED'];
 
 type MediaRef = { id: string; storageKey: string };
 
@@ -43,7 +45,7 @@ export interface UploadedImage {
 }
 
 /** Publicados mostrados na lista (os mais recentes) */
-const PUBLISHED_IN_LIST = 20;
+export const PUBLISHED_IN_LIST = 20;
 
 /**
  * Posts do Instagram montados no LeadNexi: envio das imagens, agendamento, lista e cancelamento.
@@ -146,12 +148,12 @@ export class InstagramPostsService {
     const include = { images: { orderBy: { position: 'asc' as const } } };
     const [pending, published] = await Promise.all([
       this.prisma.instagramPost.findMany({
-        where: { status: { not: 'PUBLISHED' } },
+        where: { status: { notIn: SENT } },
         orderBy: { scheduledAt: 'asc' },
         include,
       }),
       this.prisma.instagramPost.findMany({
-        where: { status: 'PUBLISHED' },
+        where: { status: { in: SENT } },
         orderBy: { publishedAt: 'desc' },
         take: PUBLISHED_IN_LIST,
         include,
@@ -163,7 +165,7 @@ export class InstagramPostsService {
   }
 
   /**
-   * Cancela: apaga o post e as imagens. As imagens são soltas na mesma transação; se apagar no
+   * Cancela (ou tira da lista um removido do Instagram): apaga o post e as imagens. As imagens são soltas na mesma transação; se apagar no
    * armazenamento falhar agora, o cron diário termina o serviço.
    */
   async cancel(id: string) {

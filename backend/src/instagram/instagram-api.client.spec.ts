@@ -286,6 +286,56 @@ describe('InstagramApiClient', () => {
     });
   });
 
+  describe('posts no perfil', () => {
+    const page = (items: [string, string][], next?: string) => ({
+      data: items.map(([id, timestamp]) => ({ id, timestamp })),
+      ...(next ? { paging: { next } } : {}),
+    });
+
+    it('segue as páginas até passar da data pedida', async () => {
+      reply(
+        200,
+        page(
+          [
+            ['m3', '2026-09-30T12:00:00+0000'],
+            ['m2', '2026-09-29T12:00:00+0000'],
+          ],
+          'https://graph.instagram.com/next-1',
+        ),
+      );
+      reply(
+        200,
+        page(
+          [['m1', '2026-09-20T12:00:00+0000']],
+          'https://graph.instagram.com/next-2',
+        ),
+      );
+
+      const media = await client.listProfileMedia(
+        'tk',
+        new Date('2026-09-25T00:00:00Z'),
+      );
+      expect([...media.ids]).toEqual(['m3', 'm2', 'm1']);
+      expect(media.complete).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const first = new URL(fetchMock.mock.calls[0][0] as string);
+      expect(first.pathname).toBe(`/${GRAPH_VERSION}/me/media`);
+      expect(first.searchParams.get('fields')).toBe('id,timestamp');
+      expect(lastCall().url.href).toBe('https://graph.instagram.com/next-1');
+    });
+
+    it('fim do perfil é lista completa; limite de páginas não', async () => {
+      reply(200, page([['m1', '2026-09-30T12:00:00+0000']]));
+      const all = await client.listProfileMedia('tk', new Date(0));
+      expect(all.complete).toBe(true);
+
+      reply(200, page([['m2', '2026-09-30T12:00:00+0000']], 'https://n/1'));
+      const partial = await client.listProfileMedia('tk', new Date(0), 1);
+      expect(partial.complete).toBe(false);
+      expect(partial.oldest?.toISOString()).toBe('2026-09-30T12:00:00.000Z');
+    });
+  });
+
   it('sem resposta da Meta vira InstagramApiError com status 0', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
     const error = await client.getProfile('x').catch((e: unknown) => e);

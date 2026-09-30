@@ -6,10 +6,13 @@ import { StatusIcon } from './StatusIcon.tsx'
 
 // Posts em grade (BRAND.md, seção 9.5), como o perfil do Instagram: 3 colunas de capas 4:5.
 // Sobre a capa, selos `backdrop` + `on-accent`: status (com o horário a partir do sm) embaixo e a
-// contagem do carrossel em cima. Falhou ganha contorno `danger`. Clicar abre os detalhes.
+// contagem do carrossel em cima. Falhou ganha contorno `danger`; removido do Instagram fica apagado.
+// Com espaço (o container mede a coluna, não a tela), mais colunas: 4 a partir de 768 px, 5 de 1024 px.
+export const GRID_COLUMNS = 'grid grid-cols-3 gap-1 sm:gap-2 @3xl:grid-cols-4 @5xl:grid-cols-5'
+
 export function PostGrid({ posts, onOpen }: { posts: InstagramPost[]; onOpen: (id: string) => void }) {
   return (
-    <ul className="grid grid-cols-3 gap-1 sm:gap-2">
+    <ul className={GRID_COLUMNS}>
       {posts.map((post) => (
         <li key={post.id}>
           <PostTile post={post} onOpen={() => onOpen(post.id)} />
@@ -35,7 +38,15 @@ function PostTile({ post, onOpen }: { post: InstagramPost; onOpen: () => void })
         post.status === 'FAILED' ? 'ring-2 ring-danger ring-offset-2 ring-offset-navy' : ''
       }`}
     >
-      {cover && <img src={cover.url} alt="" className="size-full object-cover transition-opacity hover:opacity-90" />}
+      {cover && (
+        <img
+          src={cover.url}
+          alt=""
+          className={`size-full object-cover transition-opacity ${
+            post.status === 'REMOVED' ? 'opacity-40' : 'hover:opacity-90'
+          }`}
+        />
+      )}
       {post.images.length > 1 && (
         <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full bg-backdrop px-1.5 py-0.5 text-xs font-bold text-on-accent tabular-nums">
           <Images aria-hidden size={12} strokeWidth={2} />
