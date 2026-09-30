@@ -4,10 +4,13 @@ import {
   DragOverlay,
   KeyboardSensor,
   MouseSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   useSensor,
   useSensors,
   type Announcements,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -34,6 +37,22 @@ function findStage(columns: Columns, id: UniqueIdentifier): string | undefined {
   const key = String(id)
   if (key in columns) return key
   return Object.keys(columns).find((stageId) => columns[stageId]?.includes(key))
+}
+
+/**
+ * Onde o card cai. Com mouse ou toque: o que está sob o ponteiro, preferindo um card (para entrar
+ * antes/depois dele) à coluna; pelo teclado (sem ponteiro): o que o card cobre. Só "cantos mais
+ * próximos" errava com colunas altas (muitos cards): os cantos de baixo de uma coluna vazia ficam
+ * longe, o próprio card na coluna de origem "ganhava" e ele voltava para a etapa anterior.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const hits = args.pointerCoordinates ? pointerWithin(args) : rectIntersection(args)
+  // Ponteiro fora de qualquer coluna (ex.: no vão entre elas): sem destino
+  if (hits.length === 0) return args.pointerCoordinates ? [] : closestCorners(args)
+  const isCard = (id: UniqueIdentifier) =>
+    args.droppableContainers.find((container) => container.id === id)?.data.current?.type === 'lead'
+  const cards = hits.filter((hit) => isCard(hit.id))
+  return cards.length > 0 ? cards : hits
 }
 
 /** Busca sem diferenciar maiúsculas nem acentos, em nome, contato e origem. */
@@ -171,7 +190,7 @@ export function KanbanBoard({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
