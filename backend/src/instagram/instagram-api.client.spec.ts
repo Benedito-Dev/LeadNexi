@@ -2,6 +2,7 @@ import {
   GRAPH_VERSION,
   InstagramApiClient,
   InstagramApiError,
+  MAX_AVATAR_BYTES,
 } from './instagram-api.client.js';
 
 // Formato das chamadas à Meta e leitura das respostas, com o fetch simulado.
@@ -237,19 +238,51 @@ describe('InstagramApiClient', () => {
     });
 
     it('lê nome e @ de quem mandou mensagem (campos podem faltar)', async () => {
-      reply(200, { name: 'Maria Souza', username: 'maria.s', id: '99' });
+      reply(200, {
+        name: 'Maria Souza',
+        username: 'maria.s',
+        profile_pic: 'https://cdn.exemplo.test/maria.jpg',
+        id: '99',
+      });
       expect(await client.getMessagingProfile('99', 'tok')).toEqual({
         name: 'Maria Souza',
         username: 'maria.s',
+        profilePictureUrl: 'https://cdn.exemplo.test/maria.jpg',
       });
       expect(lastCall().url.pathname).toBe(`/${GRAPH_VERSION}/99`);
-      expect(lastCall().url.searchParams.get('fields')).toBe('name,username');
+      expect(lastCall().url.searchParams.get('fields')).toBe(
+        'name,username,profile_pic',
+      );
 
       reply(200, { id: '99' });
       expect(await client.getMessagingProfile('99', 'tok')).toEqual({
         name: null,
         username: null,
+        profilePictureUrl: null,
       });
+    });
+
+    it('baixa a foto de perfil, até 2 MB', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(Buffer.from('jpeg'), { status: 200 }),
+      );
+      expect(
+        (
+          await client.downloadImage('https://cdn.exemplo.test/a.jpg')
+        ).toString(),
+      ).toBe('jpeg');
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(Buffer.alloc(MAX_AVATAR_BYTES + 1), { status: 200 }),
+      );
+      await expect(
+        client.downloadImage('https://cdn.exemplo.test/grande.jpg'),
+      ).rejects.toMatchObject({ status: 413 });
+
+      fetchMock.mockResolvedValueOnce(new Response('', { status: 404 }));
+      await expect(
+        client.downloadImage('https://cdn.exemplo.test/sumiu.jpg'),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 

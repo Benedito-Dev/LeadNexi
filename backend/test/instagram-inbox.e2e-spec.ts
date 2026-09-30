@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createHmac } from 'node:crypto';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
@@ -10,10 +11,14 @@ import {
 } from './../src/common/crypto/secret-box.js';
 import { InstagramApiClient } from './../src/instagram/instagram-api.client.js';
 import { UNKNOWN_CONTACT } from './../src/instagram/instagram-inbox.service.js';
+import { AVATAR_REFRESH_MS } from './../src/leads/lead-avatar.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { StorageService } from './../src/storage/storage.service.js';
+import { fakeJpeg } from './fake-jpeg.js';
 
 // Direct vira lead: avisos da Meta (webhook) conferidos pela assinatura, lead novo na primeira
-// etapa do funil, mensagens no histórico sem repetir. A Meta é simulada.
+// etapa do funil, mensagens no histórico sem repetir e foto de perfil guardada. A Meta e o
+// armazenamento são simulados.
 describe('Direct do Instagram (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -27,7 +32,27 @@ describe('Direct do Instagram (e2e)', () => {
     process.env.JWT_SECRET,
   )!;
 
-  const meta = { getMessagingProfile: vi.fn() };
+  const meta = { getMessagingProfile: vi.fn(), downloadImage: vi.fn() };
+  const PHOTO = fakeJpeg(320, 320);
+
+  const files = new Map<string, Buffer>();
+  const storage = {
+    configured: true,
+    put: vi.fn((key: string, body: Buffer) => {
+      files.set(key, body);
+      return Promise.resolve();
+    }),
+    get: vi.fn((key: string) => {
+      const body = files.get(key);
+      return body
+        ? Promise.resolve(Readable.from(body))
+        : Promise.reject(new Error('Arquivo não existe'));
+    }),
+    deleteMany: vi.fn((keys: string[]) => {
+      keys.forEach((key) => files.delete(key));
+      return Promise.resolve();
+    }),
+  };
 
   beforeAll(async () => {
     process.env.INSTAGRAM_APP_ID = 'app-de-teste';
@@ -37,6 +62,8 @@ describe('Direct do Instagram (e2e)', () => {
     })
       .overrideProvider(InstagramApiClient)
       .useValue(meta)
+      .overrideProvider(StorageService)
+      .useValue(storage)
       .compile();
     // Como no main.ts: a assinatura é conferida sobre o corpo original
     app = moduleFixture.createNestApplication({ rawBody: true });
@@ -60,11 +87,16 @@ describe('Direct do Instagram (e2e)', () => {
 
   beforeEach(async () => {
     await cleanup();
+    files.clear();
+    vi.clearAllMocks();
     meta.getMessagingProfile.mockReset();
     meta.getMessagingProfile.mockResolvedValue({
       name: 'Maria Souza',
       username: 'maria.souza',
+      profilePictureUrl: 'https://cdn.exemplo.test/maria.jpg',
     });
+    meta.downloadImage.mockReset();
+    meta.downloadImage.mockResolvedValue(PHOTO);
     await prisma.instagramAccount.create({
       data: {
         igUserId: ACCOUNT,
@@ -396,6 +428,104 @@ describe('Direct do Instagram (e2e)', () => {
       await prisma.instagramAccount.deleteMany();
       const res = await deliver(dm({ mid: 'm1', text: 'Oi' })).expect(200);
       expect(res.body).toEqual({ created: 0, messages: 0, ignored: 1 });
+    });
+  });
+
+  describe('foto de perfil', () => {
+    async function mariaLead() {
+      return prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-maria' },
+      });
+    }
+
+    it('lead novo ganha uma cópia da foto, servida pelo LeadNexi', async () => {
+      await deliver(dm({ mid: 'f1', text: 'Oi' })).expect(200);
+      expect(meta.downloadImage).toHaveBeenCalledWith(
+        'https://cdn.exemplo.test/maria.jpg',
+      );
+      const lead = await mariaLead();
+      expect(lead.avatarId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(lead.avatarUpdatedAt).not.toBeNull();
+      expect([...files.keys()]).toEqual([`leads/avatars/${lead.avatarId}.jpg`]);
+
+      const image = await api()
+        .get(`/leads/avatars/${lead.avatarId}`)
+        .expect(200);
+      expect(image.headers['content-type']).toBe('image/jpeg');
+      expect(image.headers['cache-control']).toContain('immutable');
+      expect(Buffer.compare(image.body as Buffer, PHOTO)).toBe(0);
+
+      // Lista de leads traz o ID da foto para o card
+      const list = await api()
+        .get('/leads')
+        .query({ search: '@maria.souza', page: 1, limit: 10 })
+        .set(auth);
+      expect(list.body.data[0].avatarId).toBe(lead.avatarId);
+    });
+
+    it('confere a foto de novo só depois de uma semana, e apaga a antiga', async () => {
+      await deliver(dm({ mid: 'f1', text: 'Oi' })).expect(200);
+      await deliver(dm({ mid: 'f2', text: 'Tudo bem?' })).expect(200);
+      expect(meta.getMessagingProfile).toHaveBeenCalledTimes(1);
+      const first = await mariaLead();
+
+      await prisma.lead.update({
+        where: { id: first.id },
+        data: {
+          avatarUpdatedAt: new Date(Date.now() - AVATAR_REFRESH_MS - 60_000),
+        },
+      });
+      await deliver(dm({ mid: 'f3', text: 'Oi de novo' })).expect(200);
+      expect(meta.getMessagingProfile).toHaveBeenCalledTimes(2);
+      const second = await mariaLead();
+      expect(second.avatarId).not.toBe(first.avatarId);
+      expect([...files.keys()]).toEqual([
+        `leads/avatars/${second.avatarId}.jpg`,
+      ]);
+    });
+
+    it('foto que não baixa ou não é JPEG: o lead entra sem foto e tenta na próxima mensagem', async () => {
+      meta.downloadImage.mockRejectedValueOnce(new Error('404'));
+      await deliver(dm({ mid: 'f1', text: 'Oi' })).expect(200);
+      expect(await mariaLead()).toMatchObject({
+        avatarId: null,
+        avatarUpdatedAt: null,
+      });
+
+      meta.downloadImage.mockResolvedValueOnce(
+        Buffer.from('<html>não é imagem</html>'),
+      );
+      await deliver(dm({ mid: 'f2', text: 'Oi?' })).expect(200);
+      expect(await mariaLead()).toMatchObject({
+        avatarId: null,
+        avatarUpdatedAt: null,
+      });
+
+      await deliver(dm({ mid: 'f3', text: 'Alô' })).expect(200);
+      expect((await mariaLead()).avatarId).not.toBeNull();
+      expect(files.size).toBe(1);
+    });
+
+    it('perfil sem foto: sem avatar (iniciais), e só confere de novo na semana seguinte', async () => {
+      meta.getMessagingProfile.mockResolvedValue({
+        name: 'Maria Souza',
+        username: 'maria.souza',
+        profilePictureUrl: null,
+      });
+      await deliver(dm({ mid: 'f1', text: 'Oi' })).expect(200);
+      const lead = await mariaLead();
+      expect(lead.avatarId).toBeNull();
+      expect(lead.avatarUpdatedAt).not.toBeNull();
+      expect(meta.downloadImage).not.toHaveBeenCalled();
+    });
+
+    it('excluir o lead apaga a foto; foto inexistente responde 404', async () => {
+      await deliver(dm({ mid: 'f1', text: 'Oi' })).expect(200);
+      const lead = await mariaLead();
+      await api().delete(`/leads/${lead.id}`).set(auth).expect(204);
+      expect(files.size).toBe(0);
+      await api().get(`/leads/avatars/${lead.avatarId}`).expect(404);
+      await api().get('/leads/avatars/nao-e-uuid').expect(400);
     });
   });
 

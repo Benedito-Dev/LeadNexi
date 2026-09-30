@@ -27,6 +27,9 @@ export class LeadEntity {
   instagramUsername: string | null;
   /** ID de quem mandou direct (liga as mensagens novas ao lead) */
   instagramUserId: string | null;
+  /** Foto de perfil guardada (GET /leads/avatars/:avatarId); null = mostrar as iniciais */
+  avatarId: string | null;
+  avatarUpdatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

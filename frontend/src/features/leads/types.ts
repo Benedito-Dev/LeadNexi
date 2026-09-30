@@ -15,6 +15,8 @@ export interface Lead {
   followUpNote: string | null
   /** @ do Instagram (sem o @) */
   instagramUsername: string | null
+  /** Foto de perfil guardada (GET /api/leads/avatars/:id); null = iniciais */
+  avatarId: string | null
   createdAt: string
   updatedAt: string
 }

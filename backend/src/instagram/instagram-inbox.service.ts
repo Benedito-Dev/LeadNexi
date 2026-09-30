@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { decryptSecret } from '../common/crypto/secret-box.js';
+import { readJpegSize } from '../common/utils/jpeg.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { AVATAR_REFRESH_MS, avatarKey } from '../leads/lead-avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import {
   InstagramApiClient,
   type MessagingProfile,
@@ -68,6 +71,7 @@ export class InstagramInboxService {
     private readonly prisma: PrismaService,
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
+    private readonly storage: StorageService,
   ) {}
 
   /** Cadastro do webhook: a Meta manda o token; confere com o que a tela mostra. */
@@ -151,17 +155,18 @@ export class InstagramInboxService {
         ? new Date(timestamp)
         : new Date();
 
-    let lead: { id: string } | null = await this.prisma.lead.findUnique({
+    let lead = await this.prisma.lead.findUnique({
       where: { instagramUserId: senderId },
-      select: { id: true },
+      select: { id: true, avatarUpdatedAt: true },
     });
     let created = false;
+    let profile: MessagingProfile | null | undefined;
     if (!lead) {
-      const profile = await this.profileOf(senderId, storedToken);
+      profile = await this.profileOf(senderId, storedToken);
       const result = await this.createLead(senderId, profile, sentAt);
       // Sem funil (nenhuma etapa): não há onde pôr o lead
       if (!result) return 'ignored';
-      lead = result.lead;
+      lead = { id: result.lead.id, avatarUpdatedAt: null };
       created = result.created;
     }
 
@@ -180,14 +185,27 @@ export class InstagramInboxService {
       if (isUniqueViolation(error)) return 'ignored';
       throw error;
     }
+
+    // Foto de perfil: no lead novo e, nos outros, se não foi conferida na última semana
+    const stale =
+      !lead.avatarUpdatedAt ||
+      lead.avatarUpdatedAt.getTime() < Date.now() - AVATAR_REFRESH_MS;
+    if (this.storage.configured && stale) {
+      await this.refreshAvatar(
+        lead.id,
+        profile === undefined
+          ? await this.profileOf(senderId, storedToken)
+          : profile,
+      );
+    }
     return created ? 'new-lead' : 'message';
   }
 
-  /** Nome e @ de quem mandou. Se a Meta não responder, o lead nasce com um nome genérico. */
+  /** Nome, @ e foto de quem mandou. Se a Meta não responder: null (o lead nasce com nome genérico). */
   private async profileOf(
     senderId: string,
     storedToken: string,
-  ): Promise<MessagingProfile> {
+  ): Promise<MessagingProfile | null> {
     try {
       const token = decryptSecret(storedToken, this.settings.requireKey());
       return await this.api.getMessagingProfile(senderId, token);
@@ -195,7 +213,42 @@ export class InstagramInboxService {
       this.logger.warn(
         `Perfil de quem mandou direct não lido: ${(error as Error).message}`,
       );
-      return { name: null, username: null };
+      return null;
+    }
+  }
+
+  /**
+   * Guarda uma cópia da foto de perfil (o link da Meta expira em poucos dias) e apaga a anterior.
+   * Sem perfil (a Meta não respondeu), tenta na próxima mensagem; falha aqui não afeta o direct.
+   */
+  private async refreshAvatar(
+    leadId: string,
+    profile: MessagingProfile | null,
+  ) {
+    if (!profile) return;
+    try {
+      let avatarId: string | null = null;
+      if (profile.profilePictureUrl) {
+        const image = await this.api.downloadImage(profile.profilePictureUrl);
+        if (!readJpegSize(image)) throw new Error('a foto não é um JPEG');
+        avatarId = randomUUID();
+        await this.storage.put(avatarKey(avatarId), image, 'image/jpeg');
+      }
+      const previous = await this.prisma.lead.findUnique({
+        where: { id: leadId },
+        select: { avatarId: true },
+      });
+      await this.prisma.lead.update({
+        where: { id: leadId },
+        data: { avatarId, avatarUpdatedAt: new Date() },
+      });
+      if (previous?.avatarId && previous.avatarId !== avatarId) {
+        await this.storage.deleteMany([avatarKey(previous.avatarId)]);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Foto de perfil do lead ${leadId} não guardada: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -205,7 +258,7 @@ export class InstagramInboxService {
    */
   private async createLead(
     senderId: string,
-    profile: MessagingProfile,
+    profile: MessagingProfile | null,
     firstMessageAt: Date,
   ): Promise<{ lead: { id: string }; created: boolean } | null> {
     const stage = await this.prisma.stage.findFirst({
@@ -224,15 +277,15 @@ export class InstagramInboxService {
     }
 
     const name =
-      profile.name ??
-      (profile.username ? `@${profile.username}` : UNKNOWN_CONTACT);
+      profile?.name ??
+      (profile?.username ? `@${profile.username}` : UNKNOWN_CONTACT);
     try {
       const lead = await this.prisma.lead.create({
         data: {
           name: name.slice(0, 120),
           source: INSTAGRAM_SOURCE,
           instagramUserId: senderId,
-          instagramUsername: profile.username,
+          instagramUsername: profile?.username ?? null,
           stageId: stage.id,
           position: await this.prisma.lead.count({
             where: { stageId: stage.id },

@@ -45,7 +45,12 @@ export interface InstagramAppCredentials {
 export interface MessagingProfile {
   name: string | null;
   username: string | null;
+  /** Link da foto de perfil na Meta (expira em poucos dias: baixar e guardar) */
+  profilePictureUrl: string | null;
 }
+
+/** Foto de perfil maior que isso não é baixada */
+export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 /** Situação de um contêiner (post preparado na Meta, antes de publicar) */
 export type ContainerStatus =
@@ -145,7 +150,7 @@ export class InstagramApiClient {
     );
   }
 
-  /** Nome e @ de quem mandou direct (pelo ID dessa pessoa no Instagram, o IGSID). */
+  /** Nome, @ e foto de quem mandou direct (pelo ID dessa pessoa no Instagram, o IGSID). */
   async getMessagingProfile(
     senderId: string,
     token: string,
@@ -154,14 +159,40 @@ export class InstagramApiClient {
       `https://graph.instagram.com/${GRAPH_VERSION}/${senderId}`,
     );
     url.search = new URLSearchParams({
-      fields: 'name,username',
+      fields: 'name,username,profile_pic',
       access_token: token,
     }).toString();
     const body = await this.request(url);
     return {
       name: optionalString(body.name),
       username: optionalString(body.username),
+      profilePictureUrl: optionalString(body.profile_pic),
     };
+  }
+
+  /** Baixa uma imagem da Meta (ex.: foto de perfil), até 2 MB. */
+  async downloadImage(url: string): Promise<Buffer> {
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    } catch {
+      throw new InstagramApiError('Sem resposta ao baixar a imagem', 0);
+    }
+    if (!res.ok) {
+      throw new InstagramApiError(
+        `Erro ${res.status} ao baixar a imagem`,
+        res.status,
+      );
+    }
+    const declared = Number(res.headers.get('content-length'));
+    if (declared > MAX_AVATAR_BYTES) {
+      throw new InstagramApiError('Imagem grande demais', 413);
+    }
+    const body = Buffer.from(await res.arrayBuffer());
+    if (body.length > MAX_AVATAR_BYTES) {
+      throw new InstagramApiError('Imagem grande demais', 413);
+    }
+    return body;
   }
 
   /**

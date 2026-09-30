@@ -62,7 +62,7 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
   return (
     <>
       <header className="flex items-start gap-3 border-b px-5 pt-5 pb-4">
-        <LeadAvatar name={lead.name} />
+        <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
         <div className="min-w-0 flex-1">
           <h2 className="text-h2 break-words">{lead.name}</h2>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-slate-400">
