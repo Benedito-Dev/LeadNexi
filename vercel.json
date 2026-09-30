@@ -5,6 +5,14 @@
       "root": "frontend",
       "rewrites": [
         {
+          "source": "/privacidade",
+          "destination": "/privacidade.html"
+        },
+        {
+          "source": "/exclusao-de-dados",
+          "destination": "/exclusao-de-dados.html"
+        },
+        {
           "source": "/(.*)",
           "destination": "/index.html"
         }
