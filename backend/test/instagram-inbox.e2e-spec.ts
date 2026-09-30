@@ -243,7 +243,12 @@ describe('Direct do Instagram (e2e)', () => {
           { timestamp: sentAt },
         ),
       ).expect(200);
-      expect(res.body).toEqual({ created: 1, messages: 1, ignored: 0 });
+      expect(res.body).toEqual({
+        created: 1,
+        messages: 1,
+        sent: 0,
+        ignored: 0,
+      });
       expect(meta.getMessagingProfile).toHaveBeenCalledWith(
         'igsid-maria',
         'token-real',
@@ -285,11 +290,21 @@ describe('Direct do Instagram (e2e)', () => {
       const second = await deliver(
         dm({ mid: 'm2', text: 'Tem tamanho M?' }),
       ).expect(200);
-      expect(second.body).toEqual({ created: 0, messages: 1, ignored: 0 });
+      expect(second.body).toEqual({
+        created: 0,
+        messages: 1,
+        sent: 0,
+        ignored: 0,
+      });
       const repeated = await deliver(
         dm({ mid: 'm2', text: 'Tem tamanho M?' }),
       ).expect(200);
-      expect(repeated.body).toEqual({ created: 0, messages: 0, ignored: 1 });
+      expect(repeated.body).toEqual({
+        created: 0,
+        messages: 0,
+        sent: 0,
+        ignored: 1,
+      });
 
       expect(
         await prisma.lead.count({ where: { instagramUserId: 'igsid-maria' } }),
@@ -311,10 +326,15 @@ describe('Direct do Instagram (e2e)', () => {
         message: { mid: 'm2', text: 'Tudo bem?' },
       });
       const res = await deliver(payload).expect(200);
-      expect(res.body).toEqual({ created: 1, messages: 2, ignored: 0 });
+      expect(res.body).toEqual({
+        created: 1,
+        messages: 2,
+        sent: 0,
+        ignored: 0,
+      });
     });
 
-    it('ignora eco (mensagem da própria loja), apagada, sem ID e de outra conta', async () => {
+    it('ignora resposta a quem não é lead, apagada, sem ID e de outra conta', async () => {
       const res = await deliver({
         object: 'instagram',
         entry: [
@@ -345,10 +365,81 @@ describe('Direct do Instagram (e2e)', () => {
           },
         ],
       }).expect(200);
-      expect(res.body).toEqual({ created: 0, messages: 0, ignored: 5 });
+      expect(res.body).toEqual({
+        created: 0,
+        messages: 0,
+        sent: 0,
+        ignored: 5,
+      });
       expect(
         await prisma.lead.count({ where: { instagramUserId: { not: null } } }),
       ).toBe(0);
+    });
+
+    it('resposta da loja (eco) entra como enviada no histórico do lead, uma vez só', async () => {
+      const receivedAt = Date.now() - 120_000;
+      await deliver(
+        dm({ mid: 'm1', text: 'Tem tamanho M?' }, { timestamp: receivedAt }),
+      ).expect(200);
+      const echo = (mid: string, text: string, timestamp: number) => ({
+        object: 'instagram',
+        entry: [
+          {
+            id: ACCOUNT,
+            messaging: [
+              {
+                sender: { id: ACCOUNT },
+                recipient: { id: 'igsid-maria' },
+                timestamp,
+                message: { mid, text, is_echo: true },
+              },
+            ],
+          },
+        ],
+      });
+      const repliedAt = Date.now() - 60_000;
+      const res = await deliver(echo('e1', 'Temos sim!', repliedAt)).expect(
+        200,
+      );
+      expect(res.body).toEqual({
+        created: 0,
+        messages: 0,
+        sent: 1,
+        ignored: 0,
+      });
+      const again = await deliver(echo('e1', 'Temos sim!', repliedAt)).expect(
+        200,
+      );
+      expect(again.body).toMatchObject({ sent: 0, ignored: 1 });
+
+      const lead = await prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-maria' },
+      });
+      const messages = (await activitiesOf(lead.id)).filter((a) =>
+        a.type.startsWith('INSTAGRAM_MESSAGE'),
+      );
+      expect(messages.map((m) => [m.type, m.text])).toEqual([
+        ['INSTAGRAM_MESSAGE', 'Tem tamanho M?'],
+        ['INSTAGRAM_MESSAGE_SENT', 'Temos sim!'],
+      ]);
+      expect(messages[1].createdAt.getTime()).toBe(repliedAt);
+      // A resposta não mexe na janela de 24 h: ela conta da mensagem do lead
+      expect(lead.instagramLastMessageAt?.getTime()).toBe(receivedAt);
+    });
+
+    it('janela de 24 h: conta da mensagem mais recente do lead, mesmo com aviso atrasado', async () => {
+      const now = Date.now();
+      await deliver(
+        dm({ mid: 'm2', text: 'Oi' }, { timestamp: now - 1000 }),
+      ).expect(200);
+      // Aviso de uma mensagem mais antiga chegando depois
+      await deliver(
+        dm({ mid: 'm1', text: 'Olá' }, { timestamp: now - 5000 }),
+      ).expect(200);
+      const lead = await prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-maria' },
+      });
+      expect(lead.instagramLastMessageAt?.getTime()).toBe(now - 1000);
     });
 
     it('anexo sem texto vira uma frase no histórico', async () => {
@@ -421,13 +512,23 @@ describe('Direct do Instagram (e2e)', () => {
           },
         ],
       }).expect(200);
-      expect(res.body).toEqual({ created: 1, messages: 1, ignored: 0 });
+      expect(res.body).toEqual({
+        created: 1,
+        messages: 1,
+        sent: 0,
+        ignored: 0,
+      });
     });
 
     it('sem conta conectada, nada entra', async () => {
       await prisma.instagramAccount.deleteMany();
       const res = await deliver(dm({ mid: 'm1', text: 'Oi' })).expect(200);
-      expect(res.body).toEqual({ created: 0, messages: 0, ignored: 1 });
+      expect(res.body).toEqual({
+        created: 0,
+        messages: 0,
+        sent: 0,
+        ignored: 1,
+      });
     });
   });
 

@@ -29,6 +29,8 @@ export type LeadActivityType =
   | 'FOLLOW_UP_DONE'
   /** Mensagem recebida no direct do Instagram */
   | 'INSTAGRAM_MESSAGE'
+  /** Mensagem enviada ao lead no direct (pelo app do Instagram ou pelo LeadNexi) */
+  | 'INSTAGRAM_MESSAGE_SENT'
 
 /** Item do histórico do lead (GET /leads/:id/activities, mais novo primeiro) */
 export interface LeadActivity {

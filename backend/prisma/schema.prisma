@@ -49,30 +49,32 @@ model Stage {
 
 // Card do Kanban
 model Lead {
-  id                String         @id @default(uuid())
-  name              String
-  phone             String?
-  email             String?
-  source            String?
-  estimatedValue    Decimal?       @map("estimated_value") @db.Decimal(12, 2)
-  notes             String?
-  position          Int            @default(0)
-  stageId           String         @map("stage_id")
-  stage             Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  id                     String         @id @default(uuid())
+  name                   String
+  phone                  String?
+  email                  String?
+  source                 String?
+  estimatedValue         Decimal?       @map("estimated_value") @db.Decimal(12, 2)
+  notes                  String?
+  position               Int            @default(0)
+  stageId                String         @map("stage_id")
+  stage                  Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
   /// Próximo contato agendado (um por lead); null = nenhum
-  followUpAt        DateTime?      @map("follow_up_at")
-  followUpNote      String?        @map("follow_up_note")
+  followUpAt             DateTime?      @map("follow_up_at")
+  followUpNote           String?        @map("follow_up_note")
   /// @ do Instagram (sem o @)
-  instagramUsername String?        @map("instagram_username")
+  instagramUsername      String?        @map("instagram_username")
   /// Quem mandou direct (ID da pessoa no Instagram, IGSID): liga as mensagens novas ao lead
-  instagramUserId   String?        @unique @map("instagram_user_id")
+  instagramUserId        String?        @unique @map("instagram_user_id")
   /// Foto de perfil guardada no armazenamento (leads/avatars/<id>.jpg); troca de ID a cada foto nova
-  avatarId          String?        @map("avatar_id")
+  avatarId               String?        @map("avatar_id")
   /// Quando a foto foi conferida pela última vez (o LeadNexi atualiza no máximo uma vez por semana)
-  avatarUpdatedAt   DateTime?      @map("avatar_updated_at")
-  activities        LeadActivity[]
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
+  avatarUpdatedAt        DateTime?      @map("avatar_updated_at")
+  /// Última mensagem que o lead mandou no direct: a janela de 24 h para responder conta daqui
+  instagramLastMessageAt DateTime?      @map("instagram_last_message_at")
+  activities             LeadActivity[]
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
 
   @@index([stageId])
   @@index([followUpAt])
@@ -87,6 +89,8 @@ enum LeadActivityType {
   FOLLOW_UP_DONE
   /// Mensagem recebida no direct do Instagram
   INSTAGRAM_MESSAGE
+  /// Mensagem enviada ao lead no direct (pelo app do Instagram ou pelo LeadNexi)
+  INSTAGRAM_MESSAGE_SENT
 }
 
 // Histórico do lead: uma linha por acontecimento, da mais nova para a mais antiga

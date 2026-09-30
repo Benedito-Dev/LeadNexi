@@ -54,13 +54,17 @@ export interface InboxResult {
   created: number;
   /** Mensagens registradas no histórico (de leads novos ou que já existiam) */
   messages: number;
-  /** Ignoradas: repetidas, enviadas pela própria conta, de outra conta ou sem ID */
+  /** Respostas da própria conta (eco) registradas no histórico do lead */
+  sent: number;
+  /** Ignoradas: repetidas, apagadas, de outra conta, sem ID ou resposta a quem não é lead */
   ignored: number;
 }
 
 /**
  * Caixa de entrada do direct: cada mensagem recebida vira um item no histórico do lead. Quem
  * ainda não é lead vira um, na primeira etapa do funil, com nome, @ e origem "Instagram".
+ * As respostas da conta (a Meta avisa como eco, venham do app do Instagram ou do LeadNexi)
+ * entram como enviadas no histórico do lead; resposta a quem não é lead não cria lead.
  * A Meta pode avisar a mesma mensagem mais de uma vez: o ID dela (`mid`) entra uma vez só.
  */
 @Injectable()
@@ -97,7 +101,12 @@ export class InstagramInboxService {
 
   /** Processa um aviso da Meta. Erro numa mensagem não impede as outras. */
   async handle(payload: unknown): Promise<InboxResult> {
-    const result: InboxResult = { created: 0, messages: 0, ignored: 0 };
+    const result: InboxResult = {
+      created: 0,
+      messages: 0,
+      sent: 0,
+      ignored: 0,
+    };
     const account = await this.prisma.instagramAccount.findFirst({
       orderBy: { createdAt: 'desc' },
     });
@@ -111,6 +120,7 @@ export class InstagramInboxService {
       try {
         const outcome = await this.receive(event, account.accessToken);
         if (outcome === 'ignored') result.ignored++;
+        else if (outcome === 'sent') result.sent++;
         else {
           result.messages++;
           if (outcome === 'new-lead') result.created++;
@@ -127,19 +137,13 @@ export class InstagramInboxService {
   private async receive(
     event: MessagingEvent,
     storedToken: string,
-  ): Promise<'new-lead' | 'message' | 'ignored'> {
+  ): Promise<'new-lead' | 'message' | 'sent' | 'ignored'> {
     const message = event.message;
     const mid = typeof message?.mid === 'string' ? message.mid : null;
     const senderId =
       typeof event.sender?.id === 'string' ? event.sender.id : null;
-    // Mensagem enviada pela própria conta (eco), apagada, ou sem quem mandou
-    if (
-      !message ||
-      !mid ||
-      !senderId ||
-      message.is_echo ||
-      message.is_deleted
-    ) {
+    // Mensagem apagada, sem ID ou sem quem mandou
+    if (!message || !mid || !senderId || message.is_deleted) {
       return 'ignored';
     }
     const repeated = await this.prisma.leadActivity.findUnique({
@@ -154,6 +158,14 @@ export class InstagramInboxService {
       Number.isFinite(timestamp) && timestamp > 0
         ? new Date(timestamp)
         : new Date();
+
+    if (message.is_echo) {
+      const recipientId =
+        typeof event.recipient?.id === 'string' ? event.recipient.id : null;
+      return recipientId
+        ? this.recordSent(recipientId, message, mid, sentAt)
+        : 'ignored';
+    }
 
     let lead = await this.prisma.lead.findUnique({
       where: { instagramUserId: senderId },
@@ -185,6 +197,17 @@ export class InstagramInboxService {
       if (isUniqueViolation(error)) return 'ignored';
       throw error;
     }
+    // Janela de 24 h para responder: conta da mensagem mais recente (avisos podem chegar fora de ordem)
+    await this.prisma.lead.updateMany({
+      where: {
+        id: lead.id,
+        OR: [
+          { instagramLastMessageAt: null },
+          { instagramLastMessageAt: { lt: sentAt } },
+        ],
+      },
+      data: { instagramLastMessageAt: sentAt },
+    });
 
     // Foto de perfil: no lead novo e, nos outros, se não foi conferida na última semana
     const stale =
@@ -199,6 +222,38 @@ export class InstagramInboxService {
       );
     }
     return created ? 'new-lead' : 'message';
+  }
+
+  /**
+   * Resposta da conta (eco) no histórico do lead que recebeu. Quem não é lead fica de fora: uma
+   * mensagem da própria loja não cria lead.
+   */
+  private async recordSent(
+    recipientId: string,
+    message: NonNullable<MessagingEvent['message']>,
+    mid: string,
+    sentAt: Date,
+  ): Promise<'sent' | 'ignored'> {
+    const lead = await this.prisma.lead.findUnique({
+      where: { instagramUserId: recipientId },
+      select: { id: true },
+    });
+    if (!lead) return 'ignored';
+    try {
+      await this.prisma.leadActivity.create({
+        data: {
+          leadId: lead.id,
+          type: 'INSTAGRAM_MESSAGE_SENT',
+          text: describeMessage(message),
+          externalId: mid,
+          createdAt: sentAt,
+        },
+      });
+      return 'sent';
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'ignored';
+      throw error;
+    }
   }
 
   /** Nome, @ e foto de quem mandou. Se a Meta não responder: null (o lead nasce com nome genérico). */

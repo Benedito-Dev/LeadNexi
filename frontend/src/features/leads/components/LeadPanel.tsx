@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   NotebookPen,
   Plus,
+  Reply,
   Trash2,
   X,
   type LucideIcon,
@@ -460,6 +461,14 @@ function describe(activity: LeadActivity): {
         title: activity.text ?? '',
         bubble: true,
         label: 'Direct do Instagram',
+      }
+    case 'INSTAGRAM_MESSAGE_SENT':
+      return {
+        icon: Reply,
+        tone: 'text-cyan',
+        title: activity.text ?? '',
+        bubble: true,
+        label: 'Você respondeu no direct',
       }
     case 'FOLLOW_UP_SCHEDULED':
       return {
