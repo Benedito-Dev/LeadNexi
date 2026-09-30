@@ -1,7 +1,5 @@
 import {
   CalendarClock,
-  CircleAlert,
-  CircleCheck,
   ExternalLink,
   Images,
   LoaderCircle,
@@ -13,27 +11,33 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
-import { ApiError } from '../../../lib/api.ts'
 import { formatDateTime } from '../../../lib/format.ts'
 import { useCancelPost, useInstagramPosts, useInstagramPublishing, usePublishPost } from '../hooks.ts'
-import type { InstagramPost, InstagramPostStatus } from '../types.ts'
-
-const STATUS: Record<InstagramPostStatus, { label: string; tone: string }> = {
-  SCHEDULED: { label: 'Agendado', tone: 'text-slate-300' },
-  PUBLISHING: { label: 'Publicando', tone: 'text-slate-300' },
-  PUBLISHED: { label: 'Publicado', tone: 'text-success' },
-  FAILED: { label: 'Falhou', tone: 'text-danger' },
-}
+import { actionErrorMessage, isPending, POST_STATUS, postDate } from '../status.ts'
+import type { InstagramPost } from '../types.ts'
+import type { PostView } from '../view.ts'
+import { PostDetails } from './PostDetails.tsx'
+import { PostGrid } from './PostGrid.tsx'
+import { StatusIcon } from './StatusIcon.tsx'
 
 // Posts do Instagram (BRAND.md, seção 9.5): primeiro os que ainda não saíram (do mais próximo ao mais
-// distante), depois os publicados. Capa, legenda, quando sai, status e as ações: "Publicar agora"
-// (ou "Tentar de novo") e "Cancelar" enquanto não saiu, "Ver no Instagram" depois de publicado.
-export function PostList() {
+// distante), depois os publicados. Em lista: capa, legenda, quando sai, status e as ações ("Publicar
+// agora" ou "Tentar de novo" e "Cancelar" enquanto não saiu, "Ver no Instagram" depois de publicado).
+// Em grade: só as capas; clicar abre os detalhes, com as mesmas ações.
+export function PostList({ view }: { view: PostView }) {
   const posts = useInstagramPosts()
   const publishing = useInstagramPublishing()
+  // Post aberto nos detalhes (pela grade). Se ele sumir da lista (cancelado), o painel fecha.
+  const [openId, setOpenId] = useState<string | null>(null)
 
   if (posts.isPending) {
-    return (
+    return view === 'grade' ? (
+      <div aria-busy="true" aria-label="Carregando posts" className="grid grid-cols-3 gap-1 sm:gap-2">
+        {[0, 1, 2].map((tile) => (
+          <div key={tile} className="aspect-[4/5] animate-pulse rounded-sm bg-navy-800" />
+        ))}
+      </div>
+    ) : (
       <div aria-busy="true" aria-label="Carregando posts" className="flex flex-col gap-2">
         {[0, 1].map((row) => (
           <div key={row} className="h-20 animate-pulse rounded-xl border bg-navy-800" />
@@ -69,11 +73,16 @@ export function PostList() {
           Com a publicação automática desligada, os posts agendados não saem sozinhos. Use "Publicar agora" em cada um.
         </p>
       )}
-      <ul className="flex flex-col gap-2">
-        {posts.data.map((post) => (
-          <PostItem key={post.id} post={post} />
-        ))}
-      </ul>
+      {view === 'grade' ? (
+        <PostGrid posts={posts.data} onOpen={setOpenId} />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {posts.data.map((post) => (
+            <PostItem key={post.id} post={post} />
+          ))}
+        </ul>
+      )}
+      <PostDetails post={posts.data.find((post) => post.id === openId)} onClose={() => setOpenId(null)} />
     </>
   )
 }
@@ -82,12 +91,12 @@ function PostItem({ post }: { post: InstagramPost }) {
   const cancel = useCancelPost()
   const publish = usePublishPost()
   const cover = post.images[0]
-  const status = STATUS[post.status]
-  const pending = post.status === 'SCHEDULED' || post.status === 'FAILED'
+  const status = POST_STATUS[post.status]
+  const pending = isPending(post)
   const busy = cancel.isPending || publish.isPending
   const actionError =
-    errorMessage(cancel.error, 'Não foi possível cancelar. Tente de novo.') ??
-    errorMessage(publish.error, 'Não foi possível publicar. Tente de novo.')
+    actionErrorMessage(cancel.error, 'Não foi possível cancelar. Tente de novo.') ??
+    actionErrorMessage(publish.error, 'Não foi possível publicar. Tente de novo.')
 
   return (
     <li className="flex items-start gap-4 rounded-xl border bg-navy-800 p-3">
@@ -115,7 +124,7 @@ function PostItem({ post }: { post: InstagramPost }) {
             ·
           </span>
           {/* Publicado: quando saiu; nos outros, quando está marcado para sair */}
-          <span>{formatDateTime(post.publishedAt ?? post.scheduledAt)}</span>
+          <span>{formatDateTime(postDate(post))}</span>
           <span aria-hidden className="hidden sm:inline">
             ·
           </span>
@@ -211,18 +220,4 @@ function ConfirmButton({
       {confirming ? 'Confirmar' : <span className="sr-only sm:not-sr-only">{label}</span>}
     </button>
   )
-}
-
-/** Erro de uma ação da lista: o motivo do servidor (409/404) ou uma mensagem genérica. */
-function errorMessage(error: Error | null, fallback: string) {
-  if (!error) return null
-  return error instanceof ApiError && (error.status === 409 || error.status === 404) ? error.message : fallback
-}
-
-function StatusIcon({ status }: { status: InstagramPostStatus }) {
-  const props = { 'aria-hidden': true, size: 14, strokeWidth: 1.75 } as const
-  if (status === 'PUBLISHING') return <LoaderCircle {...props} className="animate-spin" />
-  if (status === 'PUBLISHED') return <CircleCheck {...props} />
-  if (status === 'FAILED') return <CircleAlert {...props} />
-  return <CalendarClock {...props} />
 }
