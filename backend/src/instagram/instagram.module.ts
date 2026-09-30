@@ -4,6 +4,7 @@ import { InstagramApiClient } from './instagram-api.client.js';
 import { InstagramCronController } from './instagram-cron.controller.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
+import { InstagramSettingsService } from './instagram-settings.service.js';
 import { InstagramController } from './instagram.controller.js';
 import { InstagramService } from './instagram.service.js';
 
@@ -14,6 +15,11 @@ import { InstagramService } from './instagram.service.js';
     InstagramPostsController,
     InstagramCronController,
   ],
-  providers: [InstagramService, InstagramPostsService, InstagramApiClient],
+  providers: [
+    InstagramService,
+    InstagramSettingsService,
+    InstagramPostsService,
+    InstagramApiClient,
+  ],
 })
 export class InstagramModule {}

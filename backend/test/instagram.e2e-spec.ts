@@ -8,6 +8,7 @@ import { AppModule } from './../src/app.module.js';
 import {
   decryptSecret,
   encryptSecret,
+  resolveEncryptionKey,
 } from './../src/common/crypto/secret-box.js';
 import {
   InstagramApiClient,
@@ -67,6 +68,7 @@ describe('Instagram (e2e)', () => {
 
   beforeEach(async () => {
     await prisma.instagramAccount.deleteMany();
+    await prisma.instagramAppSettings.deleteMany();
     Object.values(meta).forEach((fn) => fn.mockReset());
     meta.exchangeCode.mockResolvedValue('token-curto');
     meta.exchangeForLongLived.mockResolvedValue({
@@ -84,6 +86,7 @@ describe('Instagram (e2e)', () => {
 
   afterAll(async () => {
     await prisma.instagramAccount.deleteMany();
+    await prisma.instagramAppSettings.deleteMany();
     await app.close();
   });
 
@@ -117,12 +120,15 @@ describe('Instagram (e2e)', () => {
     expect(url.searchParams.get('state')).toBeTruthy();
   });
 
-  it('sem a configuração completa no servidor, "conectar" responde 503', async () => {
-    delete process.env.TOKEN_ENCRYPTION_KEY;
+  it('sem app da Meta (nem na tela, nem no servidor), "conectar" responde 503', async () => {
+    delete process.env.INSTAGRAM_APP_SECRET;
     try {
-      await api().post('/instagram/connect').set(auth).expect(503);
+      const res = await api().post('/instagram/connect').set(auth).expect(503);
+      expect(res.body.message).toBe(
+        'Configure o app da Meta na tela do Instagram.',
+      );
     } finally {
-      process.env.TOKEN_ENCRYPTION_KEY = key.toString('base64');
+      process.env.INSTAGRAM_APP_SECRET = 'segredo-do-app';
     }
   });
 
@@ -132,8 +138,15 @@ describe('Instagram (e2e)', () => {
       state: await validState(),
     });
     expect(location).toBe('/instagram?conectado=1');
-    expect(meta.exchangeCode).toHaveBeenCalledWith('codigo-da-meta');
-    expect(meta.exchangeForLongLived).toHaveBeenCalledWith('token-curto');
+    expect(meta.exchangeCode).toHaveBeenCalledWith('codigo-da-meta', {
+      appId: 'app-de-teste',
+      appSecret: 'segredo-do-app',
+      redirectUri: 'https://exemplo.test/api/instagram/callback',
+    });
+    expect(meta.exchangeForLongLived).toHaveBeenCalledWith(
+      'token-curto',
+      'segredo-do-app',
+    );
     expect(meta.getProfile).toHaveBeenCalledWith('token-longo');
 
     const res = await api().get('/instagram/account').set(auth).expect(200);
@@ -360,6 +373,177 @@ describe('Instagram (e2e)', () => {
       .get('/instagram/account')
       .set('Authorization', `Bearer ${state}`)
       .expect(401);
+  });
+
+  describe('app da Meta configurado pela tela', () => {
+    const SECRET = 'segredo-da-tela-0123456789';
+    const ENV_NAMES = [
+      'INSTAGRAM_APP_ID',
+      'INSTAGRAM_APP_SECRET',
+      'INSTAGRAM_REDIRECT_URI',
+    ];
+    /** Servidor como na produção: atrás do proxy, em https://leadnexi.test */
+    const behindProxy = <T extends { set: (k: string, v: string) => T }>(
+      req: T,
+    ) => req.set('Host', 'leadnexi.test').set('X-Forwarded-Proto', 'https');
+
+    /** Tira as variáveis INSTAGRAM_* durante o teste: só vale o que a tela salvar */
+    async function withoutEnv(run: () => Promise<void>) {
+      const saved = ENV_NAMES.map((name) => [name, process.env[name]]);
+      ENV_NAMES.forEach((name) => delete process.env[name]);
+      try {
+        await run();
+      } finally {
+        saved.forEach(([name, value]) => (process.env[name!] = value));
+      }
+    }
+
+    it('sem nada configurado, mostra o endereço de retorno deste servidor', async () => {
+      await withoutEnv(async () => {
+        const res = await behindProxy(
+          api().get('/instagram/settings').set(auth),
+        ).expect(200);
+        expect(res.body).toEqual({
+          appId: null,
+          secretSaved: false,
+          source: null,
+          configured: false,
+          redirectUri: 'https://leadnexi.test/api/instagram/callback',
+        });
+      });
+    });
+
+    it('com as variáveis do servidor, mostra de onde vem, sem a chave', async () => {
+      const res = await api().get('/instagram/settings').set(auth).expect(200);
+      expect(res.body).toEqual({
+        appId: 'app-de-teste',
+        secretSaved: true,
+        source: 'servidor',
+        configured: true,
+        redirectUri: 'https://exemplo.test/api/instagram/callback',
+      });
+      expect(JSON.stringify(res.body)).not.toContain('segredo-do-app');
+    });
+
+    it('salva pela tela (chave criptografada) e usa no login de ponta a ponta', async () => {
+      await withoutEnv(async () => {
+        const res = await behindProxy(
+          api().put('/instagram/settings').set(auth),
+        )
+          .send({ appId: '2031084050892157', appSecret: SECRET })
+          .expect(200);
+        expect(res.body).toMatchObject({
+          appId: '2031084050892157',
+          secretSaved: true,
+          source: 'tela',
+          configured: true,
+        });
+        expect(JSON.stringify(res.body)).not.toContain(SECRET);
+
+        const saved = await prisma.instagramAppSettings.findFirstOrThrow();
+        expect(saved.appSecret).not.toContain(SECRET);
+        expect(decryptSecret(saved.appSecret, key)).toBe(SECRET);
+
+        const connect = await behindProxy(
+          api().post('/instagram/connect').set(auth),
+        ).expect(200);
+        const url = new URL(connect.body.url as string);
+        expect(url.searchParams.get('client_id')).toBe('2031084050892157');
+        expect(url.searchParams.get('redirect_uri')).toBe(
+          'https://leadnexi.test/api/instagram/callback',
+        );
+
+        const back = await behindProxy(api().get('/instagram/callback'))
+          .query({ code: 'c', state: url.searchParams.get('state')! })
+          .expect(302);
+        expect(back.headers.location).toBe('/instagram?conectado=1');
+        expect(meta.exchangeCode).toHaveBeenCalledWith('c', {
+          appId: '2031084050892157',
+          appSecret: SECRET,
+          redirectUri: 'https://leadnexi.test/api/instagram/callback',
+        });
+      });
+    });
+
+    it('o que foi salvo na tela vale mais que as variáveis do servidor', async () => {
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: '999999999', appSecret: SECRET })
+        .expect(200);
+      const connect = await api()
+        .post('/instagram/connect')
+        .set(auth)
+        .expect(200);
+      expect(
+        new URL(connect.body.url as string).searchParams.get('client_id'),
+      ).toBe('999999999');
+    });
+
+    it('na primeira vez exige a chave; depois, trocar só o ID mantém a chave salva', async () => {
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: '111111' })
+        .expect(400);
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: '111111', appSecret: SECRET })
+        .expect(200);
+      const before = await prisma.instagramAppSettings.findFirstOrThrow();
+
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: '222222' })
+        .expect(200);
+      const after = await prisma.instagramAppSettings.findFirstOrThrow();
+      expect(after.appId).toBe('222222');
+      expect(after.appSecret).toBe(before.appSecret);
+    });
+
+    it('recusa ID com letras e chave curta demais', async () => {
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: 'abc123', appSecret: SECRET })
+        .expect(400);
+      await api()
+        .put('/instagram/settings')
+        .set(auth)
+        .send({ appId: '123456', appSecret: 'curta' })
+        .expect(400);
+      expect(await prisma.instagramAppSettings.count()).toBe(0);
+    });
+
+    it('sem TOKEN_ENCRYPTION_KEY, usa a chave derivada do JWT_SECRET', async () => {
+      delete process.env.TOKEN_ENCRYPTION_KEY;
+      try {
+        await api()
+          .put('/instagram/settings')
+          .set(auth)
+          .send({ appId: '123456', appSecret: SECRET })
+          .expect(200);
+        const saved = await prisma.instagramAppSettings.findFirstOrThrow();
+        const derived = resolveEncryptionKey(
+          undefined,
+          process.env.JWT_SECRET,
+        )!;
+        expect(decryptSecret(saved.appSecret, derived)).toBe(SECRET);
+        await api().post('/instagram/connect').set(auth).expect(200);
+      } finally {
+        process.env.TOKEN_ENCRYPTION_KEY = key.toString('base64');
+      }
+    });
+
+    it('exige login', async () => {
+      await api().get('/instagram/settings').expect(401);
+      await api()
+        .put('/instagram/settings')
+        .send({ appId: '123456' })
+        .expect(401);
+    });
   });
 
   it('exige login, menos na volta do Instagram', async () => {

@@ -137,6 +137,19 @@ model InstagramAccount {
   @@map("instagram_accounts")
 }
 
+// App da Meta usado no login do Instagram, configurado pela tela do Instagram. Uma linha só
+// (id = 1); a chave secreta fica criptografada. Sem esta linha, valem as variáveis INSTAGRAM_*.
+model InstagramAppSettings {
+  id        Int      @id @default(1)
+  /// "ID do app do Instagram" (no painel da Meta: API com login do Instagram)
+  appId     String   @map("app_id")
+  /// "Chave secreta do app do Instagram", criptografada ("v1.<iv>.<tag>.<dados>")
+  appSecret String   @map("app_secret")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("instagram_app_settings")
+}
+
 enum InstagramPostStatus {
   /// Esperando a hora de publicar
   SCHEDULED

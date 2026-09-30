@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import {
   GRAPH_VERSION,
   InstagramApiClient,
@@ -7,12 +6,12 @@ import {
 
 // Formato das chamadas à Meta e leitura das respostas, com o fetch simulado.
 describe('InstagramApiClient', () => {
-  const config = new ConfigService({
-    INSTAGRAM_APP_ID: 'app-id',
-    INSTAGRAM_APP_SECRET: 'app-secret',
-    INSTAGRAM_REDIRECT_URI: 'https://exemplo.test/api/instagram/callback',
-  });
-  const client = new InstagramApiClient(config);
+  const app = {
+    appId: 'app-id',
+    appSecret: 'app-secret',
+    redirectUri: 'https://exemplo.test/api/instagram/callback',
+  };
+  const client = new InstagramApiClient();
   const fetchMock = vi.fn<typeof fetch>();
 
   beforeEach(() => {
@@ -33,7 +32,7 @@ describe('InstagramApiClient', () => {
 
   it('troca o código por token com POST no formato de formulário', async () => {
     reply(200, { data: [{ access_token: 'curto', user_id: '17841' }] });
-    expect(await client.exchangeCode('abc')).toBe('curto');
+    expect(await client.exchangeCode('abc', app)).toBe('curto');
 
     const { url, init } = lastCall();
     expect(url.href).toBe('https://api.instagram.com/oauth/access_token');
@@ -50,7 +49,7 @@ describe('InstagramApiClient', () => {
 
   it('aceita a resposta da troca também sem o envelope data', async () => {
     reply(200, { access_token: 'curto', user_id: 17841 });
-    expect(await client.exchangeCode('abc')).toBe('curto');
+    expect(await client.exchangeCode('abc', app)).toBe('curto');
   });
 
   it('troca o token curto pelo de 60 dias', async () => {
@@ -59,7 +58,7 @@ describe('InstagramApiClient', () => {
       token_type: 'bearer',
       expires_in: 5183944,
     });
-    expect(await client.exchangeForLongLived('curto')).toEqual({
+    expect(await client.exchangeForLongLived('curto', 'app-secret')).toEqual({
       accessToken: 'longo',
       expiresIn: 5183944,
     });
@@ -135,7 +134,7 @@ describe('InstagramApiClient', () => {
       code: 400,
       error_message: 'Invalid code',
     });
-    const oauth = await client.exchangeCode('x').catch((e: unknown) => e);
+    const oauth = await client.exchangeCode('x', app).catch((e: unknown) => e);
     expect((oauth as InstagramApiError).message).toBe('Invalid code');
     expect((oauth as InstagramApiError).invalidToken).toBe(false);
   });

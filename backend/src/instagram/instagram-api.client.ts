@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 
 /** Versão da Graph API do Instagram usada nas chamadas com versão */
 export const GRAPH_VERSION = 'v25.0';
@@ -32,6 +31,14 @@ export interface LongLivedToken {
   expiresIn: number;
 }
 
+/** Credenciais do app da Meta (da tela do Instagram ou das variáveis do servidor) */
+export interface InstagramAppCredentials {
+  appId: string;
+  appSecret: string;
+  /** Endereço de retorno do login: precisa ser o mesmo cadastrado no app da Meta */
+  redirectUri: string;
+}
+
 export interface InstagramProfile {
   /** ID da conta profissional: é o usado para publicar */
   userId: string;
@@ -48,19 +55,20 @@ export interface InstagramProfile {
  */
 @Injectable()
 export class InstagramApiClient {
-  constructor(private readonly config: ConfigService) {}
-
   /** Troca o código da volta do login por um token curto (1 hora). */
-  async exchangeCode(code: string): Promise<string> {
+  async exchangeCode(
+    code: string,
+    app: InstagramAppCredentials,
+  ): Promise<string> {
     const body = await this.request(
       'https://api.instagram.com/oauth/access_token',
       {
         method: 'POST',
         body: new URLSearchParams({
-          client_id: this.setting('INSTAGRAM_APP_ID'),
-          client_secret: this.setting('INSTAGRAM_APP_SECRET'),
+          client_id: app.appId,
+          client_secret: app.appSecret,
           grant_type: 'authorization_code',
-          redirect_uri: this.setting('INSTAGRAM_REDIRECT_URI'),
+          redirect_uri: app.redirectUri,
           code,
         }),
       },
@@ -69,11 +77,14 @@ export class InstagramApiClient {
   }
 
   /** Troca o token curto pelo de 60 dias. */
-  async exchangeForLongLived(shortToken: string): Promise<LongLivedToken> {
+  async exchangeForLongLived(
+    shortToken: string,
+    appSecret: string,
+  ): Promise<LongLivedToken> {
     const url = new URL('https://graph.instagram.com/access_token');
     url.search = new URLSearchParams({
       grant_type: 'ig_exchange_token',
-      client_secret: this.setting('INSTAGRAM_APP_SECRET'),
+      client_secret: appSecret,
       access_token: shortToken,
     }).toString();
     return toLongLived(await this.request(url));
@@ -103,10 +114,6 @@ export class InstagramApiClient {
       profilePictureUrl: optionalString(data.profile_picture_url),
       accountType: optionalString(data.account_type),
     };
-  }
-
-  private setting(name: string): string {
-    return this.config.get<string>(name) ?? '';
   }
 
   private async request(url: string | URL, init?: RequestInit): Promise<Json> {

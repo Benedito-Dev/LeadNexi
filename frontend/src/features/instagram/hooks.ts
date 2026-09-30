@@ -5,7 +5,9 @@ import {
   createInstagramPost,
   disconnectInstagram,
   getInstagramAccount,
+  getInstagramSettings,
   listInstagramPosts,
+  saveInstagramSettings,
   startInstagramConnect,
   uploadInstagramMedia,
 } from './api.ts'
@@ -13,6 +15,19 @@ import {
 export const instagramKeys = {
   account: ['instagram', 'account'] as const,
   posts: ['instagram', 'posts'] as const,
+  settings: ['instagram', 'settings'] as const,
+}
+
+export function useInstagramSettings() {
+  return useQuery({ queryKey: instagramKeys.settings, queryFn: getInstagramSettings })
+}
+
+export function useSaveInstagramSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: saveInstagramSettings,
+    onSuccess: (settings) => queryClient.setQueryData(instagramKeys.settings, settings),
+  })
 }
 
 export function useInstagramAccount() {

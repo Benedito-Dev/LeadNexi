@@ -1,20 +1,12 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import {
-  decryptSecret,
-  encryptSecret,
-  parseEncryptionKey,
-} from '../common/crypto/secret-box.js';
+import { decryptSecret, encryptSecret } from '../common/crypto/secret-box.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   InstagramApiClient,
   InstagramApiError,
 } from './instagram-api.client.js';
+import { InstagramSettingsService } from './instagram-settings.service.js';
 
 /** Permissões pedidas no login: ler o perfil e publicar conteúdo */
 const SCOPES = [
@@ -55,7 +47,7 @@ export class InstagramService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly config: ConfigService,
+    private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
   ) {}
 
@@ -89,17 +81,20 @@ export class InstagramService {
   /**
    * Link do login oficial do Instagram. O `state` é um JWT curto (10 min) com o usuário,
    * conferido no retorno para impedir que alguém injete o login de outra conta (CSRF).
+   * `origin` é o endereço público do servidor (monta o endereço de retorno).
    */
-  async createAuthorizeUrl(userId: string) {
-    this.requireSettings();
+  async createAuthorizeUrl(userId: string, origin: string) {
+    // Sem app configurado (ou sem chave de criptografia), avisa já: o login falharia na volta
+    const app = await this.settings.require(origin);
+    this.settings.requireKey();
     const state = await this.jwtService.signAsync(
       { sub: userId },
       { audience: OAUTH_STATE_AUDIENCE, expiresIn: '10m' },
     );
     const url = new URL('https://www.instagram.com/oauth/authorize');
     url.search = new URLSearchParams({
-      client_id: this.config.get<string>('INSTAGRAM_APP_ID')!,
-      redirect_uri: this.config.get<string>('INSTAGRAM_REDIRECT_URI')!,
+      client_id: app.appId,
+      redirect_uri: app.redirectUri,
       response_type: 'code',
       scope: SCOPES.join(','),
       state,
@@ -112,7 +107,10 @@ export class InstagramService {
    * perfil e guarda a conta com o token criptografado. Devolve para onde levar o navegador
    * (a tela do Instagram, com o resultado na URL). Nunca lança: todo erro vira `?erro=`.
    */
-  async completeConnection(query: CallbackQuery): Promise<string> {
+  async completeConnection(
+    query: CallbackQuery,
+    origin: string,
+  ): Promise<string> {
     try {
       // Cancelou no Instagram (ex.: error=access_denied)
       if (query.error !== undefined) return failure('negado');
@@ -123,9 +121,13 @@ export class InstagramService {
       const stateError = await this.checkState(query.state);
       if (stateError) return failure(stateError);
 
-      const key = this.requireSettings();
-      const shortToken = await this.api.exchangeCode(query.code);
-      const longToken = await this.api.exchangeForLongLived(shortToken);
+      const app = await this.settings.require(origin);
+      const key = this.settings.requireKey();
+      const shortToken = await this.api.exchangeCode(query.code, app);
+      const longToken = await this.api.exchangeForLongLived(
+        shortToken,
+        app.appSecret,
+      );
       const profile = await this.api.getProfile(longToken.accessToken);
 
       const accountType = profile.accountType?.toUpperCase();
@@ -165,7 +167,8 @@ export class InstagramService {
    * pela Meta marca a conta para reconexão; falha passageira fica para a próxima rodada.
    */
   async refreshExpiringTokens(now = new Date()) {
-    const key = this.requireSettings();
+    // Renovar só precisa do token (e da chave para abri-lo), não das credenciais do app
+    const key = this.settings.requireKey();
     const accounts = await this.prisma.instagramAccount.findMany({
       where: {
         tokenInvalidAt: null,
@@ -234,29 +237,6 @@ export class InstagramService {
       }
       return 'falha';
     }
-  }
-
-  /**
-   * Tudo que a integração precisa no servidor. Sem isso, "Conectar" avisa que falta configurar
-   * (503) em vez de mandar a pessoa para um login que falharia na volta.
-   */
-  private requireSettings(): Buffer {
-    const key = parseEncryptionKey(
-      this.config.get<string>('TOKEN_ENCRYPTION_KEY'),
-    );
-    const ready =
-      key &&
-      [
-        'INSTAGRAM_APP_ID',
-        'INSTAGRAM_APP_SECRET',
-        'INSTAGRAM_REDIRECT_URI',
-      ].every((name) => this.config.get<string>(name));
-    if (!ready) {
-      throw new ServiceUnavailableException(
-        'A integração com o Instagram ainda não foi configurada no servidor.',
-      );
-    }
-    return key;
   }
 }
 
