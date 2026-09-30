@@ -42,9 +42,12 @@ export interface UploadedImage {
   size: number;
 }
 
+/** Publicados mostrados na lista (os mais recentes) */
+const PUBLISHED_IN_LIST = 20;
+
 /**
  * Posts do Instagram montados no LeadNexi: envio das imagens, agendamento, lista e cancelamento.
- * Publicar de fato (na hora marcada) é a próxima etapa.
+ * A publicação em si fica no InstagramPublisherService.
  */
 @Injectable()
 export class InstagramPostsService {
@@ -88,12 +91,20 @@ export class InstagramPostsService {
     };
   }
 
-  /** Agenda um post com imagens já enviadas, na ordem recebida. */
+  /**
+   * Cria o post com imagens já enviadas, na ordem recebida. Agendado; ou, com `publishNow`, já
+   * marcado como "Publicando" (ninguém mais pega o post enquanto ele é enviado).
+   */
   async create(dto: CreateInstagramPostDto) {
-    await this.requireConnectedAccount();
-    const scheduledAt = new Date(dto.scheduledAt);
+    await this.requireConnectedAccount(
+      dto.publishNow
+        ? 'Conecte o Instagram para publicar.'
+        : 'Conecte o Instagram para agendar posts.',
+    );
+    const now = new Date();
+    const scheduledAt = dto.publishNow ? now : new Date(dto.scheduledAt!);
     // 1 minuto de folga para o relógio do navegador
-    if (scheduledAt.getTime() < Date.now() - 60_000) {
+    if (scheduledAt.getTime() < now.getTime() - 60_000) {
       throw new BadRequestException('Escolha um horário no futuro.');
     }
     if (countHashtags(dto.caption) > HASHTAG_LIMIT) {
@@ -102,7 +113,13 @@ export class InstagramPostsService {
 
     const postId = await this.prisma.$transaction(async (tx) => {
       const post = await tx.instagramPost.create({
-        data: { caption: dto.caption, scheduledAt },
+        data: {
+          caption: dto.caption,
+          scheduledAt,
+          ...(dto.publishNow
+            ? { status: 'PUBLISHING', publishingStartedAt: now }
+            : {}),
+        },
       });
       // Só imagens soltas: prende cada uma de uma vez (duas abas agendando juntas não dividem imagem)
       for (const [position, id] of dto.mediaIds.entries()) {
@@ -121,13 +138,28 @@ export class InstagramPostsService {
     return this.findOne(postId);
   }
 
-  /** Posts agendados (e, na próxima etapa, publicados e com falha), do mais próximo ao mais distante. */
+  /**
+   * Primeiro os que ainda não saíram (agendados, publicando, com falha), do mais próximo ao mais
+   * distante; depois os publicados, do mais recente ao mais antigo (só os últimos 20).
+   */
   async list() {
-    const posts = await this.prisma.instagramPost.findMany({
-      orderBy: { scheduledAt: 'asc' },
-      include: { images: { orderBy: { position: 'asc' } } },
-    });
-    return Promise.all(posts.map((post) => this.toView(post)));
+    const include = { images: { orderBy: { position: 'asc' as const } } };
+    const [pending, published] = await Promise.all([
+      this.prisma.instagramPost.findMany({
+        where: { status: { not: 'PUBLISHED' } },
+        orderBy: { scheduledAt: 'asc' },
+        include,
+      }),
+      this.prisma.instagramPost.findMany({
+        where: { status: 'PUBLISHED' },
+        orderBy: { publishedAt: 'desc' },
+        take: PUBLISHED_IN_LIST,
+        include,
+      }),
+    ]);
+    return Promise.all(
+      [...pending, ...published].map((post) => this.toView(post)),
+    );
   }
 
   /**
@@ -179,7 +211,7 @@ export class InstagramPostsService {
     return { deleted: orphans.length };
   }
 
-  /** Conteúdo da imagem, para quem tem um link assinado válido (a tela, e o Instagram na próxima etapa). */
+  /** Conteúdo da imagem, para quem tem um link assinado válido (a tela e o Instagram, ao publicar). */
   async openMedia(id: string, token: string | undefined) {
     try {
       await this.jwtService.verifyAsync(token ?? '', {
@@ -208,7 +240,12 @@ export class InstagramPostsService {
     return `/api/instagram/media/${id}?token=${token}`;
   }
 
-  private async findOne(id: string) {
+  /** Link completo da imagem, para a Meta baixar ao publicar (`origin`: endereço público do site). */
+  async publicMediaUrl(id: string, origin: string) {
+    return `${origin}${await this.signedMediaUrl(id)}`;
+  }
+
+  async findOne(id: string) {
     const post = await this.prisma.instagramPost.findUniqueOrThrow({
       where: { id },
       include: { images: { orderBy: { position: 'asc' } } },
@@ -222,6 +259,8 @@ export class InstagramPostsService {
     scheduledAt: Date;
     status: InstagramPostStatus;
     error: string | null;
+    publishedAt: Date | null;
+    permalink: string | null;
     createdAt: Date;
     images: { id: string; width: number; height: number }[];
   }) {
@@ -230,7 +269,10 @@ export class InstagramPostsService {
       caption: post.caption,
       scheduledAt: post.scheduledAt,
       status: post.status,
-      error: post.error,
+      // Só a falha definitiva: numa nova tentativa automática o post segue "Agendado"
+      error: post.status === 'FAILED' ? post.error : null,
+      publishedAt: post.publishedAt,
+      permalink: post.permalink,
       createdAt: post.createdAt,
       images: await Promise.all(
         post.images.map(async ({ id, width, height }) => ({
@@ -252,14 +294,12 @@ export class InstagramPostsService {
     });
   }
 
-  private async requireConnectedAccount() {
+  private async requireConnectedAccount(message: string) {
     const account = await this.prisma.instagramAccount.findFirst({
       where: { tokenInvalidAt: null, tokenExpiresAt: { gt: new Date() } },
       select: { id: true },
     });
-    if (!account) {
-      throw new ConflictException('Conecte o Instagram para agendar posts.');
-    }
+    if (!account) throw new ConflictException(message);
   }
 }
 

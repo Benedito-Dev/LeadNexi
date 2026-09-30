@@ -161,16 +161,24 @@ enum InstagramPostStatus {
 
 // Post do Instagram montado no LeadNexi: legenda, imagens (em ordem) e quando publicar.
 model InstagramPost {
-  id          String              @id @default(uuid())
-  caption     String
+  id                  String              @id @default(uuid())
+  caption             String
   /// Quando publicar
-  scheduledAt DateTime            @map("scheduled_at")
-  status      InstagramPostStatus @default(SCHEDULED)
+  scheduledAt         DateTime            @map("scheduled_at")
+  status              InstagramPostStatus @default(SCHEDULED)
   /// Motivo da falha, em português claro, para a tela
-  error       String?
-  images      InstagramMedia[]
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  error               String?
+  /// Tentativas automáticas de publicar (falha passageira da Meta tenta de novo até o limite)
+  attempts            Int                 @default(0)
+  /// Quando começou a publicação em andamento (PUBLISHING parado há muito tempo = interrompido)
+  publishingStartedAt DateTime?           @map("publishing_started_at")
+  publishedAt         DateTime?           @map("published_at")
+  /// ID do post no Instagram e o link público dele
+  igMediaId           String?             @map("ig_media_id")
+  permalink           String?
+  images              InstagramMedia[]
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
 
   @@index([status, scheduledAt])
   @@map("instagram_posts")

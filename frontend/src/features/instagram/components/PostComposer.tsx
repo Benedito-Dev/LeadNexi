@@ -15,7 +15,7 @@ import {
   prepareImage,
   type PreparedImage,
 } from '../images.ts'
-import type { InstagramPost } from '../types.ts'
+import type { CreatedInstagramPost } from '../types.ts'
 
 type Mode = 'now' | 'schedule'
 
@@ -31,18 +31,18 @@ export function PostComposer({
   open,
   connected,
   onClose,
-  onScheduled,
+  onCreated,
 }: {
   open: boolean
   /** Sem conta conectada dá para montar o post, mas não publicar */
   connected: boolean
   onClose: () => void
-  /** Post agendado com sucesso (o painel já pode fechar) */
-  onScheduled: (post: InstagramPost) => void
+  /** Post agendado, publicado ou recusado pelo Instagram (o painel já pode fechar) */
+  onCreated: (post: CreatedInstagramPost) => void
 }) {
   return (
     <Drawer open={open} onClose={onClose} label="Novo post">
-      {open && <ComposerContent connected={connected} onClose={onClose} onScheduled={onScheduled} />}
+      {open && <ComposerContent connected={connected} onClose={onClose} onCreated={onCreated} />}
     </Drawer>
   )
 }
@@ -50,11 +50,11 @@ export function PostComposer({
 function ComposerContent({
   connected,
   onClose,
-  onScheduled,
+  onCreated,
 }: {
   connected: boolean
   onClose: () => void
-  onScheduled: (post: InstagramPost) => void
+  onCreated: (post: CreatedInstagramPost) => void
 }) {
   const schedule = useSchedulePost()
   const [images, setImages] = useState<PreparedImage[]>([])
@@ -132,7 +132,7 @@ function ComposerContent({
           : hashtags > HASHTAG_LIMIT
             ? `Use no máximo ${HASHTAG_LIMIT} hashtags.`
             : mode === 'now'
-              ? 'Publicar na hora chega na próxima etapa. Por enquanto, use "Agendar".'
+              ? null
               : !scheduledAt
                 ? 'Escolha a data e a hora.'
                 : // Mesmo formato ("2026-10-02T09:00"): dá para comparar como texto. O servidor confere de novo.
@@ -143,8 +143,13 @@ function ComposerContent({
   const status = schedule.isPending
     ? schedule.progress
       ? `Enviando imagem ${schedule.progress.sent + 1} de ${schedule.progress.total}…`
-      : 'Agendando…'
-    : (blocker ?? `Será publicado ${formatDateTime(new Date(scheduledAt).toISOString()).toLowerCase()}.`)
+      : mode === 'now'
+        ? 'Publicando no Instagram…'
+        : 'Agendando…'
+    : (blocker ??
+      (mode === 'now'
+        ? 'Vai para o seu perfil assim que você clicar em "Publicar agora".'
+        : `Será publicado ${formatDateTime(new Date(scheduledAt).toISOString()).toLowerCase()}.`))
 
   function submit() {
     if (blocker || schedule.isPending) return
@@ -152,9 +157,9 @@ function ComposerContent({
       {
         images: images.map(({ id, blob }) => ({ id, blob })),
         caption,
-        scheduledAt: new Date(scheduledAt).toISOString(),
+        ...(mode === 'now' ? { publishNow: true } : { scheduledAt: new Date(scheduledAt).toISOString() }),
       },
-      { onSuccess: onScheduled },
+      { onSuccess: onCreated },
     )
   }
 
@@ -350,7 +355,7 @@ function ComposerContent({
         {schedule.isError && !schedule.isPending ? (
           <p role="alert" className="flex items-start gap-2 text-small text-danger">
             <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0" />
-            {scheduleErrorMessage(schedule.error)}
+            {scheduleErrorMessage(schedule.error, mode)}
           </p>
         ) : (
           <p aria-live="polite" className="text-small text-slate-400">
@@ -361,7 +366,6 @@ function ComposerContent({
           <Button variant="secondary" onClick={onClose} disabled={schedule.isPending}>
             Cancelar
           </Button>
-          {/* "Publicar agora" chega com a publicação de verdade (próxima etapa) */}
           <Button onClick={submit} disabled={blocker !== null || schedule.isPending}>
             {schedule.isPending && <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />}
             {mode === 'now' ? 'Publicar agora' : 'Agendar'}
@@ -372,12 +376,14 @@ function ComposerContent({
   )
 }
 
-/** Mensagem do erro ao agendar, em português claro (os erros de regra já vêm assim do servidor). */
-function scheduleErrorMessage(error: Error): string {
+/** Mensagem do erro ao agendar/publicar, em português claro (os erros de regra já vêm assim do servidor). */
+function scheduleErrorMessage(error: Error, mode: Mode): string {
   if (!(error instanceof ApiError) || error.status === 0) {
     return 'Não foi possível conectar ao servidor. Tente de novo.'
   }
   if (error.status === 413) return 'Uma das imagens passou de 4 MB. Use uma imagem menor.'
-  if (error.status >= 500) return 'Não foi possível agendar o post agora. Tente de novo em instantes.'
+  if (error.status >= 500) {
+    return `Não foi possível ${mode === 'now' ? 'publicar' : 'agendar'} o post agora. Tente de novo em instantes.`
+  }
   return error.message
 }

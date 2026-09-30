@@ -14,6 +14,8 @@ export class InstagramApiError extends Error {
     message: string,
     readonly status: number,
     readonly code?: number,
+    /** Detalhe da Meta (ex.: 2207042 = limite diário de posts) */
+    readonly subcode?: number,
   ) {
     super(message);
     this.name = 'InstagramApiError';
@@ -38,6 +40,10 @@ export interface InstagramAppCredentials {
   /** Endereço de retorno do login: precisa ser o mesmo cadastrado no app da Meta */
   redirectUri: string;
 }
+
+/** Situação de um contêiner (post preparado na Meta, antes de publicar) */
+export type ContainerStatus =
+  'FINISHED' | 'IN_PROGRESS' | 'ERROR' | 'EXPIRED' | 'PUBLISHED';
 
 export interface InstagramProfile {
   /** ID da conta profissional: é o usado para publicar */
@@ -116,6 +122,89 @@ export class InstagramApiClient {
     };
   }
 
+  /**
+   * Prepara uma imagem na Meta (contêiner). A Meta baixa a imagem do `imageUrl`, que precisa
+   * ser público e JPEG. Item de carrossel vai sem legenda.
+   */
+  async createImageContainer(
+    igUserId: string,
+    token: string,
+    image: { imageUrl: string; caption?: string; carouselItem?: boolean },
+  ): Promise<string> {
+    const params: Record<string, string> = { image_url: image.imageUrl };
+    if (image.carouselItem) params.is_carousel_item = 'true';
+    else if (image.caption) params.caption = image.caption;
+    return this.post(`${igUserId}/media`, token, params);
+  }
+
+  /** Junta os contêineres das imagens (2 a 10, na ordem) num carrossel. */
+  async createCarouselContainer(
+    igUserId: string,
+    token: string,
+    carousel: { children: string[]; caption?: string },
+  ): Promise<string> {
+    const params: Record<string, string> = {
+      media_type: 'CAROUSEL',
+      children: carousel.children.join(','),
+    };
+    if (carousel.caption) params.caption = carousel.caption;
+    return this.post(`${igUserId}/media`, token, params);
+  }
+
+  async getContainerStatus(
+    containerId: string,
+    token: string,
+  ): Promise<ContainerStatus> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${containerId}`,
+    );
+    url.search = new URLSearchParams({
+      fields: 'status_code',
+      access_token: token,
+    }).toString();
+    const body = await this.request(url);
+    return requireString(body.status_code, 'status_code') as ContainerStatus;
+  }
+
+  /** Publica o contêiner no perfil. Devolve o ID do post no Instagram. */
+  async publishContainer(
+    igUserId: string,
+    token: string,
+    containerId: string,
+  ): Promise<string> {
+    return this.post(`${igUserId}/media_publish`, token, {
+      creation_id: containerId,
+    });
+  }
+
+  /** Link público do post publicado (ex.: https://www.instagram.com/p/...). */
+  async getPermalink(mediaId: string, token: string): Promise<string | null> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${mediaId}`,
+    );
+    url.search = new URLSearchParams({
+      fields: 'permalink',
+      access_token: token,
+    }).toString();
+    return optionalString((await this.request(url)).permalink);
+  }
+
+  /** POST na Graph API que devolve `{ id }` */
+  private async post(
+    path: string,
+    token: string,
+    params: Record<string, string>,
+  ): Promise<string> {
+    const body = await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${path}`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({ ...params, access_token: token }),
+      },
+    );
+    return requireString(body.id, 'id');
+  }
+
   private async request(url: string | URL, init?: RequestInit): Promise<Json> {
     let res: Response;
     try {
@@ -153,11 +242,12 @@ function toLongLived(body: Json): LongLivedToken {
 function toApiError(status: number, body: Json): InstagramApiError {
   const error = body.error;
   if (error && typeof error === 'object') {
-    const { message, code } = error as { message?: unknown; code?: unknown };
+    const { message, code, error_subcode } = error as Json;
     return new InstagramApiError(
       typeof message === 'string' ? message : `Erro ${status} da Meta`,
       status,
       typeof code === 'number' ? code : undefined,
+      typeof error_subcode === 'number' ? error_subcode : undefined,
     );
   }
   const message = body.error_message ?? body.error;

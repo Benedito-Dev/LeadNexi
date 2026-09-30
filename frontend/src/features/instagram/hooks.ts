@@ -5,17 +5,21 @@ import {
   createInstagramPost,
   disconnectInstagram,
   getInstagramAccount,
+  getInstagramPublishing,
   getInstagramSettings,
   listInstagramPosts,
+  publishInstagramPost,
   saveInstagramSettings,
   startInstagramConnect,
   uploadInstagramMedia,
 } from './api.ts'
+import type { InstagramPost } from './types.ts'
 
 export const instagramKeys = {
   account: ['instagram', 'account'] as const,
   posts: ['instagram', 'posts'] as const,
   settings: ['instagram', 'settings'] as const,
+  publishing: ['instagram', 'publishing'] as const,
 }
 
 export function useInstagramSettings() {
@@ -50,21 +54,45 @@ export function useDisconnectInstagram() {
   })
 }
 
+/** Lista de posts. Com post saindo agora (ou quase), confere a cada 15 s; com agendados, a cada minuto. */
 export function useInstagramPosts() {
-  return useQuery({ queryKey: instagramKeys.posts, queryFn: listInstagramPosts })
+  return useQuery({
+    queryKey: instagramKeys.posts,
+    queryFn: listInstagramPosts,
+    refetchInterval: (query) => {
+      const posts = query.state.data ?? []
+      const soon = Date.now() + 2 * 60_000
+      if (
+        posts.some(
+          (post) =>
+            post.status === 'PUBLISHING' ||
+            (post.status === 'SCHEDULED' && new Date(post.scheduledAt).getTime() <= soon),
+        )
+      ) {
+        return 15_000
+      }
+      return posts.some((post) => post.status === 'SCHEDULED') ? 60_000 : false
+    },
+  })
+}
+
+export function useInstagramPublishing() {
+  return useQuery({ queryKey: instagramKeys.publishing, queryFn: getInstagramPublishing })
 }
 
 export interface SchedulePostInput {
   /** Imagens na ordem do carrossel (id local + JPEG pronto) */
   images: { id: string; blob: Blob }[]
   caption: string
-  /** ISO 8601 */
-  scheduledAt: string
+  /** ISO 8601 (para agendar) */
+  scheduledAt?: string
+  /** Publicar na hora */
+  publishNow?: boolean
 }
 
 /**
- * Agenda um post: envia as imagens uma a uma (cada requisição fica pequena) e cria o post.
- * Se algo falhar no meio, tentar de novo reaproveita as imagens que já subiram.
+ * Agenda (ou publica na hora) um post: envia as imagens uma a uma (cada requisição fica pequena)
+ * e cria o post. Se algo falhar no meio, tentar de novo reaproveita as imagens que já subiram.
  */
 export function useSchedulePost() {
   const queryClient = useQueryClient()
@@ -72,7 +100,7 @@ export function useSchedulePost() {
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null)
 
   const mutation = useMutation({
-    mutationFn: async ({ images, caption, scheduledAt }: SchedulePostInput) => {
+    mutationFn: async ({ images, caption, scheduledAt, publishNow }: SchedulePostInput) => {
       const mediaIds: string[] = []
       for (const [index, image] of images.entries()) {
         setProgress({ sent: index, total: images.length })
@@ -84,15 +112,29 @@ export function useSchedulePost() {
         mediaIds.push(mediaId)
       }
       setProgress(null)
-      return createInstagramPost({ caption, scheduledAt, mediaIds })
+      return createInstagramPost({ caption, mediaIds, ...(publishNow ? { publishNow } : { scheduledAt }) })
     },
     onSuccess: () => {
       uploaded.current.clear()
-      return queryClient.invalidateQueries({ queryKey: instagramKeys.posts })
+      // A conta também: a Meta pode ter recusado o token na publicação
+      return queryClient.invalidateQueries({ queryKey: ['instagram'] })
     },
     onSettled: () => setProgress(null),
   })
   return { ...mutation, progress }
+}
+
+/** "Publicar agora"/"Tentar de novo": o post aparece como "Publicando" até a resposta chegar. */
+export function usePublishPost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: publishInstagramPost,
+    onMutate: (id) =>
+      queryClient.setQueryData<InstagramPost[]>(instagramKeys.posts, (posts) =>
+        posts?.map((post) => (post.id === id ? { ...post, status: 'PUBLISHING', error: null } : post)),
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['instagram'] }),
+  })
 }
 
 export function useCancelPost() {

@@ -8,7 +8,8 @@ import { AppSettingsCard } from '../features/instagram/components/AppSettingsCar
 import { ConnectCard } from '../features/instagram/components/ConnectCard.tsx'
 import { PostComposer } from '../features/instagram/components/PostComposer.tsx'
 import { PostList } from '../features/instagram/components/PostList.tsx'
-import { useInstagramAccount, useInstagramSettings } from '../features/instagram/hooks.ts'
+import { useInstagramAccount, useInstagramPublishing, useInstagramSettings } from '../features/instagram/hooks.ts'
+import type { CreatedInstagramPost } from '../features/instagram/types.ts'
 import { formatDateTime } from '../lib/format.ts'
 
 /** Mensagens da volta do login do Instagram (?conectado=1 ou ?erro=...) */
@@ -30,8 +31,8 @@ export function InstagramPage() {
 
   const returned = params.get('conectado') === '1' ? 'ok' : params.get('erro')
   const dismissReturn = () => setParams({}, { replace: true })
-  // Aviso depois de agendar ("Post agendado para amanhã às 09:00.")
-  const [notice, setNotice] = useState<string | null>(null)
+  // Aviso depois de agendar ou publicar ("Post agendado para amanhã às 09:00.")
+  const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null)
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -53,7 +54,7 @@ export function InstagramPage() {
           onClose={dismissReturn}
         />
       )}
-      {notice && <Banner ok message={notice} onClose={() => setNotice(null)} />}
+      {notice && <Banner ok={notice.ok} message={notice.message} onClose={() => setNotice(null)} />}
 
       {account.isPending || settings.isPending ? (
         <div aria-busy="true" aria-label="Carregando conta" className="h-40 animate-pulse rounded-xl border bg-navy-800" />
@@ -71,9 +72,12 @@ export function InstagramPage() {
         <>
           <AccountCard account={account.data.account} />
           <section aria-labelledby="posts-title" className="flex flex-col gap-3">
-            <h2 id="posts-title" className="text-ui font-bold text-white">
-              Posts agendados
-            </h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 id="posts-title" className="text-ui font-bold text-white">
+                Posts
+              </h2>
+              <AutoPublishStatus />
+            </div>
             <PostList />
           </section>
           {/* Dá para trocar o app da Meta a qualquer hora (ex.: nova chave secreta) */}
@@ -91,16 +95,46 @@ export function InstagramPage() {
         open={composerOpen}
         connected={canPublish}
         onClose={() => setComposerOpen(false)}
-        onScheduled={(post) => {
+        onCreated={(post) => {
           setComposerOpen(false)
-          setNotice(`Post agendado para ${formatDateTime(post.scheduledAt).toLowerCase()}.`)
+          setNotice(createdNotice(post))
         }}
       />
     </div>
   )
 }
 
-/** Faixa de aviso fechável no topo (volta do login, post agendado). */
+/** Aviso depois de criar o post: agendado, publicado, ou recusado pelo Instagram (fica na lista com "Tentar de novo"). */
+function createdNotice(post: CreatedInstagramPost) {
+  if (post.status === 'PUBLISHED') return { ok: true, message: 'Post publicado no Instagram.' }
+  if (post.status === 'FAILED') return { ok: false, message: `Post não publicado. ${post.error ?? ''}`.trim() }
+  const when = formatDateTime(post.scheduledAt).toLowerCase()
+  if (post.alarmFailed) {
+    return {
+      ok: false,
+      message: `Post agendado para ${when}, mas o despertador da publicação não respondeu. Ele pode não sair sozinho: use "Publicar agora" na hora.`,
+    }
+  }
+  return { ok: true, message: `Post agendado para ${when}.` }
+}
+
+/**
+ * Se os agendados saem sozinhos na hora marcada (despertador configurado no servidor). Desligada,
+ * só "Publicar agora" publica (a lista avisa).
+ */
+function AutoPublishStatus() {
+  const publishing = useInstagramPublishing()
+  if (!publishing.data) return null
+  const on = publishing.data.automatic
+  return (
+    <p className="flex items-center gap-2 text-small text-slate-400">
+      <span aria-hidden className={`size-2 rounded-full ${on ? 'bg-success' : 'bg-warning'}`} />
+      {on ? 'Publicação automática ligada' : 'Publicação automática desligada'}
+    </p>
+  )
+}
+
+/** Faixa de aviso fechável no topo (volta do login, post agendado ou publicado). */
 function Banner({ ok, message, onClose }: { ok: boolean; message: string; onClose: () => void }) {
   return (
     <div

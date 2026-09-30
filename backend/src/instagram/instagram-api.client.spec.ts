@@ -139,6 +139,88 @@ describe('InstagramApiClient', () => {
     expect((oauth as InstagramApiError).invalidToken).toBe(false);
   });
 
+  describe('publicação', () => {
+    const graph = `https://graph.instagram.com/${GRAPH_VERSION}`;
+    const form = () => lastCall().init?.body as URLSearchParams;
+
+    it('foto única: contêiner com imagem e legenda', async () => {
+      reply(200, { id: 'c1' });
+      const id = await client.createImageContainer('17841', 'tok', {
+        imageUrl: 'https://leadnexi.test/api/instagram/media/m1?token=t',
+        caption: 'Oi #moda',
+      });
+      expect(id).toBe('c1');
+      expect(lastCall().url.href).toBe(`${graph}/17841/media`);
+      expect(lastCall().init?.method).toBe('POST');
+      expect(Object.fromEntries(form())).toEqual({
+        image_url: 'https://leadnexi.test/api/instagram/media/m1?token=t',
+        caption: 'Oi #moda',
+        access_token: 'tok',
+      });
+    });
+
+    it('carrossel: itens sem legenda, depois o carrossel com os filhos em ordem', async () => {
+      reply(200, { id: 'i1' });
+      await client.createImageContainer('17841', 'tok', {
+        imageUrl: 'https://x/1',
+        caption: 'ignorada',
+        carouselItem: true,
+      });
+      expect(Object.fromEntries(form())).toEqual({
+        image_url: 'https://x/1',
+        is_carousel_item: 'true',
+        access_token: 'tok',
+      });
+
+      reply(200, { id: 'car' });
+      expect(
+        await client.createCarouselContainer('17841', 'tok', {
+          children: ['i1', 'i2'],
+          caption: 'Legenda',
+        }),
+      ).toBe('car');
+      expect(Object.fromEntries(form())).toEqual({
+        media_type: 'CAROUSEL',
+        children: 'i1,i2',
+        caption: 'Legenda',
+        access_token: 'tok',
+      });
+    });
+
+    it('status do contêiner, publicação e link do post', async () => {
+      reply(200, { status_code: 'FINISHED', id: 'c1' });
+      expect(await client.getContainerStatus('c1', 'tok')).toBe('FINISHED');
+      expect(lastCall().url.pathname).toBe(`/${GRAPH_VERSION}/c1`);
+      expect(lastCall().url.searchParams.get('fields')).toBe('status_code');
+
+      reply(200, { id: 'media-1' });
+      expect(await client.publishContainer('17841', 'tok', 'c1')).toBe(
+        'media-1',
+      );
+      expect(lastCall().url.href).toBe(`${graph}/17841/media_publish`);
+      expect(form().get('creation_id')).toBe('c1');
+
+      reply(200, { permalink: 'https://www.instagram.com/p/abc/' });
+      expect(await client.getPermalink('media-1', 'tok')).toBe(
+        'https://www.instagram.com/p/abc/',
+      );
+    });
+
+    it('lê o subcódigo do erro (ex.: limite diário de posts)', async () => {
+      reply(400, {
+        error: {
+          message: 'Application request limit reached',
+          code: 9,
+          error_subcode: 2207042,
+        },
+      });
+      const error = await client
+        .publishContainer('17841', 'tok', 'c1')
+        .catch((e: unknown) => e);
+      expect(error).toMatchObject({ code: 9, subcode: 2207042 });
+    });
+  });
+
   it('sem resposta da Meta vira InstagramApiError com status 0', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
     const error = await client.getProfile('x').catch((e: unknown) => e);
