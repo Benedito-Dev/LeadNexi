@@ -68,3 +68,29 @@ export function completeFollowUp(id: string) {
 export function cancelFollowUp(id: string) {
   return api<LeadWithStage>(`/leads/${id}/follow-up`, { method: 'DELETE' })
 }
+
+/** Linha da planilha já ligada aos campos do lead (POST /leads/import) */
+export interface ImportLeadRow {
+  name: string
+  phone?: string
+  email?: string
+  instagramUsername?: string
+  estimatedValue?: number
+  notes?: string
+  stageId: string
+}
+
+export interface ImportLeadsResult {
+  /** Entram (dryRun) ou entraram */
+  accepted: number
+  skipped: number
+  rows: { index: number; status: 'ready' | 'created' | 'duplicate' | 'invalid'; reason?: string }[]
+}
+
+/** Importa leads de planilha; `dryRun` só confere (quem entra, quem já existe, quem tem problema) */
+export function importLeads(leads: ImportLeadRow[], dryRun = false) {
+  return api<ImportLeadsResult>('/leads/import', {
+    method: 'POST',
+    body: JSON.stringify({ leads, ...(dryRun ? { dryRun } : {}) }),
+  })
+}

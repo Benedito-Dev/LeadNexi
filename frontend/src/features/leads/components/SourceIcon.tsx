@@ -1,4 +1,4 @@
-import { Globe, Tag, Users } from 'lucide-react'
+import { FileSpreadsheet, Globe, Tag, Users } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { InstagramIcon, WhatsAppIcon } from '../../../brand/icons.tsx'
 
@@ -11,6 +11,7 @@ const SOURCE_ICONS: Record<string, { icon: Icon; color: string }> = {
   whatsapp: { icon: WhatsAppIcon, color: 'text-cyan' },
   site: { icon: Globe, color: 'text-slate-400' },
   indicação: { icon: Users, color: 'text-slate-400' },
+  planilha: { icon: FileSpreadsheet, color: 'text-slate-400' },
 }
 
 export function SourceIcon({ source, size = 14 }: { source: string; size?: number }) {

@@ -6,6 +6,7 @@ import { LeadActivitiesService } from './lead-activities.service.js';
 import { LeadAvatarsController } from './lead-avatars.controller.js';
 import { LeadsController } from './leads.controller.js';
 import { LeadsService } from './leads.service.js';
+import { LeadsImportService } from './leads-import.service.js';
 
 @Module({
   imports: [StagesModule, StorageModule],
@@ -14,6 +15,6 @@ import { LeadsService } from './leads.service.js';
     LeadActivitiesController,
     LeadAvatarsController,
   ],
-  providers: [LeadsService, LeadActivitiesService],
+  providers: [LeadsService, LeadActivitiesService, LeadsImportService],
 })
 export class LeadsModule {}

@@ -21,6 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateLeadDto } from './dto/create-lead.dto.js';
+import { ImportLeadsDto } from './dto/import-leads.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
@@ -29,6 +30,7 @@ import {
   PaginatedLeadsEntity,
 } from './entities/lead.entity.js';
 import { LeadActivitiesService } from './lead-activities.service.js';
+import { LeadsImportService } from './leads-import.service.js';
 import { LeadsService } from './leads.service.js';
 
 @ApiTags('Leads')
@@ -38,6 +40,7 @@ export class LeadsController {
   constructor(
     private readonly leadsService: LeadsService,
     private readonly activities: LeadActivitiesService,
+    private readonly importer: LeadsImportService,
   ) {}
 
   @Get()
@@ -71,6 +74,20 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Etapa não encontrada' })
   create(@Body() dto: CreateLeadDto) {
     return this.leadsService.create(dto);
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Importa leads de planilha (até 1.000 linhas). Quem já está no CRM (mesmo @, telefone ou nome) fica de fora; dryRun só confere',
+  })
+  @ApiOkResponse({
+    description:
+      '{ accepted, skipped, rows: [{ index, status: ready|created|duplicate|invalid, reason? }] }',
+  })
+  importLeads(@Body() dto: ImportLeadsDto) {
+    return this.importer.import(dto);
   }
 
   @Patch(':id')

@@ -12,11 +12,13 @@ import {
   getFollowUps,
   getLeadActivities,
   getLeads,
+  importLeads,
   moveLead,
   removeLeadNote,
   scheduleFollowUp,
   updateLead,
 } from './api.ts'
+import type { ImportLeadRow } from './api.ts'
 import type { CreateLeadInput, Lead, LeadInput, LeadListQuery } from './types.ts'
 
 export const leadKeys = {
@@ -72,6 +74,15 @@ export function useCreateLead() {
   return useMutation({
     mutationFn: (input: CreateLeadInput) => createLead(input),
     onSuccess: invalidate,
+  })
+}
+
+/** Importação de planilha: conferir (dryRun) não muda nada; importar recarrega funil e listas. */
+export function useImportLeads() {
+  const invalidate = useInvalidateLeads()
+  return useMutation({
+    mutationFn: ({ leads, dryRun }: { leads: ImportLeadRow[]; dryRun: boolean }) => importLeads(leads, dryRun),
+    onSuccess: (_result, { dryRun }) => (dryRun ? undefined : invalidate()),
   })
 }
 

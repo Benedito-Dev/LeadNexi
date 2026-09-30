@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Search } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { Dropdown } from '../components/ui/Dropdown.tsx'
@@ -87,6 +87,14 @@ export function LeadsPage() {
                 aria-label="Buscar por nome, e-mail ou telefone"
               />
             </div>
+            <Link
+              to="/leads/importar"
+              title="Importar planilha"
+              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-navy-600 px-3.5 text-ui font-bold text-white transition-colors hover:bg-navy-800 sm:px-5"
+            >
+              <FileSpreadsheet aria-hidden size={18} strokeWidth={1.75} />
+              <span className="sr-only sm:not-sr-only">Importar planilha</span>
+            </Link>
             {firstStageId && (
               <Button onClick={() => setFormTarget({ mode: 'create', stageId: stageId || firstStageId })}>
                 <Plus aria-hidden size={18} strokeWidth={1.75} />
