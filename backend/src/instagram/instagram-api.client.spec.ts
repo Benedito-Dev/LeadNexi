@@ -221,6 +221,38 @@ describe('InstagramApiClient', () => {
     });
   });
 
+  describe('direct', () => {
+    it('liga os avisos de mensagens da conta', async () => {
+      reply(200, { success: true });
+      await client.subscribeToMessages('tok');
+      const { url, init } = lastCall();
+      expect(url.href).toBe(
+        `https://graph.instagram.com/${GRAPH_VERSION}/me/subscribed_apps`,
+      );
+      expect(init?.method).toBe('POST');
+      expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
+        subscribed_fields: 'messages',
+        access_token: 'tok',
+      });
+    });
+
+    it('lê nome e @ de quem mandou mensagem (campos podem faltar)', async () => {
+      reply(200, { name: 'Maria Souza', username: 'maria.s', id: '99' });
+      expect(await client.getMessagingProfile('99', 'tok')).toEqual({
+        name: 'Maria Souza',
+        username: 'maria.s',
+      });
+      expect(lastCall().url.pathname).toBe(`/${GRAPH_VERSION}/99`);
+      expect(lastCall().url.searchParams.get('fields')).toBe('name,username');
+
+      reply(200, { id: '99' });
+      expect(await client.getMessagingProfile('99', 'tok')).toEqual({
+        name: null,
+        username: null,
+      });
+    });
+  });
+
   it('sem resposta da Meta vira InstagramApiError com status 0', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
     const error = await client.getProfile('x').catch((e: unknown) => e);

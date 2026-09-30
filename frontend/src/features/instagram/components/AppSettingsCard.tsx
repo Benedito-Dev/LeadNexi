@@ -122,7 +122,37 @@ function SettingsForm({
             placeholder={settings.secretSaved ? 'Chave salva' : 'Cole a chave aqui'}
           />
         </Field>
-        <RedirectUriField value={settings.redirectUri} />
+        <CopyField
+          id="redirect-uri"
+          label="Endereço de retorno"
+          value={settings.redirectUri}
+          hint="Cole em “Configurar o login da empresa” → URLs de redirecionamento OAuth, no app da Meta."
+        />
+
+        {/* Direct vira lead: o que vai em "Configurar webhooks" no app da Meta */}
+        <div className="flex flex-col gap-5 border-t pt-5">
+          <div>
+            <h3 className="text-ui font-bold text-white">Direct do Instagram</h3>
+            <p className="mt-1 text-small text-slate-400">
+              Para cada direct virar lead: no app da Meta, em “Configurar webhooks”, cole os dois valores abaixo, clique
+              em “Verificar e salvar” e ative o campo “messages”.
+            </p>
+          </div>
+          <CopyField
+            id="webhook-url"
+            label="URL de callback"
+            value={settings.webhookUrl}
+            hint="Endereço que recebe os avisos de mensagem da Meta."
+          />
+          {settings.webhookVerifyToken && (
+            <CopyField
+              id="webhook-token"
+              label="Token de verificação"
+              value={settings.webhookVerifyToken}
+              hint="A Meta manda de volta ao salvar, e o LeadNexi confere."
+            />
+          )}
+        </div>
 
         {error && (
           <p role="alert" className="flex items-start gap-2 text-small text-danger">
@@ -147,8 +177,8 @@ function SettingsForm({
   )
 }
 
-/** Endereço de retorno, só leitura, com "Copiar": vai em "URLs de redirecionamento OAuth" na Meta. */
-function RedirectUriField({ value }: { value: string }) {
+/** Campo só de leitura com "Copiar": valores que vão no painel da Meta. */
+function CopyField({ id, label, value, hint }: { id: string; label: string; value: string; hint: string }) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
@@ -158,19 +188,15 @@ function RedirectUriField({ value }: { value: string }) {
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // Sem acesso à área de transferência: seleciona o texto para copiar à mão
-      const input = document.getElementById('redirect-uri') as HTMLInputElement | null
+      const input = document.getElementById(id) as HTMLInputElement | null
       input?.select()
     }
   }
 
   return (
-    <Field
-      label="Endereço de retorno"
-      htmlFor="redirect-uri"
-      hint="Cole em “Configurar o login da empresa” → URLs de redirecionamento OAuth, no app da Meta."
-    >
+    <Field label={label} htmlFor={id} hint={hint}>
       <Input
-        id="redirect-uri"
+        id={id}
         readOnly
         value={value}
         onFocus={(event) => event.currentTarget.select()}
@@ -178,7 +204,7 @@ function RedirectUriField({ value }: { value: string }) {
           <button
             type="button"
             onClick={() => void copy()}
-            aria-label={copied ? 'Endereço copiado' : 'Copiar endereço'}
+            aria-label={copied ? `${label}: copiado` : `Copiar ${label.toLowerCase()}`}
             title={copied ? 'Copiado' : 'Copiar'}
             className="grid size-9 cursor-pointer place-items-center rounded-sm text-slate-400 transition-colors hover:text-slate-300"
           >

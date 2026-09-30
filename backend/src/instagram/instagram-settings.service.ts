@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHmac } from 'node:crypto';
 import {
   decryptSecret,
   encryptSecret,
@@ -15,6 +16,8 @@ import type { InstagramAppCredentials } from './instagram-api.client.js';
 
 const SETTINGS_ID = 1;
 const CALLBACK_PATH = '/api/instagram/callback';
+/** Endereço que recebe os avisos da Meta (direct novo): vai em "Configurar webhooks" no app */
+export const WEBHOOK_PATH = '/api/instagram/webhook';
 
 /**
  * Configuração do app da Meta. Vem da tela do Instagram (salva no banco, chave secreta
@@ -43,7 +46,38 @@ export class InstagramSettingsService {
       source: saved ? 'tela' : env.appId && env.appSecret ? 'servidor' : null,
       configured: Boolean(appId && secretSaved),
       redirectUri: this.redirectUri(origin),
+      /** Para "Configurar webhooks" no app da Meta (URL de callback e token de verificação) */
+      webhookUrl: `${origin}${WEBHOOK_PATH}`,
+      webhookVerifyToken: this.webhookVerifyToken(),
     };
+  }
+
+  /**
+   * Token de verificação do webhook: a Meta manda de volta ao cadastrar o endereço, e o servidor
+   * confere. Derivado da chave de criptografia: é sempre o mesmo e não precisa ser guardado.
+   */
+  webhookVerifyToken(): string | null {
+    const key = this.key();
+    if (!key) return null;
+    return createHmac('sha256', key)
+      .update('instagram-webhook-verify')
+      .digest('base64url')
+      .slice(0, 32);
+  }
+
+  /** Chave secreta do app (confere a assinatura dos avisos da Meta). Sem app configurado: null. */
+  async appSecret(): Promise<string | null> {
+    const saved = await this.prisma.instagramAppSettings.findUnique({
+      where: { id: SETTINGS_ID },
+    });
+    if (!saved) return this.fromEnv().appSecret;
+    const key = this.key();
+    if (!key) return null;
+    try {
+      return decryptSecret(saved.appSecret, key);
+    } catch {
+      return null;
+    }
   }
 
   /** Salva pela tela. Sem chave secreta nova, mantém a que já estava salva. */
@@ -98,16 +132,20 @@ export class InstagramSettingsService {
 
   /** Chave que criptografa o token do Instagram e a chave secreta do app. */
   requireKey(): Buffer {
-    const key = resolveEncryptionKey(
-      this.config.get<string>('TOKEN_ENCRYPTION_KEY'),
-      this.config.get<string>('JWT_SECRET'),
-    );
+    const key = this.key();
     if (!key) {
       throw new ServiceUnavailableException(
         'A variável TOKEN_ENCRYPTION_KEY do servidor é inválida (precisa ter 32 bytes em base64).',
       );
     }
     return key;
+  }
+
+  private key(): Buffer | null {
+    return resolveEncryptionKey(
+      this.config.get<string>('TOKEN_ENCRYPTION_KEY'),
+      this.config.get<string>('JWT_SECRET'),
+    );
   }
 
   /** INSTAGRAM_REDIRECT_URI, se definida; senão, o callback deste mesmo servidor. */

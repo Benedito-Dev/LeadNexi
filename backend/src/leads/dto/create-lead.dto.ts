@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -34,6 +35,22 @@ export class CreateLeadDto {
   @IsEmail()
   @MaxLength(160)
   email?: string;
+
+  /**
+   * @ do Instagram (com ou sem o @; guardado sem ele, em minúsculas)
+   * @example "maria.souza"
+   */
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string'
+      ? value.trim().replace(/^@/, '').toLowerCase() || null
+      : value,
+  )
+  @IsString()
+  @Matches(/^[a-z0-9._]{1,30}$/, {
+    message: 'O @ do Instagram tem só letras, números, ponto e sublinhado.',
+  })
+  instagramUsername?: string | null;
 
   /**
    * De onde o lead veio

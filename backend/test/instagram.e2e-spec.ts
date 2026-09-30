@@ -33,6 +33,7 @@ describe('Instagram (e2e)', () => {
     exchangeForLongLived: vi.fn(),
     refreshLongLived: vi.fn(),
     getProfile: vi.fn(),
+    subscribeToMessages: vi.fn(),
   };
 
   beforeAll(async () => {
@@ -82,6 +83,7 @@ describe('Instagram (e2e)', () => {
       profilePictureUrl: 'https://cdn.exemplo.test/foto.jpg',
       accountType: 'Business',
     });
+    meta.subscribeToMessages.mockResolvedValue(undefined);
   });
 
   afterAll(async () => {
@@ -114,9 +116,11 @@ describe('Instagram (e2e)', () => {
       'https://www.instagram.com/oauth/authorize',
     );
     expect(url.searchParams.get('client_id')).toBe('app-de-teste');
-    expect(url.searchParams.get('scope')).toContain(
+    expect(url.searchParams.get('scope')?.split(',')).toEqual([
+      'instagram_business_basic',
       'instagram_business_content_publish',
-    );
+      'instagram_business_manage_messages',
+    ]);
     expect(url.searchParams.get('state')).toBeTruthy();
   });
 
@@ -148,6 +152,8 @@ describe('Instagram (e2e)', () => {
       'segredo-do-app',
     );
     expect(meta.getProfile).toHaveBeenCalledWith('token-longo');
+    // Já liga os avisos do direct (webhook) para a conta
+    expect(meta.subscribeToMessages).toHaveBeenCalledWith('token-longo');
 
     const res = await api().get('/instagram/account').set(auth).expect(200);
     expect(res.body.connected).toBe(true);
@@ -155,6 +161,7 @@ describe('Instagram (e2e)', () => {
       username: 'loja.teste',
       name: 'Loja Teste',
       needsReconnect: false,
+      messagesEnabled: true,
     });
     expect(res.body.account.accessToken).toBeUndefined();
 
@@ -165,6 +172,20 @@ describe('Instagram (e2e)', () => {
     const days = (saved.tokenExpiresAt.getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(59);
     expect(days).toBeLessThan(61);
+  });
+
+  it('se não der para ligar os avisos do direct, conecta mesmo assim e a tela avisa', async () => {
+    meta.subscribeToMessages.mockRejectedValue(new Error('sem permissão'));
+    const location = await callback({
+      code: 'codigo-da-meta',
+      state: await validState(),
+    });
+    expect(location).toBe('/instagram?conectado=1');
+    const res = await api().get('/instagram/account').set(auth).expect(200);
+    expect(res.body.account).toMatchObject({
+      needsReconnect: false,
+      messagesEnabled: false,
+    });
   });
 
   it('conectar outra conta substitui a anterior', async () => {
@@ -409,6 +430,8 @@ describe('Instagram (e2e)', () => {
           source: null,
           configured: false,
           redirectUri: 'https://leadnexi.test/api/instagram/callback',
+          webhookUrl: 'https://leadnexi.test/api/instagram/webhook',
+          webhookVerifyToken: expect.stringMatching(/^[\w-]{32}$/),
         });
       });
     });
@@ -421,6 +444,8 @@ describe('Instagram (e2e)', () => {
         source: 'servidor',
         configured: true,
         redirectUri: 'https://exemplo.test/api/instagram/callback',
+        webhookUrl: expect.stringMatching(/\/api\/instagram\/webhook$/),
+        webhookVerifyToken: expect.any(String),
       });
       expect(JSON.stringify(res.body)).not.toContain('segredo-do-app');
     });

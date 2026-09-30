@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { StorageModule } from '../storage/storage.module.js';
 import { InstagramApiClient } from './instagram-api.client.js';
 import { InstagramCronController } from './instagram-cron.controller.js';
+import { InstagramInboxService } from './instagram-inbox.service.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
+import { InstagramWebhookController } from './instagram-webhook.controller.js';
 import { InstagramController } from './instagram.controller.js';
 import { InstagramService } from './instagram.service.js';
 import { PublishAlarmService } from './publish-alarm.service.js';
@@ -16,6 +18,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramController,
     InstagramPostsController,
     InstagramCronController,
+    InstagramWebhookController,
   ],
   providers: [
     InstagramService,
@@ -23,6 +26,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramPostsService,
     InstagramPublisherService,
     PublishAlarmService,
+    InstagramInboxService,
     InstagramApiClient,
   ],
 })

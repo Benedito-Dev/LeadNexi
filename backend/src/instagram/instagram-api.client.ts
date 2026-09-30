@@ -41,6 +41,12 @@ export interface InstagramAppCredentials {
   redirectUri: string;
 }
 
+/** Quem mandou direct: o que a Meta informa do perfil (pode faltar) */
+export interface MessagingProfile {
+  name: string | null;
+  username: string | null;
+}
+
 /** Situação de um contêiner (post preparado na Meta, antes de publicar) */
 export type ContainerStatus =
   'FINISHED' | 'IN_PROGRESS' | 'ERROR' | 'EXPIRED' | 'PUBLISHED';
@@ -119,6 +125,42 @@ export class InstagramApiClient {
       name: optionalString(data.name),
       profilePictureUrl: optionalString(data.profile_picture_url),
       accountType: optionalString(data.account_type),
+    };
+  }
+
+  /**
+   * Liga os avisos (webhook) de mensagens do direct para a conta. Precisa da permissão
+   * instagram_business_manage_messages no login e do webhook configurado no app da Meta.
+   */
+  async subscribeToMessages(token: string): Promise<void> {
+    await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/subscribed_apps`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({
+          subscribed_fields: 'messages',
+          access_token: token,
+        }),
+      },
+    );
+  }
+
+  /** Nome e @ de quem mandou direct (pelo ID dessa pessoa no Instagram, o IGSID). */
+  async getMessagingProfile(
+    senderId: string,
+    token: string,
+  ): Promise<MessagingProfile> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${senderId}`,
+    );
+    url.search = new URLSearchParams({
+      fields: 'name,username',
+      access_token: token,
+    }).toString();
+    const body = await this.request(url);
+    return {
+      name: optionalString(body.name),
+      username: optionalString(body.username),
     };
   }
 
