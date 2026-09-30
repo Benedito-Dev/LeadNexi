@@ -4,10 +4,11 @@ import { useSearchParams } from 'react-router'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { AccountCard } from '../features/instagram/components/AccountCard.tsx'
+import { AppSettingsCard } from '../features/instagram/components/AppSettingsCard.tsx'
 import { ConnectCard } from '../features/instagram/components/ConnectCard.tsx'
 import { PostComposer } from '../features/instagram/components/PostComposer.tsx'
 import { PostList } from '../features/instagram/components/PostList.tsx'
-import { useInstagramAccount } from '../features/instagram/hooks.ts'
+import { useInstagramAccount, useInstagramSettings } from '../features/instagram/hooks.ts'
 import { formatDateTime } from '../lib/format.ts'
 
 /** Mensagens da volta do login do Instagram (?conectado=1 ou ?erro=...) */
@@ -21,6 +22,7 @@ const RETURN_ERRORS: Record<string, string> = {
 // Tela Instagram (BRAND.md, seção 9.5): conectar a conta, montar e agendar posts.
 export function InstagramPage() {
   const account = useInstagramAccount()
+  const settings = useInstagramSettings()
   const [composerOpen, setComposerOpen] = useState(false)
   const [params, setParams] = useSearchParams()
   // Conta conectada e com token valendo: só assim dá para publicar
@@ -53,12 +55,15 @@ export function InstagramPage() {
       )}
       {notice && <Banner ok message={notice} onClose={() => setNotice(null)} />}
 
-      {account.isPending ? (
+      {account.isPending || settings.isPending ? (
         <div aria-busy="true" aria-label="Carregando conta" className="h-40 animate-pulse rounded-xl border bg-navy-800" />
-      ) : account.isError ? (
+      ) : account.isError || settings.isError ? (
         <div className="flex flex-col items-start gap-4">
           <p className="text-body text-slate-400">Não foi possível carregar a conta do Instagram.</p>
-          <Button variant="secondary" onClick={() => void account.refetch()}>
+          <Button
+            variant="secondary"
+            onClick={() => void (account.isError ? account.refetch() : settings.refetch())}
+          >
             Tentar de novo
           </Button>
         </div>
@@ -71,9 +76,15 @@ export function InstagramPage() {
             </h2>
             <PostList />
           </section>
+          {/* Dá para trocar o app da Meta a qualquer hora (ex.: nova chave secreta) */}
+          <AppSettingsCard settings={settings.data} />
         </>
       ) : (
-        <ConnectCard />
+        <>
+          {/* Passo 1: app da Meta · Passo 2: conectar a conta */}
+          <AppSettingsCard settings={settings.data} />
+          <ConnectCard configured={settings.data.configured} />
+        </>
       )}
 
       <PostComposer

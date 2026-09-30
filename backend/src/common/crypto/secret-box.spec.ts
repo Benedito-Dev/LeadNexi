@@ -3,6 +3,7 @@ import {
   decryptSecret,
   encryptSecret,
   parseEncryptionKey,
+  resolveEncryptionKey,
 } from './secret-box.js';
 
 describe('secret-box', () => {
@@ -29,6 +30,27 @@ describe('secret-box', () => {
       '.',
     );
     expect(() => decryptSecret(tampered, key)).toThrow();
+  });
+
+  it('sem TOKEN_ENCRYPTION_KEY, deriva a chave do JWT_SECRET (sempre a mesma)', () => {
+    const explicit = randomBytes(32);
+    expect(
+      resolveEncryptionKey(explicit.toString('base64'), 'jwt')?.equals(
+        explicit,
+      ),
+    ).toBe(true);
+
+    const derived = resolveEncryptionKey(undefined, 'segredo-do-jwt');
+    expect(derived).toHaveLength(32);
+    expect(resolveEncryptionKey('', 'segredo-do-jwt')?.equals(derived!)).toBe(
+      true,
+    );
+    expect(
+      resolveEncryptionKey(undefined, 'outro-segredo')?.equals(derived!),
+    ).toBe(false);
+    // Chave explícita inválida não cai na derivada: melhor avisar do que trocar de chave em silêncio
+    expect(resolveEncryptionKey('curta', 'segredo-do-jwt')).toBeNull();
+    expect(resolveEncryptionKey(undefined, undefined)).toBeNull();
   });
 
   it('só aceita chave de 32 bytes em base64', () => {

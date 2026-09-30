@@ -2,8 +2,10 @@ import { api } from '../../lib/api.ts'
 import type {
   CreateInstagramPostInput,
   InstagramAccountStatus,
+  InstagramAppSettings,
   InstagramPost,
   InstagramPostImage,
+  SaveInstagramAppSettingsInput,
 } from './types.ts'
 
 export function getInstagramAccount() {
@@ -13,6 +15,14 @@ export function getInstagramAccount() {
 /** Link do login oficial do Instagram (o navegador é redirecionado para ele) */
 export function startInstagramConnect() {
   return api<{ url: string }>('/instagram/connect', { method: 'POST' })
+}
+
+export function getInstagramSettings() {
+  return api<InstagramAppSettings>('/instagram/settings')
+}
+
+export function saveInstagramSettings(input: SaveInstagramAppSettingsInput) {
+  return api<InstagramAppSettings>('/instagram/settings', { method: 'PUT', body: JSON.stringify(input) })
 }
 
 export function disconnectInstagram() {

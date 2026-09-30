@@ -11,11 +11,12 @@ const BENEFITS = [
 ]
 
 // Convite para conectar (BRAND.md, seção 9.5): sem conta conectada, é a primeira coisa da tela.
-export function ConnectCard() {
+// Sem o app da Meta configurado, o botão fica desativado e aponta para o cartão acima.
+export function ConnectCard({ configured }: { configured: boolean }) {
   const connect = useConnectInstagram()
   const error =
     connect.error instanceof ApiError && connect.error.status === 503
-      ? 'A integração com o Instagram ainda não foi configurada no servidor.'
+      ? connect.error.message
       : connect.error
         ? 'Não foi possível iniciar a conexão. Tente de novo.'
         : null
@@ -42,7 +43,7 @@ export function ConnectCard() {
       </ul>
 
       <div className="mt-8 flex flex-col items-start gap-3">
-        <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
+        <Button onClick={() => connect.mutate()} disabled={!configured || connect.isPending}>
           {connect.isPending ? (
             <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />
           ) : (
@@ -50,10 +51,14 @@ export function ConnectCard() {
           )}
           Conectar Instagram
         </Button>
-        <p className="flex items-center gap-2 text-small text-slate-400">
-          <ShieldCheck aria-hidden size={16} strokeWidth={1.75} className="shrink-0" />
-          Você entra pelo login oficial do Instagram. O LeadNexi nunca vê sua senha.
-        </p>
+        {configured ? (
+          <p className="flex items-center gap-2 text-small text-slate-400">
+            <ShieldCheck aria-hidden size={16} strokeWidth={1.75} className="shrink-0" />
+            Você entra pelo login oficial do Instagram. O LeadNexi nunca vê sua senha.
+          </p>
+        ) : (
+          <p className="text-small text-slate-400">Salve o app da Meta acima para liberar a conexão.</p>
+        )}
         {error && (
           <p role="alert" className="flex items-start gap-2 text-small text-danger">
             <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0" />

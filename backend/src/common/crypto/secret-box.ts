@@ -1,4 +1,9 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+} from 'node:crypto';
 
 // Segredos guardados no banco (ex.: token do Instagram) ficam criptografados com AES-256-GCM, que
 // também detecta adulteração. Formato: "v1.<iv>.<tag>.<dados>" em base64url; o "v1" permite trocar
@@ -11,6 +16,23 @@ export function parseEncryptionKey(value: string | undefined): Buffer | null {
   if (!value) return null;
   const key = Buffer.from(value, 'base64');
   return key.length === 32 ? key : null;
+}
+
+/**
+ * Chave usada para criptografar os segredos: TOKEN_ENCRYPTION_KEY, se definida; senão, uma chave
+ * derivada (HKDF) do JWT_SECRET, que o servidor sempre tem. Assim não há variável extra para
+ * configurar. Quem tem o JWT_SECRET já controla o sistema inteiro, então derivar dele não
+ * enfraquece nada. Chave explícita inválida: null (não cai na derivada sem avisar).
+ */
+export function resolveEncryptionKey(
+  explicitKey: string | undefined,
+  jwtSecret: string | undefined,
+): Buffer | null {
+  if (explicitKey) return parseEncryptionKey(explicitKey);
+  if (!jwtSecret) return null;
+  return Buffer.from(
+    hkdfSync('sha256', jwtSecret, 'leadnexi', 'token-encryption', 32),
+  );
 }
 
 export function encryptSecret(plain: string, key: Buffer): string {

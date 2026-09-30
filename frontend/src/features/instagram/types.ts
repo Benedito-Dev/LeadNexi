@@ -39,3 +39,20 @@ export interface CreateInstagramPostInput {
   scheduledAt: string
   mediaIds: string[]
 }
+
+/** GET /instagram/settings: app da Meta usado no login (a chave secreta nunca vem) */
+export interface InstagramAppSettings {
+  appId: string | null
+  secretSaved: boolean
+  /** tela: salvo pela tela · servidor: variáveis INSTAGRAM_* · null: nada configurado */
+  source: 'tela' | 'servidor' | null
+  configured: boolean
+  /** Endereço a cadastrar no app da Meta (URLs de redirecionamento OAuth) */
+  redirectUri: string
+}
+
+export interface SaveInstagramAppSettingsInput {
+  appId: string
+  /** Vazio: mantém a chave já salva */
+  appSecret?: string
+}
