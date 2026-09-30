@@ -179,6 +179,32 @@ export class InstagramApiClient {
     };
   }
 
+  /**
+   * Manda um texto no direct para quem já conversou com a conta (IGSID). Só dentro da janela de
+   * 24 h depois da última mensagem da pessoa. Devolve o ID da mensagem (o mesmo do eco).
+   */
+  async sendTextMessage(
+    token: string,
+    recipientId: string,
+    text: string,
+  ): Promise<string> {
+    const body = await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          message: { text },
+        }),
+      },
+    );
+    return requireString(body.message_id, 'message_id');
+  }
+
   /** Baixa uma imagem da Meta (ex.: foto de perfil), até 2 MB. */
   async downloadImage(url: string): Promise<Buffer> {
     let res: Response;

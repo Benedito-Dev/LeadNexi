@@ -262,6 +262,23 @@ describe('InstagramApiClient', () => {
       });
     });
 
+    it('manda texto no direct com JSON e o token no cabeçalho', async () => {
+      reply(200, { recipient_id: 'igsid-1', message_id: 'mid-1' });
+      expect(await client.sendTextMessage('tk', 'igsid-1', 'Oi!')).toBe(
+        'mid-1',
+      );
+      const { url, init } = lastCall();
+      expect(url.href).toBe(
+        `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
+      );
+      expect(init?.method).toBe('POST');
+      expect(init?.headers).toMatchObject({ Authorization: 'Bearer tk' });
+      expect(JSON.parse(init?.body as string)).toEqual({
+        recipient: { id: 'igsid-1' },
+        message: { text: 'Oi!' },
+      });
+    });
+
     it('baixa a foto de perfil, até 2 MB', async () => {
       fetchMock.mockResolvedValueOnce(
         new Response(Buffer.from('jpeg'), { status: 200 }),

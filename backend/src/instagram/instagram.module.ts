@@ -3,6 +3,8 @@ import { StorageModule } from '../storage/storage.module.js';
 import { InstagramApiClient } from './instagram-api.client.js';
 import { InstagramCronController } from './instagram-cron.controller.js';
 import { InstagramInboxService } from './instagram-inbox.service.js';
+import { InstagramMessagesController } from './instagram-messages.controller.js';
+import { InstagramMessagesService } from './instagram-messages.service.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
@@ -20,6 +22,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramPostsController,
     InstagramCronController,
     InstagramWebhookController,
+    InstagramMessagesController,
   ],
   providers: [
     InstagramService,
@@ -29,6 +32,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramSyncService,
     PublishAlarmService,
     InstagramInboxService,
+    InstagramMessagesService,
     InstagramApiClient,
   ],
 })
