@@ -24,6 +24,12 @@ export const MAX_MESSAGE_BYTES = 1000;
 const WINDOW_CLOSED_SUBCODE = 2534022;
 /** Erro da Meta: a pessoa não pode receber mensagens (bloqueou, desativou a conta...) */
 const USER_UNAVAILABLE_CODE = 551;
+/** Mensagens mostradas na conversa (as mais recentes) */
+export const CONVERSATION_LIMIT = 200;
+
+/** Por que não dá para responder pelo LeadNexi agora */
+export type ReplyBlock = 'no-direct' | 'window-closed' | 'reconnect';
+
 /** Códigos gerais de erro temporário da Graph API */
 const TEMPORARY_CODES = new Set([-2, -1, 1, 2]);
 
@@ -58,6 +64,60 @@ export class InstagramMessagesService {
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
   ) {}
+
+  /**
+   * Conversa do direct com o lead: as mensagens (mais antiga primeiro, as últimas 200) e se dá
+   * para responder agora, até quando, ou por que não.
+   */
+  async conversation(leadId: string, now = new Date()) {
+    const lead = await this.prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { instagramUserId: true, instagramLastMessageAt: true },
+    });
+    if (!lead) throw new NotFoundException('Lead não encontrado');
+
+    const [recent, account] = await Promise.all([
+      this.prisma.leadActivity.findMany({
+        where: {
+          leadId,
+          type: { in: ['INSTAGRAM_MESSAGE', 'INSTAGRAM_MESSAGE_SENT'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: CONVERSATION_LIMIT,
+        select: { id: true, type: true, text: true, createdAt: true },
+      }),
+      this.prisma.instagramAccount.count({
+        where: { tokenInvalidAt: null, tokenExpiresAt: { gt: now } },
+      }),
+    ]);
+
+    const open = isWindowOpen(lead.instagramLastMessageAt, now);
+    const blocked: ReplyBlock | null = !lead.instagramUserId
+      ? 'no-direct'
+      : !open
+        ? 'window-closed'
+        : account === 0
+          ? 'reconnect'
+          : null;
+    return {
+      canReply: blocked === null,
+      blocked,
+      /** Até quando dá para responder (24 h depois da última mensagem do lead) */
+      replyUntil:
+        lead.instagramUserId && open
+          ? new Date(lead.instagramLastMessageAt!.getTime() + REPLY_WINDOW_MS)
+          : null,
+      messages: recent.reverse().map((message) => ({
+        id: message.id,
+        direction:
+          message.type === 'INSTAGRAM_MESSAGE_SENT'
+            ? ('sent' as const)
+            : ('received' as const),
+        text: message.text ?? '',
+        createdAt: message.createdAt,
+      })),
+    };
+  }
 
   async send(leadId: string, rawText: string, now = new Date()) {
     const text = rawText.trim();

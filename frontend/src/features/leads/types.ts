@@ -15,6 +15,10 @@ export interface Lead {
   followUpNote: string | null
   /** @ do Instagram (sem o @) */
   instagramUsername: string | null
+  /** Quem mandou direct (ID no Instagram); null = nunca mandou (não dá para responder pelo LeadNexi) */
+  instagramUserId: string | null
+  /** Última mensagem do lead no direct (ISO): dá para responder até 24 h depois */
+  instagramLastMessageAt: string | null
   /** Foto de perfil guardada (GET /api/leads/avatars/:id); null = iniciais */
   avatarId: string | null
   createdAt: string

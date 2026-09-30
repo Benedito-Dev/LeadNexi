@@ -16,9 +16,9 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { whatsappUrl } from '../../../lib/format.ts'
 import type { Lead } from '../../leads/types.ts'
 import { NewStageColumn } from '../../stages/components/NewStageColumn.tsx'
+import { cardActions } from '../cardActions.ts'
 import type { PipelineBoard } from '../types.ts'
 import { KanbanColumn } from './KanbanColumn.tsx'
 import { LeadCard } from './LeadCard.tsx'
@@ -208,7 +208,7 @@ export function KanbanBoard({
             lead={activeLead}
             closed={findStage(columns, activeLead.id) === lastStageId}
             dragging
-            actionSpace={activeLead.phone !== null && whatsappUrl(activeLead.phone) !== null}
+            actions={cardActions(activeLead)}
           />
         )}
       </DragOverlay>

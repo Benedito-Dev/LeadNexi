@@ -2,32 +2,28 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Bell, Clock } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import {
-  followUpTone,
-  formatCurrency,
-  formatDateTime,
-  formatDay,
-  formatElapsed,
-  whatsappUrl,
-} from '../../../lib/format.ts'
+import { followUpTone, formatCurrency, formatDateTime, formatDay, formatElapsed } from '../../../lib/format.ts'
+import { ConversationButton } from '../../conversations/components/ConversationButton.tsx'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
 import { WhatsAppLink } from '../../leads/components/WhatsAppLink.tsx'
 import type { Lead } from '../../leads/types.ts'
+import { cardActions } from '../cardActions.ts'
 
 // Card de lead (BRAND.md, seção 8): corpo com iniciais, nome e origem (com ícone do canal); rodapé separado por
 // divisória com o valor (verde na etapa final) e o tempo desde a última movimentação.
-// `actionSpace`: reserva o canto direito do corpo para o botão de WhatsApp (sobreposto pelo SortableLeadCard).
+// `actions`: quantos botões (WhatsApp, conversa do direct) o SortableLeadCard sobrepõe no canto direito
+// do corpo; o nome deixa o espaço deles livre.
 export function LeadCard({
   lead,
   closed,
   dragging = false,
-  actionSpace = false,
+  actions = 0,
 }: {
   lead: Lead
   closed: boolean
   dragging?: boolean
-  actionSpace?: boolean
+  actions?: number
 }) {
   return (
     <div
@@ -37,7 +33,7 @@ export function LeadCard({
     >
       <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-3">
         <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
-        <div className={`min-w-0 flex-1 ${actionSpace ? 'pr-8' : ''}`}>
+        <div className={`min-w-0 flex-1 ${actions === 2 ? 'pr-16' : actions === 1 ? 'pr-8' : ''}`}>
           <p className="line-clamp-2 text-ui font-bold text-white">{lead.name}</p>
           {lead.source && (
             <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
@@ -95,9 +91,11 @@ function FollowUpBadge({ dueAt, note }: { dueAt: string; note: string | null }) 
 /**
  * Card arrastável. Clique ou Enter abre a edição; Espaço pega o card para mover pelo teclado.
  * Com `disabled` (ex.: busca ativa) o card só abre, não arrasta.
- * O botão de WhatsApp fica FORA da área arrastável (irmão, sobreposto no canto): assim não há
- * elemento interativo dentro do card, e Enter/clique nele não abrem a edição nem iniciam o arraste.
- * No desktop aparece no hover/foco do card (grupo nomeado `card`: a coluna também é `group`); em toque, sempre.
+ * Os botões de WhatsApp e da conversa do direct ficam FORA da área arrastável (irmãos, sobrepostos no
+ * canto): assim não há elemento interativo dentro do card, e Enter/clique neles não abrem a edição nem
+ * iniciam o arraste. O WhatsApp aparece no hover/foco do card no desktop (grupo nomeado `card`: a coluna
+ * também é `group`) e sempre em toque; a conversa fica sempre à vista (a bolinha verde diz que dá para
+ * responder agora).
  */
 export function SortableLeadCard({
   lead,
@@ -125,7 +123,6 @@ export function SortableLeadCard({
     listeners?.onKeyDown?.(event)
   }
 
-  const hasWhatsApp = lead.phone !== null && whatsappUrl(lead.phone) !== null
 
   return (
     <div
@@ -145,14 +142,17 @@ export function SortableLeadCard({
           disabled ? 'cursor-pointer' : 'cursor-grab'
         }`}
       >
-        <LeadCard lead={lead} closed={closed} actionSpace={hasWhatsApp} />
+        <LeadCard lead={lead} closed={closed} actions={cardActions(lead)} />
       </div>
-      {!isDragging && (
-        <WhatsAppLink
-          name={lead.name}
-          phone={lead.phone}
-          className="absolute top-3 right-2.5 opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
-        />
+      {!isDragging && cardActions(lead) > 0 && (
+        <div className="absolute top-3 right-2.5 flex">
+          <WhatsAppLink
+            name={lead.name}
+            phone={lead.phone}
+            className="opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+          />
+          <ConversationButton lead={lead} />
+        </div>
       )}
     </div>
   )

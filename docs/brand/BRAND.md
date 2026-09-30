@@ -367,6 +367,7 @@ Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdo
 - **Rodapé** (divisória 1 px `navy-700`, `padding 10 14`): valor 14/700 à esquerda (sem valor: "Sem valor" 12/600 `slate-400`) e tempo desde a última movimentação à direita (ícone relógio 13 + 12/600 `slate-400`).
 - Telefone e e-mail não aparecem no card: ficam no detalhe (a busca continua encontrando por eles).
 - **WhatsApp:** com telefone válido, botão 32 px (ícone cyan, hover `cyan-tint`) no canto superior direito do corpo; abre `wa.me/<número>` em nova aba. No desktop aparece no hover/foco do card, em toque sempre. Fica fora da área arrastável (irmão sobreposto), então clicar ou dar Enter nele não abre a edição nem inicia o arraste; o nome reserva o espaço do botão.
+- **Conversa do direct:** lead que já mandou direct ganha, no canto (à direita do WhatsApp), um botão 32 px com `MessageCircle` em `violet-300` (hover `violet-tint`), sempre à vista; com a janela de 24 h aberta, bolinha `success` de 8 px no canto do ícone (contorno 2 px `navy-800`). Abre o modal da conversa. Fora da área arrastável, como o WhatsApp; o nome reserva o espaço dos dois botões.
 - **Ícones de origem:** Instagram (violet-300) e WhatsApp (cyan), desenhados em `src/brand/icons.tsx` no traço do Lucide (adaptados do Tabler, MIT); Site = `Globe`, Indicação = `Users`, outras = `Tag`, em `slate-400`.
 - **Próximo contato:** com follow-up agendado, o rodapé troca o tempo por um sino 13 + dia ("Hoje", "Amanhã", "qui., 02/10"), 12/700: `danger` e "Atrasado" se já passou, `warning` se é hoje, `slate-400` se é depois.
 - **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, tempo "agora" em cyan.
@@ -383,11 +384,21 @@ Animações definidas em `theme.css` (`animate-bridge-pulse`, `animate-bridge-li
 ### Painel do lead
 Clicar num lead (card ou linha da tabela) abre um **painel à direita** (`<Drawer>`: `<dialog>` com altura total, largura 480 px ou a tela inteira no celular, fundo `navy-800`, borda esquerda `navy-600`, sombra float). "Novo lead" continua no modal.
 - **Topo:** iniciais + nome (`text-h2`) + etapa (bolinha) · valor · @ do Instagram; à direita, botões do direct (ícone do Instagram em `violet-300`, abre `ig.me/m/<@>`) e do WhatsApp (cyan), e fechar. Cada botão só aparece com o @ ou o telefone.
-- **Abas** (14, ativa 700 com traço inferior de 2 px `violet`): **Histórico** (padrão) e **Dados** (o formulário do lead).
+- **Abas** (14, ativa 700 com traço inferior de 2 px `violet`): **Histórico** (padrão), **Conversa** (lead com @ ou que mandou direct: a conversa do direct, como no modal) e **Dados** (o formulário do lead).
 - **Próximo contato:** sem agendamento, campo "O que fazer?" + atalhos (Amanhã, Em 3 dias, Próxima segunda, às 9h) e "Outra data" (data e hora). Com agendamento, caixa `navy-750` com sino (cor pela situação), data "Amanhã às 09:00", o que fazer e as ações "Marcar como feito" (primário) e "Reagendar"; "×" desmarca.
 - **Nova anotação:** textarea + "Anotar" (Ctrl/⌘ + Enter salva).
 - **Linha do tempo:** mais novo primeiro; ícone num círculo 28 px `slate-tint` ligado por uma linha 1 px `navy-700`. Criado (violet-300), movido "de → para", anotação (em caixa `navy-750`, apagável com confirmação), mensagem do direct (ícone do Instagram em `violet-300`, texto na mesma caixa `navy-750` da anotação e "Direct do Instagram" antes da hora), resposta no direct (a sua, pelo app do Instagram ou pelo LeadNexi: ícone de responder em `cyan`, mesma caixa `navy-750` e "Você respondeu no direct" antes da hora), contato agendado (cyan) e contato feito (`success`). Tempo relativo ("há 2 h") com a data completa na dica.
 - **Dados:** o formulário tem o campo "Instagram" (`@usuario`; guardado sem o @).
+
+### Conversa do direct
+O mesmo componente no modal (aberto pelo card do Kanban) e na aba "Conversa" do painel do lead.
+- **Modal:** `<dialog>` 560 × até 720 px (tela inteira no celular, sem borda nem raio), fundo `navy-800`, borda `navy-600`, `radius 20`, sombra float. Topo: foto do lead (32 px), nome `text-h2` e @ em 13 `slate-400`; à direita, abrir no Instagram (ícone `violet-300`) e fechar.
+- **Janela aberta:** faixa abaixo do topo, 13 `slate-300`, bolinha `success` "Pode responder por mais 5 h" (faltando menos de 1 h: bolinha `warning`, "por mais 40 min").
+- **Mensagens:** mais antiga no topo, rola até a última ao abrir e quando chega mensagem; separador de dia centralizado ("Hoje", "Ontem", "qui., 02/10") 12/600 `slate-400`. Balões com até 85% da largura, `radius 16`, padding 8 × 14, texto 14 com as quebras de linha: recebido à esquerda em `navy-750` (canto de baixo à esquerda `radius 8`); enviado à direita em `violet-600` + `on-accent` (canto de baixo à direita `radius 8`). Hora abaixo do balão, 12/600 `slate-400`. Sem mensagens: "Nenhuma mensagem ainda." centralizado.
+- **Enviando:** o balão aparece na hora a 60% com "Enviando…" abaixo; falhou: contorno 1 px `danger`, o motivo em `danger` (com ícone) e "Tentar de novo" / "Descartar".
+- **Caixa de texto:** textarea que cresce com o texto (até 160 px), "Escreva uma mensagem...", e botão primário quadrado com o ícone de envio. Abaixo, 12/600 `slate-400`: "Enter envia · Shift+Enter quebra a linha" (some em toque) e o contador de bytes `N/1000` (`tabular-nums`; acima do limite, `danger` e envio desativado).
+- **Sem poder responder** (a caixa dá lugar a um aviso 13 `slate-300` com ícone `Info`): lead sem direct ("O Instagram só deixa responder por aqui quem escreveu primeiro.") e janela fechada ("Passaram 24 h desde a última mensagem de Maria…"), os dois com "Abrir no Instagram" (secundário, texto `cyan`, ícone de link externo; abre `ig.me/m/<@>`); conexão expirada, com "Conectar de novo" (secundário, leva à tela do Instagram).
+- Mensagens novas: a conversa confere a cada 10 s enquanto está aberta.
 
 ### Tabela (lista de leads)
 Superfície `radius 16` · fundo `navy-750` · borda `navy-700`. Mesmo vocabulário do card do Kanban.

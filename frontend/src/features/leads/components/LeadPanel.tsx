@@ -30,15 +30,17 @@ import {
   useScheduleFollowUp,
 } from '../hooks.ts'
 import type { Lead, LeadActivity } from '../types.ts'
+import { Conversation } from '../../conversations/components/Conversation.tsx'
 import { LeadAvatar } from './LeadAvatar.tsx'
 import { InstagramLink } from './InstagramLink.tsx'
 import { LeadForm, type StageOption } from './LeadForm.tsx'
 import { WhatsAppLink } from './WhatsAppLink.tsx'
 
-type Tab = 'history' | 'details'
+type Tab = 'history' | 'conversation' | 'details'
 
 // Painel do lead (BRAND.md, seção 8 · "Painel do lead"): abre à direita ao clicar num lead.
-// Aba "Histórico" (padrão): próximo contato, nova anotação e linha do tempo. Aba "Dados": o formulário.
+// Aba "Histórico" (padrão): próximo contato, nova anotação e linha do tempo. Aba "Conversa" (lead com
+// Instagram): o direct, com resposta pelo LeadNexi. Aba "Dados": o formulário.
 export function LeadPanel({
   lead: initial,
   stages,
@@ -103,22 +105,34 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
         <TabButton current={tab} value="history" onSelect={setTab}>
           Histórico
         </TabButton>
+        {(lead.instagramUserId || lead.instagramUsername) && (
+          <TabButton current={tab} value="conversation" onSelect={setTab}>
+            Conversa
+          </TabButton>
+        )}
         <TabButton current={tab} value="details" onSelect={setTab}>
           Dados
         </TabButton>
       </div>
 
-      <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-        {tab === 'history' ? (
-          <div className="flex flex-col gap-6">
-            <FollowUp lead={lead} />
-            <NoteComposer leadId={lead.id} />
-            <Timeline leadId={lead.id} />
-          </div>
-        ) : (
-          <LeadForm target={{ mode: 'edit', lead }} stages={stages} onDone={onClose} />
-        )}
-      </div>
+      {tab === 'conversation' ? (
+        // A conversa rola por dentro, com a caixa de texto fixa embaixo
+        <div role="tabpanel" className="flex min-h-0 flex-1 flex-col">
+          <Conversation lead={lead} />
+        </div>
+      ) : (
+        <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {tab === 'history' ? (
+            <div className="flex flex-col gap-6">
+              <FollowUp lead={lead} />
+              <NoteComposer leadId={lead.id} />
+              <Timeline leadId={lead.id} />
+            </div>
+          ) : (
+            <LeadForm target={{ mode: 'edit', lead }} stages={stages} onDone={onClose} />
+          )}
+        </div>
+      )}
     </>
   )
 }

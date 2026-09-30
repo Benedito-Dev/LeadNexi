@@ -1,4 +1,11 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadGatewayResponse,
   ApiBearerAuth,
@@ -6,11 +13,13 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { LeadActivityEntity } from '../leads/entities/lead-activity.entity.js';
 import { SendInstagramMessageDto } from './dto/send-instagram-message.dto.js';
+import { InstagramConversationEntity } from './entities/instagram-conversation.entity.js';
 import { InstagramMessagesService } from './instagram-messages.service.js';
 
 @ApiTags('Instagram')
@@ -18,6 +27,17 @@ import { InstagramMessagesService } from './instagram-messages.service.js';
 @Controller('leads/:id/instagram')
 export class InstagramMessagesController {
   constructor(private readonly messages: InstagramMessagesService) {}
+
+  @Get('conversation')
+  @ApiOperation({
+    summary:
+      'Conversa do direct com o lead (as últimas 200 mensagens) e se dá para responder agora',
+  })
+  @ApiOkResponse({ type: InstagramConversationEntity })
+  @ApiNotFoundResponse({ description: 'Lead não encontrado' })
+  conversation(@Param('id', ParseUUIDPipe) id: string) {
+    return this.messages.conversation(id);
+  }
 
   @Post('messages')
   @ApiOperation({

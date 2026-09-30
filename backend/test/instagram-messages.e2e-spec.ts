@@ -237,8 +237,92 @@ describe('Mandar direct pelo LeadNexi (e2e)', () => {
     expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
   });
 
+  describe('conversa', () => {
+    const conversation = (leadId: string) =>
+      api()
+        .get(`/leads/${leadId}/instagram/conversation`)
+        .set(auth)
+        .expect(200);
+
+    it('mensagens em ordem, só as do direct, e até quando dá para responder', async () => {
+      const lead = await leadFromDirect(2);
+      const at = (minutesAgo: number) =>
+        new Date(Date.now() - minutesAgo * 60_000);
+      await prisma.leadActivity.createMany({
+        data: [
+          {
+            leadId: lead.id,
+            type: 'NOTE',
+            text: 'Anotação',
+            createdAt: at(200),
+          },
+          {
+            leadId: lead.id,
+            type: 'INSTAGRAM_MESSAGE',
+            text: 'Oi',
+            createdAt: at(120),
+          },
+          {
+            leadId: lead.id,
+            type: 'INSTAGRAM_MESSAGE_SENT',
+            text: 'Olá!',
+            createdAt: at(60),
+          },
+        ],
+      });
+
+      const res = await conversation(lead.id);
+      expect(res.body).toMatchObject({ canReply: true, blocked: null });
+      expect(
+        res.body.messages.map((m: { direction: string; text: string }) => [
+          m.direction,
+          m.text,
+        ]),
+      ).toEqual([
+        ['received', 'Oi'],
+        ['sent', 'Olá!'],
+      ]);
+      expect(new Date(res.body.replyUntil as string).getTime()).toBe(
+        lead.instagramLastMessageAt!.getTime() + 24 * HOUR,
+      );
+    });
+
+    it('diz por que não dá para responder: sem direct, janela fechada, conexão expirada', async () => {
+      const noDirect = await leadFromDirect(null);
+      expect((await conversation(noDirect.id)).body).toMatchObject({
+        canReply: false,
+        blocked: 'no-direct',
+        replyUntil: null,
+        messages: [],
+      });
+
+      const lead = await leadFromDirect(25);
+      expect((await conversation(lead.id)).body).toMatchObject({
+        canReply: false,
+        blocked: 'window-closed',
+        replyUntil: null,
+      });
+
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { instagramLastMessageAt: new Date() },
+      });
+      await prisma.instagramAccount.updateMany({
+        data: { tokenInvalidAt: new Date() },
+      });
+      expect((await conversation(lead.id)).body).toMatchObject({
+        canReply: false,
+        blocked: 'reconnect',
+      });
+    });
+  });
+
   it('lead inexistente: 404; sem login: 401', async () => {
     await send('7d2c5a3e-0000-4000-8000-000000000000', 'Oi').expect(404);
+    await api()
+      .get('/leads/7d2c5a3e-0000-4000-8000-000000000000/instagram/conversation')
+      .set(auth)
+      .expect(404);
     await api()
       .post('/leads/7d2c5a3e-0000-4000-8000-000000000000/instagram/messages')
       .send({ text: 'Oi' })
