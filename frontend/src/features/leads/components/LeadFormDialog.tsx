@@ -4,7 +4,7 @@ import { LeadPanel } from './LeadPanel.tsx'
 
 export type { LeadFormTarget, StageOption } from './LeadForm.tsx'
 
-/** Criar lead abre o modal com o formulário; abrir um lead existente abre o painel lateral (histórico + dados). */
+/** Criar lead abre o modal com o formulário; abrir um lead existente abre o modal grande do lead (histórico + dados). */
 export function LeadFormDialog({
   target,
   stages,

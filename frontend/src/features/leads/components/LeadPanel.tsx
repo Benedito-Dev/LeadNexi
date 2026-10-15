@@ -16,10 +16,11 @@ import {
 import { useState, type ComponentType, type FormEvent, type KeyboardEvent } from 'react'
 import { InstagramIcon } from '../../../brand/icons.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
-import { Drawer } from '../../../components/ui/Drawer.tsx'
+import { Modal } from '../../../components/ui/Modal.tsx'
 import { Textarea } from '../../../components/ui/Field.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 import { formatAgo, formatCurrency, formatDateTime, followUpTone } from '../../../lib/format.ts'
+import { useMediaQuery } from '../../../lib/useMediaQuery.ts'
 import {
   useAddLeadNote,
   useCancelFollowUp,
@@ -38,9 +39,10 @@ import { WhatsAppLink } from './WhatsAppLink.tsx'
 
 type Tab = 'history' | 'conversation' | 'details'
 
-// Painel do lead (BRAND.md, seção 8 · "Painel do lead"): abre à direita ao clicar num lead.
-// Aba "Histórico" (padrão): próximo contato, nova anotação e linha do tempo. Aba "Conversa" (lead com
-// Instagram): o direct, com resposta pelo LeadNexi. Aba "Dados": o formulário.
+// Painel do lead (BRAND.md, seção 8 · "Painel do lead"): modal grande aberto ao clicar num lead.
+// No desktop (≥ 1024 px) são duas colunas: à esquerda as abas "Histórico" (padrão: próximo contato,
+// nova anotação e linha do tempo) e "Conversa" (lead com Instagram: o direct, com resposta pelo
+// LeadNexi); à direita, fixos, os "Dados" (o formulário). Em telas menores, "Dados" vira a terceira aba.
 export function LeadPanel({
   lead: initial,
   stages,
@@ -51,20 +53,24 @@ export function LeadPanel({
   onClose: () => void
 }) {
   return (
-    <Drawer open={initial !== null} onClose={onClose} label={initial ? `Lead ${initial.name}` : 'Lead'}>
+    <Modal open={initial !== null} onClose={onClose} label={initial ? `Lead ${initial.name}` : 'Lead'}>
       {initial && <PanelContent initial={initial} stages={stages} onClose={onClose} />}
-    </Drawer>
+    </Modal>
   )
 }
 
 function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: StageOption[]; onClose: () => void }) {
   const { data: lead = initial } = useLead(initial.id, initial)
-  const [tab, setTab] = useState<Tab>('history')
+  const wide = useMediaQuery('(min-width: 1024px)')
+  const [selectedTab, setTab] = useState<Tab>('history')
+  // No desktop os dados ficam na coluna da direita, então a aba "Dados" não existe
+  const tab = wide && selectedTab === 'details' ? 'history' : selectedTab
   const stage = stages.find((option) => option.id === lead.stageId)
+  const form = <LeadForm target={{ mode: 'edit', lead }} stages={stages} onDone={onClose} />
 
   return (
     <>
-      <header className="flex items-start gap-3 border-b px-5 pt-5 pb-4">
+      <header className="flex items-start gap-3 border-b px-6 pt-5 pb-4">
         <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
         <div className="min-w-0 flex-1">
           <h2 className="text-h2 break-words">{lead.name}</h2>
@@ -101,38 +107,53 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
         </button>
       </header>
 
-      <div role="tablist" aria-label="Seções do lead" className="flex gap-1 border-b px-5">
-        <TabButton current={tab} value="history" onSelect={setTab}>
-          Histórico
-        </TabButton>
-        {(lead.instagramUserId || lead.instagramUsername) && (
-          <TabButton current={tab} value="conversation" onSelect={setTab}>
-            Conversa
-          </TabButton>
-        )}
-        <TabButton current={tab} value="details" onSelect={setTab}>
-          Dados
-        </TabButton>
-      </div>
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div role="tablist" aria-label="Seções do lead" className="flex gap-1 border-b px-6">
+            <TabButton current={tab} value="history" onSelect={setTab}>
+              Histórico
+            </TabButton>
+            {(lead.instagramUserId || lead.instagramUsername) && (
+              <TabButton current={tab} value="conversation" onSelect={setTab}>
+                Conversa
+              </TabButton>
+            )}
+            {!wide && (
+              <TabButton current={tab} value="details" onSelect={setTab}>
+                Dados
+              </TabButton>
+            )}
+          </div>
 
-      {tab === 'conversation' ? (
-        // A conversa rola por dentro, com a caixa de texto fixa embaixo
-        <div role="tabpanel" className="flex min-h-0 flex-1 flex-col">
-          <Conversation lead={lead} />
-        </div>
-      ) : (
-        <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          {tab === 'history' ? (
-            <div className="flex flex-col gap-6">
-              <FollowUp lead={lead} />
-              <NoteComposer leadId={lead.id} />
-              <Timeline leadId={lead.id} />
+          {tab === 'conversation' ? (
+            // A conversa rola por dentro, com a caixa de texto fixa embaixo
+            <div role="tabpanel" className="flex min-h-0 flex-1 flex-col">
+              <Conversation lead={lead} />
             </div>
           ) : (
-            <LeadForm target={{ mode: 'edit', lead }} stages={stages} onDone={onClose} />
+            <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {tab === 'history' ? (
+                <div className="flex flex-col gap-6">
+                  <FollowUp lead={lead} />
+                  <NoteComposer leadId={lead.id} />
+                  <Timeline leadId={lead.id} />
+                </div>
+              ) : (
+                form
+              )}
+            </div>
           )}
         </div>
-      )}
+
+        {wide && (
+          <aside aria-labelledby="lead-data-title" className="w-[420px] shrink-0 overflow-y-auto border-l bg-navy-850 px-6 py-5">
+            <h3 id="lead-data-title" className="mb-4 text-ui font-bold text-white">
+              Dados
+            </h3>
+            {form}
+          </aside>
+        )}
+      </div>
     </>
   )
 }
