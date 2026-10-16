@@ -61,6 +61,13 @@ export class LeadsController {
     return this.activities.listFollowUps();
   }
 
+  @Get('today')
+  @ApiOperation({ summary: 'Resumo e fila da tela Hoje' })
+  @ApiOkResponse({ description: 'Resumo factual da manhã e leads prioritários' })
+  todayDashboard() {
+    return this.activities.todayDashboard();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detalhe do lead' })
   @ApiOkResponse({ type: LeadWithStageEntity })

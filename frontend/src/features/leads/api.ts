@@ -7,6 +7,7 @@ import type {
   LeadList,
   LeadListQuery,
   LeadWithStage,
+  TodayDashboard,
   MoveLeadInput,
   Paginated,
 } from './types.ts'
@@ -49,6 +50,10 @@ export function getLead(id: string) {
 
 export function getFollowUps() {
   return api<LeadWithStage[]>('/leads/follow-ups')
+}
+
+export function getTodayDashboard() {
+  return api<TodayDashboard>('/leads/today')
 }
 
 export function getLeadActivities(id: string) {

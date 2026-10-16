@@ -12,6 +12,7 @@ import {
   getLead,
   getLeadLists,
   getFollowUps,
+  getTodayDashboard,
   getLeadActivities,
   getLeads,
   importLeads,
@@ -61,6 +62,10 @@ export function useLead(id: string, initial?: Lead) {
 /** Agenda de contatos (tela "Hoje" e contador do menu). Atualiza sozinha a cada minuto. */
 export function useFollowUps() {
   return useQuery({ queryKey: leadKeys.followUps, queryFn: getFollowUps, refetchInterval: 60_000 })
+}
+
+export function useTodayDashboard() {
+  return useQuery({ queryKey: ['leads', 'today'], queryFn: getTodayDashboard, refetchInterval: 60_000 })
 }
 
 export function useLeadActivities(id: string) {

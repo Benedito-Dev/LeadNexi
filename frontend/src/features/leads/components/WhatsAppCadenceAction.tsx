@@ -11,10 +11,12 @@ import type { Lead } from '../types.ts'
  */
 export function WhatsAppCadenceAction({
   lead,
+  message: suggestedMessage,
   showLabel = false,
   className = '',
 }: {
   lead: Lead
+  message?: string
   showLabel?: boolean
   className?: string
 }) {
@@ -37,13 +39,13 @@ export function WhatsAppCadenceAction({
     return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
-  const url = lead.phone ? whatsappUrl(lead.phone, defaultWhatsAppMessage(lead.name)) : null
+  const readyMessage = suggestedMessage ?? defaultWhatsAppMessage(lead.name)
+  const url = lead.phone ? whatsappUrl(lead.phone, readyMessage) : null
   if (!url) return null
   const whatsappLink = url
 
   function openWhatsApp() {
-    const text = defaultWhatsAppMessage(lead.name)
-    setMessage(text)
+    setMessage(readyMessage)
     pendingRef.current = Date.now()
     setOpening(true)
     const popup = window.open(whatsappLink, '_blank', 'noopener,noreferrer')

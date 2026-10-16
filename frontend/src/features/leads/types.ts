@@ -147,6 +147,25 @@ export interface LeadList {
   updatedAt: string
 }
 
+export interface TodayDashboard {
+  now: string
+  dailyTarget: number
+  weeklyTarget: number
+  monthlyGoal: number
+  followUps: LeadWithStage[]
+  responses: LeadWithStage[]
+  newContacts: LeadWithStage[]
+  meetings: LeadWithStage[]
+  contactsMade: number
+  responsesThisWeek: number
+  responseRate: number | null
+  meetingsThisWeek: number
+  closedThisMonth: { count: number; value: string | number }
+  todayNewContacts: number
+  todayFollowUps: number
+  responseQueueCount: number
+}
+
 export interface Paginated<T> {
   data: T[]
   meta: { page: number; limit: number; total: number; totalPages: number }

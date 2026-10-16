@@ -9,7 +9,7 @@ import { CreateNoteDto } from './dto/create-note.dto.js';
 import { ScheduleFollowUpDto } from './dto/schedule-follow-up.dto.js';
 
 const stageSummary = {
-  select: { id: true, name: true, pipelineId: true },
+  select: { id: true, name: true, pipelineId: true, stageType: true },
 } satisfies Prisma.StageDefaultArgs;
 
 const listSummary = {
@@ -38,6 +38,93 @@ export class LeadActivitiesService {
       orderBy: { followUpAt: 'asc' },
       take: FOLLOW_UPS_LIMIT,
     });
+  }
+
+  /** Resumo factual da manhã: eventos registrados, fila e compromissos ativos. */
+  async todayDashboard() {
+    const now = new Date();
+    const startToday = new Date(now);
+    startToday.setHours(0, 0, 0, 0);
+    const endToday = new Date(startToday);
+    endToday.setDate(endToday.getDate() + 1);
+    endToday.setMilliseconds(-1);
+
+    const startWeek = new Date(startToday);
+    const day = startWeek.getDay();
+    startWeek.setDate(startWeek.getDate() - (day === 0 ? 6 : day - 1));
+    const startMonth = new Date(startToday.getFullYear(), startToday.getMonth(), 1);
+    const active = { archived: false, list: { archived: false } } satisfies Prisma.LeadWhereInput;
+    const include = { stage: stageSummary, list: listSummary } satisfies Prisma.LeadInclude;
+
+    const [followUps, responses, newContacts, meetings, contactsMade, responsesThisWeek, meetingsThisWeek, closedThisMonth] =
+      await Promise.all([
+        this.prisma.lead.findMany({
+          where: { ...active, followUpAt: { not: null } },
+          include,
+          orderBy: { followUpAt: 'asc' },
+          take: FOLLOW_UPS_LIMIT,
+        }),
+        this.prisma.lead.findMany({
+          where: { ...active, stage: { stageType: 'RESPONDED' } },
+          include,
+          orderBy: { updatedAt: 'asc' },
+          take: 50,
+        }),
+        this.prisma.lead.findMany({
+          where: { ...active, stage: { stageType: 'CONTACT' } },
+          include,
+          orderBy: [{ googleReviewCount: 'desc' }, { googleRating: 'desc' }, { createdAt: 'asc' }],
+          take: 5,
+        }),
+        this.prisma.lead.findMany({
+          where: { ...active, meetingAt: { gte: startToday } },
+          include,
+          orderBy: { meetingAt: 'asc' },
+          take: 20,
+        }),
+        this.prisma.leadActivity.count({
+          where: {
+            createdAt: { gte: startWeek, lte: now },
+            type: { in: ['WHATSAPP_MESSAGE_SENT', 'INSTAGRAM_MESSAGE_SENT'] },
+          },
+        }),
+        this.prisma.leadActivity.count({
+          where: {
+            createdAt: { gte: startWeek, lte: now },
+            type: { in: ['WHATSAPP_MESSAGE_RECEIVED', 'INSTAGRAM_MESSAGE'] },
+          },
+        }),
+        this.prisma.lead.count({
+          where: { ...active, meetingAt: { gte: startWeek, lte: now } },
+        }),
+        this.prisma.lead.aggregate({
+          where: { ...active, wonAt: { gte: startMonth, lte: now }, stage: { stageType: 'WON' } },
+          _count: { _all: true },
+          _sum: { estimatedValue: true },
+        }),
+      ]);
+
+    return {
+      now,
+      dailyTarget: 5,
+      weeklyTarget: 30,
+      monthlyGoal: 300,
+      followUps,
+      responses,
+      newContacts,
+      meetings,
+      contactsMade,
+      responsesThisWeek,
+      responseRate: contactsMade > 0 ? responsesThisWeek / contactsMade : null,
+      meetingsThisWeek,
+      closedThisMonth: {
+        count: closedThisMonth._count._all,
+        value: closedThisMonth._sum.estimatedValue ?? 0,
+      },
+      todayNewContacts: newContacts.length,
+      todayFollowUps: followUps.filter((lead) => lead.followUpAt && lead.followUpAt <= endToday).length,
+      responseQueueCount: responses.length,
+    };
   }
 
   /** Histórico do lead, do mais novo para o mais antigo. */
