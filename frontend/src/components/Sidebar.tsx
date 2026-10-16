@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, LogOut, Moon, Sun, Users } from 'lucide-react'
+import { BarChart3, CalendarCheck, Download, LogOut, Moon, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { InstagramIcon, KanbanIcon } from '../brand/icons.tsx'
@@ -6,6 +6,7 @@ import { useLogout, useMe } from '../features/auth/hooks.ts'
 import { useFollowUps } from '../features/leads/hooks.ts'
 import { followUpTone } from '../lib/format.ts'
 import { setTheme, useTheme } from '../lib/theme.ts'
+import { usePwaInstall } from '../lib/usePwaInstall.ts'
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
 
@@ -24,6 +25,7 @@ export function Sidebar({ header, onNavigate }: { header: ReactNode; onNavigate?
   const pending = (followUps.data ?? []).filter(
     (lead) => lead.followUpAt && followUpTone(lead.followUpAt) !== 'future',
   ).length
+  const { canInstall, install } = usePwaInstall()
 
   return (
     <div className="flex h-full flex-col px-4 py-6">
@@ -62,8 +64,24 @@ export function Sidebar({ header, onNavigate }: { header: ReactNode; onNavigate?
         ))}
       </nav>
 
-      <UserCard />
+      <div className="mt-auto flex flex-col gap-4">
+        {canInstall && <InstallAppButton onInstall={install} />}
+        <UserCard />
+      </div>
     </div>
+  )
+}
+
+function InstallAppButton({ onInstall }: { onInstall: () => Promise<boolean> }) {
+  return (
+    <button
+      type="button"
+      onClick={() => void onInstall()}
+      className="flex min-h-11 items-center gap-3 rounded-sm border border-violet/40 bg-violet-tint px-3 text-left text-small font-bold text-violet-300 transition-colors hover:bg-violet/20"
+    >
+      <Download aria-hidden size={17} strokeWidth={1.75} />
+      <span>Instalar LeadNexi</span>
+    </button>
   )
 }
 

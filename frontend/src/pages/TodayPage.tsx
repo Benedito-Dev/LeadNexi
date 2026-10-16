@@ -8,7 +8,7 @@ import {
   Target,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
 import { Button } from '../components/ui/Button.tsx'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { useMe } from '../features/auth/hooks.ts'
@@ -175,8 +175,8 @@ function ActionCard({ kind, lead, onOpen }: { kind: QueueKind; lead: LeadWithSta
       </div>
       <p className="mt-3 flex items-center gap-2 text-small font-bold text-slate-300"><span className="size-2 rounded-full bg-cyan" aria-hidden />{context}</p>
       {(kind === 'new' || kind === 'follow-up') && <label className="mt-3 block"><span className="sr-only">Mensagem sugerida para {lead.name}</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} maxLength={5000} className="w-full resize-y rounded-md border border-navy-600 bg-navy-750 px-3 py-2 text-small leading-5 text-slate-300 outline-none placeholder:text-slate-500 focus:border-cyan" /></label>}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {(kind === 'new' || kind === 'follow-up') && <WhatsAppCadenceAction lead={lead} message={message} showLabel />}
+      <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        {(kind === 'new' || kind === 'follow-up') && <WhatsAppCadenceAction lead={lead} message={message} showLabel className="!h-11 w-full sm:!h-9 sm:w-auto" />}
         {lead.instagramUserId && <ConversationButton lead={lead} />}
         {(kind === 'response' || kind === 'meeting') && <Button variant="secondary" className="h-9 px-3.5" onClick={() => onOpen(lead)}>{kind === 'response' ? 'Tratar resposta' : 'Abrir compromisso'}</Button>}
         {kind === 'follow-up' && <Button variant="secondary" className="h-9 px-3.5" onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? 'Salvando…' : <><Check aria-hidden size={16} strokeWidth={1.75} /> Feito</>}</Button>}
@@ -209,6 +209,51 @@ function DelayMenu({ leadId }: { leadId: string }) {
 function FocusMode({ items, onClose, onOpen }: { items: QueueItem[]; onClose: () => void; onOpen: (lead: LeadWithStage) => void }) {
   const [index, setIndex] = useState(0)
   const item = items[index]
+  const startX = useRef<number | null>(null)
+  const [gestureMessage, setGestureMessage] = useState('')
+  const complete = useCompleteFollowUp(item?.lead.id ?? '')
+  const schedule = useScheduleFollowUp(item?.lead.id ?? '')
+
+  function advance(message: string) {
+    setGestureMessage(message)
+    window.setTimeout(() => {
+      setGestureMessage('')
+      setIndex((current) => Math.min(current + 1, items.length - 1))
+    }, 180)
+  }
+
+  function markDone() {
+    if (!item || complete.isPending) return
+    if (item.kind === 'follow-up') {
+      complete.mutate(undefined, { onSuccess: () => advance('Contato marcado como feito') })
+      return
+    }
+    advance('Ação concluída')
+  }
+
+  function postpone() {
+    if (!item || schedule.isPending) return
+    const dueAt = new Date()
+    dueAt.setDate(dueAt.getDate() + 1)
+    dueAt.setHours(10, 0, 0, 0)
+    schedule.mutate({ dueAt: dueAt.toISOString(), note: 'Contato adiado pelo modo prospecção' }, { onSuccess: () => advance('Contato adiado para amanhã') })
+  }
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    startX.current = event.changedTouches[0]?.clientX ?? null
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const initialX = startX.current
+    const finalX = event.changedTouches[0]?.clientX
+    startX.current = null
+    if (initialX === null || finalX === undefined) return
+    const distance = finalX - initialX
+    if (Math.abs(distance) < 64) return
+    if (distance > 0) markDone()
+    else postpone()
+  }
+
   useEffect(() => {
     function handleKey(event: globalThis.KeyboardEvent) {
       if (event.key === 'Escape') onClose()
@@ -220,7 +265,7 @@ function FocusMode({ items, onClose, onOpen }: { items: QueueItem[]; onClose: ()
     return () => window.removeEventListener('keydown', handleKey)
   }, [item, items.length, onClose, onOpen])
   if (!item) return null
-  return <div className="fixed inset-0 z-40 grid place-items-center bg-backdrop p-4" role="dialog" aria-modal="true" aria-label="Modo prospecção"><div className="w-full max-w-2xl rounded-xl border border-navy-600 bg-navy-800 p-5 shadow-float sm:p-8"><div className="flex items-center justify-between gap-4"><p className="text-small font-bold text-cyan">Modo prospecção · {index + 1} de {items.length}</p><button type="button" onClick={onClose} className="cursor-pointer rounded-sm px-2 py-1 text-small font-bold text-slate-400 hover:bg-navy-750 hover:text-white">Esc para fechar</button></div><div className="mt-5"><ActionCard kind={item.kind} lead={item.lead} onOpen={onOpen} /></div><p className="mt-4 text-center text-xs font-semibold text-slate-500">Enter abre o lead · ← → percorre a fila · Esc fecha</p></div></div>
+  return <div className="fixed inset-0 z-40 grid place-items-center bg-backdrop p-4" role="dialog" aria-modal="true" aria-label="Modo prospecção"><div className="w-full max-w-2xl rounded-xl border border-navy-600 bg-navy-800 p-5 shadow-float sm:p-8"><div className="flex items-center justify-between gap-4"><p className="text-small font-bold text-cyan">Modo prospecção · {index + 1} de {items.length}</p><button type="button" onClick={onClose} className="cursor-pointer rounded-sm px-2 py-1 text-small font-bold text-slate-400 hover:bg-navy-750 hover:text-white">Esc para fechar</button></div><div className="mt-5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}><ActionCard kind={item.kind} lead={item.lead} onOpen={onOpen} /></div><div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center"><Button variant="secondary" className="h-11 sm:h-9" onClick={postpone} disabled={schedule.isPending}><span aria-hidden>←</span> Adiar para amanhã</Button><Button className="h-11 sm:h-9" onClick={markDone} disabled={complete.isPending || schedule.isPending}>Feito <span aria-hidden>→</span></Button></div><p className="mt-3 text-center text-xs font-semibold text-slate-500">No celular, deslize para a esquerda para adiar ou para a direita para concluir. Enter abre o lead · ← → percorre a fila · Esc fecha</p><p className="sr-only" aria-live="polite">{gestureMessage}</p></div></div>
 }
 
 function EmptyQueue() {
