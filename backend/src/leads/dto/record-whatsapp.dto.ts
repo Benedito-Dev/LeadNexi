@@ -6,6 +6,16 @@ export class RecordWhatsAppDto {
   @IsNotEmpty()
   @MaxLength(5000)
   message: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  templateId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  variation?: string;
 }
 
 export class RecordWhatsAppResponseDto {

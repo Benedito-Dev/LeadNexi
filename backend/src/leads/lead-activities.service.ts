@@ -56,8 +56,9 @@ export class LeadActivitiesService {
     const active = { archived: false, list: { archived: false } } satisfies Prisma.LeadWhereInput;
     const include = { stage: stageSummary, list: listSummary } satisfies Prisma.LeadInclude;
 
-    const [followUps, responses, newContacts, meetings, contactsMade, responsesThisWeek, meetingsThisWeek, closedThisMonth] =
+    const [settings, followUps, responses, newContacts, meetings, contactsMade, responsesThisWeek, meetingsThisWeek, closedThisMonth] =
       await Promise.all([
+        this.prisma.prospectingSettings.findUnique({ where: { id: 1 } }),
         this.prisma.lead.findMany({
           where: { ...active, followUpAt: { not: null } },
           include,
@@ -106,9 +107,9 @@ export class LeadActivitiesService {
 
     return {
       now,
-      dailyTarget: 5,
-      weeklyTarget: 30,
-      monthlyGoal: 300,
+      dailyTarget: settings?.dailyTarget ?? 5,
+      weeklyTarget: settings?.weeklyTarget ?? 30,
+      monthlyGoal: Number(settings?.monthlyRevenueGoal ?? 300),
       followUps,
       responses,
       newContacts,

@@ -20,5 +20,9 @@ export class LeadActivityEntity {
   channel: string | null;
   /** Passo da cadência, quando houver */
   cadenceStep: number | null;
+  /** Identificador do template, quando houver */
+  templateId: string | null;
+  /** Variação do template, quando houver */
+  variation: string | null;
   createdAt: Date;
 }

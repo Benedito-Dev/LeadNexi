@@ -232,7 +232,7 @@ export class LeadsService {
   }
 
   /** Registra uma mensagem confirmada pelo usuário no WhatsApp e avança a cadência. */
-  async recordWhatsAppSent(id: string, { message }: RecordWhatsAppDto) {
+  async recordWhatsAppSent(id: string, { message, templateId, variation }: RecordWhatsAppDto) {
     const lead = await this.findOne(id);
     const text = message.trim();
     if (!text) throw new BadRequestException('A mensagem não pode ficar vazia.');
@@ -292,6 +292,8 @@ export class LeadsService {
           text,
           channel: 'whatsapp',
           cadenceStep: nextStep,
+          templateId: templateId?.trim() || `prospeccao-fria-passo-${nextStep}`,
+          variation: variation?.trim() || 'padrao',
           fromStage: lead.stage.name,
           toStage: targetStage.name,
         },

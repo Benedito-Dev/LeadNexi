@@ -88,6 +88,7 @@ function useInvalidateLeads() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: pipelineKeys.all }),
       queryClient.invalidateQueries({ queryKey: leadKeys.all }),
+      queryClient.invalidateQueries({ queryKey: ['results'] }),
     ])
 }
 

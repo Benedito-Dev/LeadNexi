@@ -159,12 +159,31 @@ model LeadActivity {
   channel    String?
   /// Passo da cadência associado ao contato, quando houver
   cadenceStep Int?            @map("cadence_step")
+  /// Identificador do template usado na mensagem
+  templateId  String?         @map("template_id")
+  /// Variação do template, quando houver
+  variation   String?
   /// ID da mensagem na Meta: a mesma mensagem avisada duas vezes entra uma vez só
   externalId String?          @unique @map("external_id")
   createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([leadId, createdAt])
   @@map("lead_activities")
+}
+
+// Metas da operação de prospecção (singleton: id = 1)
+model ProspectingSettings {
+  id                 Int      @id @default(1)
+  dailyTarget        Int      @default(5) @map("daily_target")
+  weeklyTarget       Int      @default(30) @map("weekly_target")
+  monthlyRevenueGoal Decimal  @default(300) @map("monthly_revenue_goal") @db.Decimal(12, 2)
+  dailyLimit         Int      @default(8) @map("daily_limit")
+  decisionContacts   Int      @default(30) @map("decision_contacts")
+  decisionMinReplies Int      @default(2) @map("decision_min_replies")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("prospecting_settings")
 }
 
 // Sessões de login: refresh tokens com rotação. Cada login abre uma família; cada renovação cria

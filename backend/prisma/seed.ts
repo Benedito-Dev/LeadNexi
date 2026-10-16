@@ -49,6 +49,12 @@ async function main() {
     update: {},
   });
 
+  await prisma.prospectingSettings.upsert({
+    where: { id: 1 },
+    create: { id: 1 },
+    update: {},
+  });
+
   if ((await prisma.pipeline.count()) === 0) {
     await prisma.pipeline.create({
       data: {

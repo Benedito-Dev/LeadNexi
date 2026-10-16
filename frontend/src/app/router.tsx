@@ -10,6 +10,7 @@ import { LeadsPage } from '../pages/LeadsPage.tsx'
 import { LoginPage } from '../pages/LoginPage.tsx'
 import { NotFoundPage } from '../pages/NotFoundPage.tsx'
 import { TodayPage } from '../pages/TodayPage.tsx'
+import { ResultsPage } from '../pages/ResultsPage.tsx'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/hoje" replace /> },
           { path: '/hoje', element: <TodayPage /> },
+          { path: '/resultados', element: <ResultsPage /> },
           { path: '/kanban', element: <KanbanPage /> },
           { path: '/leads', element: <LeadsPage /> },
           { path: '/leads/importar', element: <ImportLeadsPage /> },
