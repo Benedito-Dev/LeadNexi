@@ -37,6 +37,10 @@ export function formatElapsed(iso: string, now = Date.now()): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
+export function elapsedDays(iso: string, now = Date.now()): number {
+  return Math.max(0, Math.floor((now - new Date(iso).getTime()) / 86_400_000))
+}
+
 const percent = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 })
 
 /** 0.333 → "33%" */

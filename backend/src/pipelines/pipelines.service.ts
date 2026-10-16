@@ -7,6 +7,7 @@ import { changedPositions } from '../common/utils/positions.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreatePipelineDto } from './dto/create-pipeline.dto.js';
 import { UpdatePipelineDto } from './dto/update-pipeline.dto.js';
+import { QueryPipelineBoardDto } from './dto/query-pipeline-board.dto.js';
 
 @Injectable()
 export class PipelinesService {
@@ -20,13 +21,23 @@ export class PipelinesService {
   }
 
   /** Pipeline completo para montar o Kanban: etapas + leads, tudo ordenado. */
-  async findBoard(id: string) {
+  async findBoard(id: string, query: QueryPipelineBoardDto = {}) {
     const pipeline = await this.prisma.pipeline.findUnique({
       where: { id },
       include: {
         stages: {
           orderBy: { position: 'asc' },
-          include: { leads: { orderBy: { position: 'asc' } } },
+          include: {
+            leads: {
+              where: {
+                listId: query.listId,
+                archived: query.includeArchived ? undefined : false,
+                list: query.includeArchived ? undefined : { archived: false },
+              },
+              orderBy: { position: 'asc' },
+              include: { list: { select: { id: true, name: true, archived: true } } },
+            },
+          },
         },
       },
     });

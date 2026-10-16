@@ -5,8 +5,12 @@ export function getPipelines() {
   return api<PipelineSummary[]>('/pipelines')
 }
 
-export function getPipelineBoard(id: string) {
-  return api<PipelineBoard>(`/pipelines/${id}`)
+export function getPipelineBoard(id: string, options: { listId?: string; includeArchived?: boolean } = {}) {
+  const params = new URLSearchParams()
+  if (options.listId) params.set('listId', options.listId)
+  if (options.includeArchived) params.set('includeArchived', 'true')
+  const query = params.toString()
+  return api<PipelineBoard>(`/pipelines/${id}${query ? `?${query}` : ''}`)
 }
 
 /** Cria o funil no fim da lista, com as etapas iniciais na ordem enviada. */

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LeadListsModule } from '../lead-lists/lead-lists.module.js';
 import { StagesModule } from '../stages/stages.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { LeadActivitiesController } from './lead-activities.controller.js';
@@ -9,7 +10,7 @@ import { LeadsService } from './leads.service.js';
 import { LeadsImportService } from './leads-import.service.js';
 
 @Module({
-  imports: [StagesModule, StorageModule],
+  imports: [LeadListsModule, StagesModule, StorageModule],
   controllers: [
     LeadsController,
     LeadActivitiesController,

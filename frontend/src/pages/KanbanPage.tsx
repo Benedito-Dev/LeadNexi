@@ -7,9 +7,11 @@ import { Dropdown } from '../components/ui/Dropdown.tsx'
 import { Input } from '../components/ui/Input.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
 import { useMoveLead } from '../features/leads/hooks.ts'
+import { useLeadLists } from '../features/leads/hooks.ts'
 import { KanbanBoard } from '../features/pipelines/components/KanbanBoard.tsx'
 import { NewStageColumn } from '../features/stages/components/NewStageColumn.tsx'
 import { PipelineKpis } from '../features/pipelines/components/PipelineKpis.tsx'
+import { LostReasonDialog } from '../features/pipelines/components/LostReasonDialog.tsx'
 import { usePipelineBoard, usePipelines } from '../features/pipelines/hooks.ts'
 import { stageColorClass } from '../features/pipelines/stageColor.ts'
 import type { PipelineBoard } from '../features/pipelines/types.ts'
@@ -20,18 +22,42 @@ export function KanbanPage() {
 
   // Funil escolhido fica na URL (?pipeline=id); sem escolha, o primeiro
   const list = pipelines.data ?? []
+  const leadLists = useLeadLists()
   const pipelineId = list.find((p) => p.id === searchParams.get('pipeline'))?.id ?? list[0]?.id
-  const board = usePipelineBoard(pipelineId)
+  const listId = searchParams.get('lista') ?? ''
+  const selectedList = leadLists.data?.find((item) => item.id === listId)
+  const board = usePipelineBoard(pipelineId, {
+    listId,
+    includeArchived: selectedList?.archived ?? false,
+  })
 
-  const pipelineSelect = list.length > 1 && (
-    <div className="w-44 shrink-0">
-      <Dropdown
-        label="Funil"
-        value={pipelineId ?? ''}
-        onChange={(value) => setSearchParams({ pipeline: value })}
-        options={list.map((pipeline) => ({ value: pipeline.id, label: pipeline.name }))}
-      />
-    </div>
+  const pipelineSelect = (
+    <>
+      {list.length > 1 && (
+        <div className="w-44 shrink-0">
+          <Dropdown
+            label="Funil"
+            value={pipelineId ?? ''}
+            onChange={(value) => setSearchParams((current) => ({ ...Object.fromEntries(current), pipeline: value }))}
+            options={list.map((pipeline) => ({ value: pipeline.id, label: pipeline.name }))}
+          />
+        </div>
+      )}
+      <div className="w-56 shrink-0">
+        <Dropdown
+          label="Lista ou nicho"
+          value={listId}
+          onChange={(value) => setSearchParams((current) => ({ ...Object.fromEntries(current), lista: value }))}
+          options={[
+            { value: '', label: 'Todas as listas ativas' },
+            ...(leadLists.data ?? []).map((item) => ({
+              value: item.id,
+              label: `${item.name}${item.archived ? ' · arquivada' : ''}`,
+            })),
+          ]}
+        />
+      </div>
+    </>
   )
 
   if (pipelines.isError || board.isError) {
@@ -56,14 +82,42 @@ export function KanbanPage() {
     )
   }
 
-  return <BoardView board={board.data} actions={pipelineSelect} />
+  return (
+    <BoardView
+      board={board.data}
+      actions={pipelineSelect}
+      listId={listId}
+      includeArchived={selectedList?.archived ?? false}
+    />
+  )
 }
 
-function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNode }) {
+function BoardView({
+  board,
+  actions,
+  listId,
+  includeArchived,
+}: {
+  board: PipelineBoard
+  actions: ReactNode
+  listId: string
+  includeArchived: boolean
+}) {
   const [formTarget, setFormTarget] = useState<LeadFormTarget | null>(null)
+  const [lostMove, setLostMove] = useState<{ leadId: string; stageId: string; position: number; leadName: string } | null>(null)
   const [search, setSearch] = useState('')
-  const move = useMoveLead(board.id)
+  const move = useMoveLead(board.id, { listId, includeArchived })
   const firstStageId = board.stages[0]?.id
+
+  function handleMoveLead(leadId: string, stageId: string, position: number) {
+    const stage = board.stages.find((item) => item.id === stageId)
+    const lead = board.stages.flatMap((item) => item.leads).find((item) => item.id === leadId)
+    if (stage?.stageType === 'LOST' && lead?.stageId !== stageId) {
+      setLostMove({ leadId, stageId, position, leadName: lead?.name ?? 'este lead' })
+      return
+    }
+    move.move(leadId, stageId, position)
+  }
 
   return (
     <Page
@@ -115,7 +169,7 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
         <KanbanBoard
           board={board}
           search={search}
-          onMoveLead={move.move}
+          onMoveLead={handleMoveLead}
           onAddLead={(stageId) => setFormTarget({ mode: 'create', stageId })}
           onOpenLead={(lead) => setFormTarget({ mode: 'edit', lead })}
         />
@@ -129,6 +183,17 @@ function BoardView({ board, actions }: { board: PipelineBoard; actions: ReactNod
           colorClass: stageColorClass(index),
         }))}
         onClose={() => setFormTarget(null)}
+      />
+
+      <LostReasonDialog
+        open={lostMove !== null}
+        leadName={lostMove?.leadName ?? ''}
+        onClose={() => setLostMove(null)}
+        onConfirm={(reason) => {
+          if (!lostMove) return
+          move.move(lostMove.leadId, lostMove.stageId, lostMove.position, reason)
+          setLostMove(null)
+        }}
       />
     </Page>
   )

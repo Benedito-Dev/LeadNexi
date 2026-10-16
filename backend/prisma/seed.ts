@@ -15,10 +15,13 @@ const prisma = new PrismaClient({
 
 // Cores = progressão do funil do guia de marca (docs/brand/BRAND.md, seção 4.2)
 const DEFAULT_STAGES = [
-  { name: 'Novo', color: '#6D5DFB' },
-  { name: 'Contato', color: '#5C8AF6' },
-  { name: 'Proposta', color: '#3DB3F1' },
-  { name: 'Fechado', color: '#22D3EE' },
+  { name: 'A contatar', stageType: 'CONTACT' as const, color: '#6D5DFB' },
+  { name: 'Mensagem enviada', stageType: 'SENT' as const, color: '#5C8AF6' },
+  { name: 'Respondeu', stageType: 'RESPONDED' as const, color: '#3DB3F1' },
+  { name: 'Reunião marcada', stageType: 'MEETING' as const, color: '#3DB3F1' },
+  { name: 'Proposta enviada', stageType: 'PROPOSAL' as const, color: '#3DB3F1' },
+  { name: 'Fechou', stageType: 'WON' as const, color: '#22D3EE' },
+  { name: 'Perdido', stageType: 'LOST' as const, color: '#64748B' },
 ];
 
 function requireEnv(name: string): string {
@@ -38,6 +41,12 @@ async function main() {
     update: { name, passwordHash },
   });
   console.log(`✔ Usuário ${email} pronto`);
+
+  await prisma.leadList.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000001' },
+    create: { id: '00000000-0000-4000-8000-000000000001', name: 'Sem lista' },
+    update: {},
+  });
 
   if ((await prisma.pipeline.count()) === 0) {
     await prisma.pipeline.create({

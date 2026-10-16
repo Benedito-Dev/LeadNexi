@@ -1,9 +1,11 @@
-import { ArrowRight, CircleAlert } from 'lucide-react'
+import { ArrowRight, CircleAlert, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button } from '../../../../components/ui/Button.tsx'
 import { Dropdown } from '../../../../components/ui/Dropdown.tsx'
 import { useStageOptions } from '../../../pipelines/useStageOptions.ts'
+import { useLeadLists } from '../../hooks.ts'
 import type { ImportLeadRow } from '../../api.ts'
+import { LeadListCreateDialog } from './LeadListCreateDialog.tsx'
 import {
   distinctStatuses,
   guessStage,
@@ -32,6 +34,7 @@ export interface ColumnsChoice {
   targets: ColumnTarget[]
   statusStage: Record<string, string>
   defaultStageId: string
+  listId: string
   rows: ImportRow[]
 }
 
@@ -56,17 +59,22 @@ export function ColumnsStep({
   onNext: (choice: ColumnsChoice) => void
 }) {
   const { stageOptions } = useStageOptions()
+  const lists = useLeadLists()
   const [sheetName, setSheetName] = useState(initial?.sheetName ?? mainSheet(sheets)?.name ?? '')
   const sheet = sheets.find((item) => item.name === sheetName) ?? sheets[0]
   const [targets, setTargets] = useState<ColumnTarget[]>(initial?.targets ?? guessTargets(sheet.headers))
   const [statusStage, setStatusStage] = useState<Record<string, string>>(initial?.statusStage ?? {})
   const [defaultStageId, setDefaultStageId] = useState(initial?.defaultStageId ?? '')
+  const [listId, setListId] = useState(initial?.listId ?? '')
+  const [createListOpen, setCreateListOpen] = useState(false)
 
   const mapped = useMemo(() => sheet.rows.map((row) => mapRow(sheet, targets, row)), [sheet, targets])
   const statuses = useMemo(() => distinctStatuses(mapped), [mapped])
   const hasStatus = targets.includes('status')
   const firstStage = stageOptions[0]?.id ?? ''
   const fallbackStage = defaultStageId || firstStage
+  const activeLists = lists.data?.filter((list) => !list.archived) ?? []
+  const fallbackListId = listId || activeLists[0]?.id || ''
   const stageFor = (status: string) =>
     status ? (statusStage[status] ?? guessStage(status, stageOptions)) : fallbackStage
 
@@ -97,16 +105,29 @@ export function ColumnsStep({
       targets,
       statusStage: Object.fromEntries(statuses.map((status) => [status, stageFor(status)])),
       defaultStageId: fallbackStage,
+      listId: fallbackListId,
       rows: mapped.map((lead, index) => ({
         line: lead.line,
         note: looksLikeNote(sheet.rows[index].cells),
         lead: {
           name: lead.name,
           ...(lead.phone && { phone: lead.phone }),
+          ...(lead.phoneType && { phoneType: lead.phoneType }),
           ...(lead.email && { email: lead.email }),
           ...(lead.instagramUsername && { instagramUsername: lead.instagramUsername }),
           ...(lead.estimatedValue !== undefined && { estimatedValue: lead.estimatedValue }),
           ...(lead.notes && { notes: lead.notes }),
+          ...(fallbackListId && { listId: fallbackListId }),
+          ...(lead.neighborhood && { neighborhood: lead.neighborhood }),
+          ...(lead.address && { address: lead.address }),
+          ...(lead.mapsUrl && { mapsUrl: lead.mapsUrl }),
+          ...(lead.googlePlaceId && { googlePlaceId: lead.googlePlaceId }),
+          ...(lead.googleRating !== undefined && { googleRating: lead.googleRating }),
+          ...(lead.googleReviewCount !== undefined && { googleReviewCount: lead.googleReviewCount }),
+          ...(lead.isNetwork !== undefined && { isNetwork: lead.isNetwork }),
+          ...(lead.adStatus && { adStatus: lead.adStatus }),
+          ...(lead.cadenceStep !== undefined && { cadenceStep: lead.cadenceStep }),
+          ...(lead.followUpAt && { followUpAt: lead.followUpAt }),
           stageId: stageFor(lead.status),
         },
       })),
@@ -171,6 +192,37 @@ export function ColumnsStep({
         </ul>
       </section>
 
+      <section aria-labelledby="list-title" className="flex flex-col gap-3">
+        <div>
+          <h2 id="list-title" className="text-h2">
+            Lista ou nicho
+          </h2>
+          <p className="mt-1 text-small text-slate-400">
+            Os leads importados ficam agrupados aqui para você acompanhar cada prospecção.
+          </p>
+        </div>
+        <div className="flex max-w-xl flex-wrap items-end gap-3">
+          <div className="min-w-64 flex-1">
+          <Dropdown
+            label="Lista ou nicho dos leads"
+            value={fallbackListId}
+            onChange={setListId}
+            options={[
+              ...activeLists.map((list) => ({
+                value: list.id,
+                label: `${list.name} · ${list.leadCount} lead${list.leadCount === 1 ? '' : 's'}`,
+              })),
+              ...(activeLists.length === 0 ? [{ value: '', label: 'Sem lista disponível' }] : []),
+            ]}
+          />
+          </div>
+          <Button variant="secondary" onClick={() => setCreateListOpen(true)}>
+            <Plus aria-hidden size={18} strokeWidth={1.75} />
+            Nova lista
+          </Button>
+        </div>
+      </section>
+
       <section aria-labelledby="stages-title" className="flex flex-col gap-3">
         <div>
           <h2 id="stages-title" className="text-h2">
@@ -228,12 +280,22 @@ export function ColumnsStep({
           <Button variant="secondary" onClick={onBack}>
             Trocar arquivo
           </Button>
-          <Button onClick={next} disabled={missingName || tooMany || !fallbackStage}>
+          <Button onClick={next} disabled={missingName || tooMany || !fallbackStage || !fallbackListId}>
             Conferir {sheet.rows.length} linha{sheet.rows.length === 1 ? '' : 's'}
             <ArrowRight aria-hidden size={18} strokeWidth={1.75} />
           </Button>
         </div>
       </footer>
+
+      <LeadListCreateDialog
+        open={createListOpen}
+        onClose={() => setCreateListOpen(false)}
+        onCreated={(list) => {
+          setListId(list.id)
+          setCreateListOpen(false)
+          void lists.refetch()
+        }}
+      />
     </div>
   )
 }

@@ -1,59 +1,104 @@
 import type { Sheet, SheetCell } from './spreadsheet.ts'
 
-/** Linhas por importação (o servidor recusa acima disso) */
 export const IMPORT_LIMIT = 1000
 
-/** Para onde vai cada coluna da planilha */
 export type ColumnTarget =
   | 'name'
   | 'phone'
+  | 'phoneType'
   | 'email'
   | 'instagramUsername'
   | 'estimatedValue'
+  | 'neighborhood'
+  | 'address'
+  | 'mapsUrl'
+  | 'googlePlaceId'
+  | 'googleRating'
+  | 'googleReviewCount'
+  | 'isNetwork'
+  | 'adStatus'
+  | 'cadenceStep'
+  | 'followUpAt'
   | 'status'
   | 'notes'
-  /** Sem campo próprio: entra nas observações como "Coluna: valor" */
   | 'extra'
   | 'ignore'
 
 export const TARGET_LABELS: Record<ColumnTarget, string> = {
   name: 'Nome',
   phone: 'Telefone',
+  phoneType: 'Tipo de telefone',
   email: 'E-mail',
   instagramUsername: 'Instagram (@)',
   estimatedValue: 'Valor estimado',
+  neighborhood: 'Bairro',
+  address: 'Endereço',
+  mapsUrl: 'Link do Google Maps',
+  googlePlaceId: 'ID do lugar no Maps',
+  googleRating: 'Nota no Google',
+  googleReviewCount: 'Avaliações no Google',
+  isNetwork: 'É uma rede',
+  adStatus: 'Anuncia',
+  cadenceStep: 'Passo da cadência',
+  followUpAt: 'Próximo contato',
   status: 'Status (vira a etapa)',
   notes: 'Observações',
   extra: 'Juntar às observações',
   ignore: 'Não importar',
 }
 
-/** Campos que só uma coluna pode ocupar */
-export const SINGLE_TARGETS: ColumnTarget[] = ['name', 'phone', 'email', 'instagramUsername', 'estimatedValue', 'status']
+export const SINGLE_TARGETS: ColumnTarget[] = [
+  'name',
+  'phone',
+  'phoneType',
+  'email',
+  'instagramUsername',
+  'estimatedValue',
+  'neighborhood',
+  'address',
+  'mapsUrl',
+  'googlePlaceId',
+  'googleRating',
+  'googleReviewCount',
+  'isNetwork',
+  'adStatus',
+  'cadenceStep',
+  'followUpAt',
+  'status',
+]
 
-/** Nomes de cabeçalho reconhecidos (sem acento, minúsculas), na ordem de prioridade */
 const HEADER_HINTS: [ColumnTarget, RegExp][] = [
   ['ignore', /^(#|n|no|nº|n°|id|item)$/],
   ['name', /^(nome|negocio|empresa|cliente|lead|contato|razao social|nome fantasia|estabelecimento)$/],
+  ['phoneType', /(telefone tipo|tipo telefone|tipo do telefone|celular ou fixo)/],
   ['phone', /(telefone|celular|whats|fone|tel\b)/],
   ['email', /e-?mail/],
   ['instagramUsername', /(instagram|insta\b|^@$)/],
   ['estimatedValue', /^(valor|valor estimado|ticket|orcamento|preco)/],
-  ['status', /^(status|etapa|situacao|fase|estagio)$/],
-  ['notes', /^(observac|obs\b|anotac|notas?$)/],
+  ['neighborhood', /^(bairro|regiao|região)/],
+  ['address', /^(endereco|endereço|rua|logradouro)/],
+  ['mapsUrl', /(maps|google maps|link.*google|url.*maps)/],
+  ['googlePlaceId', /(place.?id|id.*lugar)/],
+  ['googleRating', /(nota|avaliacao|avaliação).*(google)?|google.*(nota|avaliacao|avaliação)/],
+  ['googleReviewCount', /(avaliacoes|avaliações|reviews).*(google)?|google.*(avaliacoes|avaliações|reviews)/],
+  ['isNetwork', /^(rede|network|e uma rede|é uma rede)$/],
+  ['adStatus', /^(anuncia|anúncia|anuncio|anúncio|ads|publicidade)/],
+  ['cadenceStep', /(passo.*cadencia|passo.*cadência|cadencia|cadência)/],
+  ['followUpAt', /(proximo.*passo|próximo.*passo|proximo.*contato|próximo.*contato|follow.?up)/],
+  ['status', /^(status|etapa|situacao|situação|fase|estagio|estágio)$/],
+  ['notes', /^(observac|observação|obs\b|anotac|notas?$)/],
 ]
 
 export function normalize(text: string) {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Diacritic}/gu, '')
     .replace(/[^\p{L}\p{N}@#º°\s-]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
 }
 
-/** Destino de cada coluna pelo nome do cabeçalho; o resto vai para as observações. */
 export function guessTargets(headers: string[]): ColumnTarget[] {
   const taken = new Set<ColumnTarget>()
   return headers.map((header) => {
@@ -65,46 +110,72 @@ export function guessTargets(headers: string[]): ColumnTarget[] {
   })
 }
 
-/**
- * Linha que parece instrução ou anotação solta (só uma célula preenchida numa planilha de várias
- * colunas, como "Como usar:"): começa desmarcada na conferência.
- */
 export function looksLikeNote(cells: SheetCell[]) {
   return cells.length > 2 && cells.filter((cell) => cell.text).length === 1
 }
 
-/** Valor em reais: "R$ 1.500,50", "1500.5" ou "1500" → 1500.5 (sem número: undefined) */
 export function parseMoney(text: string): number | undefined {
   const clean = text.replace(/[^\d,.-]/g, '')
   if (!clean) return undefined
-  // Com vírgula, ela é a casa decimal (padrão brasileiro) e os pontos são milhar
   const value = Number(clean.includes(',') ? clean.replace(/\./g, '').replace(',', '.') : clean)
   return Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
-/** Valor da célula para as observações: o link, quando o texto é só um rótulo ("Abrir no Maps") */
+function parseNumber(text: string): number | undefined {
+  const value = Number(text.replace(/[^\d,.-]/g, '').replace(',', '.'))
+  return Number.isFinite(value) && value >= 0 ? value : undefined
+}
+
+function parseInteger(text: string): number | undefined {
+  const value = Number(text.replace(/\D/g, ''))
+  return Number.isInteger(value) && value >= 0 ? value : undefined
+}
+
+function parseBoolean(text: string): boolean | undefined {
+  const key = normalize(text)
+  if (['sim', 'yes', 'true', '1', 'rede'].includes(key)) return true
+  if (['nao', 'não', 'no', 'false', '0'].includes(key)) return false
+  return undefined
+}
+
+function parseDate(text: string): string | undefined {
+  const value = text.trim()
+  const br = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value)
+  if (br) return new Date(`${br[3]}-${br[2].padStart(2, '0')}-${br[1].padStart(2, '0')}T12:00:00.000Z`).toISOString()
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00.000Z` : value
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
+}
+
 function cellValue(cell: SheetCell) {
   return cell.link ?? cell.text
 }
 
 export interface MappedLead {
-  /** Linha na planilha (para mostrar na conferência) */
   line: number
   name: string
+  status: string
   phone?: string
+  phoneType?: string
   email?: string
   instagramUsername?: string
   estimatedValue?: number
-  /** Texto do status (ligado a uma etapa na tela) */
-  status: string
+  neighborhood?: string
+  address?: string
+  mapsUrl?: string
+  googlePlaceId?: string
+  googleRating?: number
+  googleReviewCount?: number
+  isNetwork?: boolean
+  adStatus?: string
+  cadenceStep?: number
+  followUpAt?: string
   notes?: string
 }
 
-/** Aplica as escolhas de colunas a uma linha: campos do lead + observações montadas. */
 export function mapRow(sheet: Sheet, targets: ColumnTarget[], row: Sheet['rows'][number]): MappedLead {
   const lead: MappedLead = { line: row.line, name: '', status: '' }
   const notes: string[] = []
-  const extras: string[] = []
 
   targets.forEach((target, index) => {
     const cell = row.cells[index] ?? { text: '' }
@@ -117,6 +188,9 @@ export function mapRow(sheet: Sheet, targets: ColumnTarget[], row: Sheet['rows']
       case 'phone':
         lead.phone = text
         break
+      case 'phoneType':
+        lead.phoneType = text
+        break
       case 'email':
         lead.email = text
         break
@@ -126,24 +200,50 @@ export function mapRow(sheet: Sheet, targets: ColumnTarget[], row: Sheet['rows']
       case 'estimatedValue':
         lead.estimatedValue = parseMoney(text)
         break
+      case 'neighborhood':
+        lead.neighborhood = text
+        break
+      case 'address':
+        lead.address = text
+        break
+      case 'mapsUrl':
+        lead.mapsUrl = cellValue(cell)
+        break
+      case 'googlePlaceId':
+        lead.googlePlaceId = text
+        break
+      case 'googleRating':
+        lead.googleRating = parseNumber(text)
+        break
+      case 'googleReviewCount':
+        lead.googleReviewCount = parseInteger(text)
+        break
+      case 'isNetwork':
+        lead.isNetwork = parseBoolean(text)
+        break
+      case 'adStatus':
+        lead.adStatus = text
+        break
+      case 'cadenceStep':
+        lead.cadenceStep = parseInteger(text)
+        break
+      case 'followUpAt':
+        lead.followUpAt = parseDate(text)
+        break
       case 'status':
         lead.status = text
         break
       case 'notes':
-        notes.push(text)
-        break
       case 'extra':
-        extras.push(`${sheet.headers[index]}: ${cellValue(cell)}`)
+        notes.push(target === 'extra' ? `${sheet.headers[index]}: ${cellValue(cell)}` : text)
         break
     }
   })
 
-  const combined = [...notes, ...extras].join('\n')
-  if (combined) lead.notes = combined
+  if (notes.length > 0) lead.notes = notes.join('\n')
   return lead
 }
 
-/** Status distintos da planilha, na ordem em que aparecem */
 export function distinctStatuses(leads: MappedLead[]) {
   return [...new Set(leads.map((lead) => lead.status).filter(Boolean))]
 }
@@ -153,14 +253,9 @@ export interface StageChoice {
   label: string
 }
 
-/** Palavras que indicam o fim do funil (ganho) ou o começo */
 const CLOSED = /(fech|ganh|vend|conclu)/
 const START = /(a contatar|novo|nova|entrada|prospec|lead)/
 
-/**
- * Etapa sugerida para um status: mesmo nome, nome parecido, "Fechou" → última etapa, "A contatar"
- * → primeira; sem pista, a primeira.
- */
 export function guessStage(status: string, stages: StageChoice[]): string {
   const key = normalize(status)
   const byName = (stage: StageChoice) => normalize(stage.label.split(' · ').at(-1) ?? stage.label)

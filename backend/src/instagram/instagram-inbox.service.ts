@@ -3,6 +3,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { decryptSecret } from '../common/crypto/secret-box.js';
 import { readJpegSize } from '../common/utils/jpeg.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { LeadListsService } from '../lead-lists/lead-lists.service.js';
 import { AVATAR_REFRESH_MS, avatarKey } from '../leads/lead-avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -76,6 +77,7 @@ export class InstagramInboxService {
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
     private readonly storage: StorageService,
+    private readonly leadLists: LeadListsService,
   ) {}
 
   /** Cadastro do webhook: a Meta manda o token; confere com o que a tela mostra. */
@@ -334,6 +336,7 @@ export class InstagramInboxService {
     const name =
       profile?.name ??
       (profile?.username ? `@${profile.username}` : UNKNOWN_CONTACT);
+    const list = await this.leadLists.defaultList();
     try {
       const lead = await this.prisma.lead.create({
         data: {
@@ -342,8 +345,9 @@ export class InstagramInboxService {
           instagramUserId: senderId,
           instagramUsername: profile?.username ?? null,
           stageId: stage.id,
+          listId: list.id,
           position: await this.prisma.lead.count({
-            where: { stageId: stage.id },
+            where: { stageId: stage.id, archived: false },
           }),
           activities: {
             create: {

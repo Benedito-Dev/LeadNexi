@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreatePipelineDto } from './dto/create-pipeline.dto.js';
+import { QueryPipelineBoardDto } from './dto/query-pipeline-board.dto.js';
 import { UpdatePipelineDto } from './dto/update-pipeline.dto.js';
 import {
   PipelineBoardEntity,
@@ -48,8 +50,11 @@ export class PipelinesController {
   })
   @ApiOkResponse({ type: PipelineBoardEntity })
   @ApiNotFoundResponse({ description: 'Pipeline não encontrado' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pipelinesService.findBoard(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: QueryPipelineBoardDto,
+  ) {
+    return this.pipelinesService.findBoard(id, query);
   }
 
   @Post()

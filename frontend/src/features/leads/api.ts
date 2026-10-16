@@ -4,6 +4,7 @@ import type {
   Lead,
   LeadActivity,
   LeadInput,
+  LeadList,
   LeadListQuery,
   LeadWithStage,
   MoveLeadInput,
@@ -16,6 +17,14 @@ export function getLeads(query: LeadListQuery) {
     if (value !== undefined && value !== '') params.set(key, String(value))
   }
   return api<Paginated<LeadWithStage>>(`/leads?${params}`)
+}
+
+export function getLeadLists() {
+  return api<LeadList[]>('/lead-lists')
+}
+
+export function createLeadList(input: { name: string; niche?: string; city?: string; targetContacts?: number }) {
+  return api<LeadList>('/lead-lists', { method: 'POST', body: JSON.stringify(input) })
 }
 
 export function createLead(input: CreateLeadInput) {
@@ -38,9 +47,6 @@ export function getLead(id: string) {
   return api<LeadWithStage>(`/leads/${id}`)
 }
 
-// Histórico e próximo contato
-
-/** Leads com próximo contato agendado, atrasados primeiro (tela "Hoje") */
 export function getFollowUps() {
   return api<LeadWithStage[]>('/leads/follow-ups')
 }
@@ -69,28 +75,45 @@ export function cancelFollowUp(id: string) {
   return api<LeadWithStage>(`/leads/${id}/follow-up`, { method: 'DELETE' })
 }
 
-/** Linha da planilha já ligada aos campos do lead (POST /leads/import) */
 export interface ImportLeadRow {
   name: string
   phone?: string
+  phoneType?: string
   email?: string
   instagramUsername?: string
   estimatedValue?: number
   notes?: string
+  listId?: string
+  neighborhood?: string
+  address?: string
+  mapsUrl?: string
+  googlePlaceId?: string
+  googleRating?: number
+  googleReviewCount?: number
+  isNetwork?: boolean
+  adStatus?: string
+  cadenceStep?: number
+  followUpAt?: string
   stageId: string
 }
 
 export interface ImportLeadsResult {
-  /** Entram (dryRun) ou entraram */
   accepted: number
   skipped: number
-  rows: { index: number; status: 'ready' | 'created' | 'duplicate' | 'invalid'; reason?: string }[]
+  rows: { index: number; status: 'ready' | 'created' | 'updated' | 'duplicate' | 'invalid'; reason?: string }[]
 }
 
-/** Importa leads de planilha; `dryRun` só confere (quem entra, quem já existe, quem tem problema) */
-export function importLeads(leads: ImportLeadRow[], dryRun = false) {
+export function importLeads(
+  leads: ImportLeadRow[],
+  options: { dryRun?: boolean; listId?: string; duplicateMode?: 'skip' | 'update' | 'duplicate' } = {},
+) {
   return api<ImportLeadsResult>('/leads/import', {
     method: 'POST',
-    body: JSON.stringify({ leads, ...(dryRun ? { dryRun } : {}) }),
+    body: JSON.stringify({
+      leads,
+      ...(options.dryRun ? { dryRun: true } : {}),
+      ...(options.listId ? { listId: options.listId } : {}),
+      ...(options.duplicateMode && options.duplicateMode !== 'skip' ? { duplicateMode: options.duplicateMode } : {}),
+    }),
   })
 }

@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, Copy, FileText, LoaderCircle, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../../components/ui/Button.tsx'
+import { Dropdown } from '../../../../components/ui/Dropdown.tsx'
 import { useStageOptions } from '../../../pipelines/useStageOptions.ts'
 import type { ImportLeadsResult } from '../../api.ts'
 import { useImportLeads } from '../../hooks.ts'
@@ -24,20 +25,29 @@ export function ReviewStep({
   const run = useImportLeads()
   const { stageInfo } = useStageOptions()
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [duplicateMode, setDuplicateMode] = useState<'skip' | 'update' | 'duplicate'>('skip')
   const { rows } = choice
   const { mutate: runCheck } = check
 
   useEffect(() => {
     runCheck(
-      { leads: rows.map((row) => row.lead), dryRun: true },
+      { leads: rows.map((row) => row.lead), dryRun: true, listId: choice.listId, duplicateMode },
       {
         onSuccess: (result) =>
           setSelected(
-            new Set(result.rows.filter((row) => row.status === 'ready' && !rows[row.index].note).map((row) => row.index)),
+            new Set(
+              result.rows
+                .filter(
+                  (row) =>
+                    (row.status === 'ready' || (duplicateMode !== 'skip' && row.status === 'duplicate')) &&
+                    !rows[row.index].note,
+                )
+                .map((row) => row.index),
+            ),
           ),
       },
     )
-  }, [rows, runCheck])
+  }, [rows, choice.listId, duplicateMode, runCheck])
 
   if (check.isPending || check.isIdle) {
     return (
@@ -55,7 +65,7 @@ export function ReviewStep({
           <Button variant="secondary" onClick={onBack}>
             Voltar
           </Button>
-          <Button onClick={() => runCheck({ leads: rows.map((row) => row.lead), dryRun: true })}>Tentar de novo</Button>
+          <Button onClick={() => runCheck({ leads: rows.map((row) => row.lead), dryRun: true, listId: choice.listId, duplicateMode })}>Tentar de novo</Button>
         </div>
       </div>
     )
@@ -79,7 +89,7 @@ export function ReviewStep({
   function importSelected() {
     const chosen = [...selected].sort((a, b) => a - b).map((index) => rows[index].lead)
     run.mutate(
-      { leads: chosen, dryRun: false },
+      { leads: chosen, dryRun: false, listId: choice.listId, duplicateMode },
       { onSuccess: (result) => onDone(result.accepted, rows.length - result.accepted) },
     )
   }
@@ -111,6 +121,22 @@ export function ReviewStep({
           </span>
         )}
       </p>
+
+      {duplicates > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-navy-800 p-4 sm:max-w-md">
+          <p className="text-small font-bold text-white">Como tratar duplicados</p>
+          <Dropdown
+            label="Como tratar duplicados"
+            value={duplicateMode}
+            onChange={(value) => setDuplicateMode(value as typeof duplicateMode)}
+            options={[
+              { value: 'skip', label: 'Pular duplicados' },
+              { value: 'update', label: 'Atualizar os existentes' },
+              { value: 'duplicate', label: 'Importar como cópia' },
+            ]}
+          />
+        </div>
+      )}
 
       <ul aria-label="Linhas da planilha" className="flex flex-col rounded-xl border bg-navy-800">
         {rows.map((row, index) => (

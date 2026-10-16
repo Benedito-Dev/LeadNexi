@@ -3,17 +3,17 @@ import { createPipeline, deletePipeline, getPipelineBoard, getPipelines, renameP
 
 export const pipelineKeys = {
   all: ['pipelines'] as const,
-  board: (id: string) => ['pipelines', id, 'board'] as const,
+  board: (id: string, listId = '', includeArchived = false) => ['pipelines', id, 'board', listId, includeArchived] as const,
 }
 
 export function usePipelines() {
   return useQuery({ queryKey: pipelineKeys.all, queryFn: getPipelines })
 }
 
-export function usePipelineBoard(id: string | undefined) {
+export function usePipelineBoard(id: string | undefined, options: { listId?: string; includeArchived?: boolean } = {}) {
   return useQuery({
-    queryKey: pipelineKeys.board(id ?? ''),
-    queryFn: () => getPipelineBoard(id!),
+    queryKey: pipelineKeys.board(id ?? '', options.listId, options.includeArchived),
+    queryFn: () => getPipelineBoard(id!, options),
     enabled: id !== undefined,
   })
 }

@@ -4,6 +4,7 @@ export class StageEntity {
   id: string;
   name: string;
   color: string | null;
+  stageType: string;
   /** Ordem da coluna no pipeline (0 = primeira) */
   position: number;
   pipelineId: string;

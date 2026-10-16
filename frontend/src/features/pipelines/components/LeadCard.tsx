@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Bell, Clock } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import { followUpTone, formatCurrency, formatDateTime, formatDay, formatElapsed } from '../../../lib/format.ts'
+import { elapsedDays, followUpTone, formatCurrency, formatDateTime, formatDay, formatElapsed } from '../../../lib/format.ts'
 import { ConversationButton } from '../../conversations/components/ConversationButton.tsx'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
@@ -25,6 +25,9 @@ export function LeadCard({
   dragging?: boolean
   actions?: number
 }) {
+  const stoppedDays = elapsedDays(lead.updatedAt)
+  const stoppedTone = stoppedDays >= 7 ? 'text-danger' : stoppedDays >= 3 ? 'text-warning' : dragging ? 'text-cyan' : 'text-slate-400'
+
   return (
     <div
       className={`rounded-md border transition-colors ${
@@ -41,6 +44,12 @@ export function LeadCard({
               <span className="truncate">{lead.source}</span>
             </p>
           )}
+          {lead.neighborhood && <p className="mt-1 truncate text-xs font-medium text-slate-400">{lead.neighborhood}</p>}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {lead.adStatus === 'anuncia' && <CardTag tone="violet">Anuncia</CardTag>}
+            {lead.phoneType === 'fixo' && <CardTag tone="slate">Fixo</CardTag>}
+            {lead.isNetwork && <CardTag tone="cyan">Rede</CardTag>}
+          </div>
         </div>
       </div>
 
@@ -52,16 +61,18 @@ export function LeadCard({
         ) : (
           <span className="text-xs font-semibold text-slate-400">Sem valor</span>
         )}
-        {lead.followUpAt && !dragging ? (
-          <FollowUpBadge dueAt={lead.followUpAt} note={lead.followUpNote} />
+        {lead.meetingAt ? (
+          <NextStepBadge label={`Reunião · ${formatDay(new Date(lead.meetingAt))}`} dateTime={lead.meetingAt} />
+        ) : lead.followUpAt && !dragging ? (
+            <FollowUpBadge dueAt={lead.followUpAt} note={lead.followUpNote} step={lead.cadenceStep} />
         ) : (
           <time
             dateTime={lead.updatedAt}
             title="Última movimentação"
-            className={`flex shrink-0 items-center gap-1 text-xs font-semibold ${dragging ? 'text-cyan' : 'text-slate-400'}`}
+            className={`flex shrink-0 items-center gap-1 text-xs font-semibold ${stoppedTone}`}
           >
             <Clock aria-hidden size={13} strokeWidth={1.75} />
-            {dragging ? 'agora' : formatElapsed(lead.updatedAt)}
+            {dragging ? 'agora' : stoppedDays === 0 ? formatElapsed(lead.updatedAt) : `${stoppedDays} d parado`}
           </time>
         )}
       </div>
@@ -69,12 +80,29 @@ export function LeadCard({
   )
 }
 
+function CardTag({ children, tone }: { children: string; tone: 'violet' | 'cyan' | 'slate' }) {
+  const classes = {
+    violet: 'bg-violet-tint text-violet-300',
+    cyan: 'bg-cyan-tint text-cyan',
+    slate: 'bg-slate-tint text-slate-300',
+  } as const
+  return <span className={`rounded-full px-2 py-0.5 text-[10px] leading-none font-bold ${classes[tone]}`}>{children}</span>
+}
+
+function NextStepBadge({ label, dateTime }: { label: string; dateTime: string }) {
+  return (
+    <time dateTime={dateTime} title={`Próximo passo: ${formatDateTime(dateTime)}`} className="max-w-32 truncate text-xs font-bold text-cyan">
+      {label}
+    </time>
+  )
+}
+
 const FOLLOW_UP_TONE = { overdue: 'text-danger', today: 'text-warning', future: 'text-slate-400' } as const
 
 /** Próximo contato no rodapé do card: vermelho se atrasado, amarelo se hoje (BRAND.md, seção 8 · "Card de lead"). */
-function FollowUpBadge({ dueAt, note }: { dueAt: string; note: string | null }) {
+function FollowUpBadge({ dueAt, note, step }: { dueAt: string; note: string | null; step: number | null }) {
   const tone = followUpTone(dueAt)
-  const label = tone === 'overdue' ? 'Atrasado' : formatDay(new Date(dueAt))
+  const label = tone === 'overdue' ? 'Atrasado' : `${step ? `Follow-up ${step} · ` : ''}${formatDay(new Date(dueAt))}`
   return (
     <time
       dateTime={dueAt}

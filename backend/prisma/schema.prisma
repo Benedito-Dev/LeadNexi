@@ -36,6 +36,7 @@ model Stage {
   id         String   @id @default(uuid())
   name       String
   color      String?
+  stageType  StageType @default(CUSTOM) @map("stage_type")
   position   Int      @default(0)
   pipelineId String   @map("pipeline_id")
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
@@ -45,6 +46,32 @@ model Stage {
 
   @@index([pipelineId])
   @@map("stages")
+}
+
+enum StageType {
+  CONTACT
+  SENT
+  RESPONDED
+  MEETING
+  PROPOSAL
+  WON
+  LOST
+  CUSTOM
+}
+
+model LeadList {
+  id             String   @id @default(uuid())
+  name           String
+  niche          String?
+  city           String?
+  targetContacts Int?     @map("target_contacts")
+  archived       Boolean  @default(false)
+  leads          Lead[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([archived, createdAt])
+  @@map("lead_lists")
 }
 
 // Card do Kanban
@@ -57,6 +84,22 @@ model Lead {
   estimatedValue         Decimal?       @map("estimated_value") @db.Decimal(12, 2)
   notes                  String?
   position               Int            @default(0)
+  listId                 String         @map("list_id")
+  list                   LeadList       @relation(fields: [listId], references: [id], onDelete: Restrict)
+  archived               Boolean        @default(false)
+  phoneType              String?        @map("phone_type")
+  neighborhood           String?
+  address                String?
+  mapsUrl                String?        @map("maps_url")
+  googlePlaceId          String?        @map("google_place_id")
+  googleRating           Float?         @map("google_rating")
+  googleReviewCount      Int?           @map("google_review_count")
+  isNetwork              Boolean        @default(false) @map("is_network")
+  adStatus               String?        @map("ad_status")
+  cadenceStep            Int?           @map("cadence_step")
+  meetingAt              DateTime?      @map("meeting_at")
+  lostReason             String?        @map("lost_reason")
+  wonAt                  DateTime?      @map("won_at")
   stageId                String         @map("stage_id")
   stage                  Stage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
   /// Próximo contato agendado (um por lead); null = nenhum
@@ -77,6 +120,8 @@ model Lead {
   updatedAt              DateTime       @updatedAt @map("updated_at")
 
   @@index([stageId])
+  @@index([listId])
+  @@index([archived])
   @@index([followUpAt])
   @@map("leads")
 }

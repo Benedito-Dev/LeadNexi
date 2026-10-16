@@ -3,20 +3,17 @@ import { formatCurrency, formatPercent } from '../../../lib/format.ts'
 import { computeKpis, newLeadsPerDay, openValueByStage } from '../board.ts'
 import type { PipelineBoard } from '../types.ts'
 
-// Cards de KPI do funil (BRAND.md, seção 8 · "Cards de KPI"): compactos, com número e legenda à
-// esquerda e um gráfico pequeno à direita. Valores em Manrope; fechado em verde (success).
+/** Indicadores do funil: dados reais do processo, mantendo a linguagem visual atual. */
 export function PipelineKpis({ board }: { board: PipelineBoard }) {
   const kpis = computeKpis(board)
   const days = newLeadsPerDay(board, 14)
   const lastWeek = days.slice(-7).reduce((sum, day) => sum + day.count, 0)
-  const closedStage = board.stages.at(-1)?.name ?? 'Fechado'
-  const ticket = kpis.closedCount > 0 ? kpis.closedValue / kpis.closedCount : null
 
   return (
     <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatTile
-        label="Leads no funil"
-        value={String(kpis.totalLeads)}
+        label="Leads ativos"
+        value={String(kpis.activeCount)}
         caption={`${lastWeek} ${lastWeek === 1 ? 'novo' : 'novos'} em 7 dias`}
         chart={
           <MiniBars
@@ -29,6 +26,13 @@ export function PipelineKpis({ board }: { board: PipelineBoard }) {
             }))}
           />
         }
+      />
+
+      <StatTile
+        label="Respostas"
+        value={kpis.responseRate === null ? '—' : formatPercent(kpis.responseRate)}
+        caption={`${kpis.respondedCount} de ${kpis.contactedCount} contatados`}
+        chart={<Ring ratio={kpis.responseRate ?? 0} label="Taxa de resposta" />}
       />
 
       <StatTile
@@ -49,17 +53,10 @@ export function PipelineKpis({ board }: { board: PipelineBoard }) {
       />
 
       <StatTile
-        label="Taxa de conversão"
-        value={kpis.conversionRate === null ? '—' : formatPercent(kpis.conversionRate)}
-        caption={`${kpis.closedCount} de ${kpis.totalLeads} em ${closedStage}`}
-        chart={<Ring ratio={kpis.conversionRate ?? 0} label={`Leads que chegaram em ${closedStage}`} />}
-      />
-
-      <StatTile
-        label={closedStage}
-        value={formatCurrency(kpis.closedValue)}
+        label="Fechado no mês"
+        value={formatCurrency(kpis.closedMonthValue)}
         highlight
-        caption={ticket === null ? 'Nenhum negócio fechado' : `Ticket médio ${formatCurrency(ticket)}`}
+        caption={`${kpis.closedMonthCount} ${kpis.closedMonthCount === 1 ? 'negócio' : 'negócios'} ganhos`}
       />
     </dl>
   )
@@ -90,7 +87,6 @@ function StatTile({
   )
 }
 
-/** Barrinhas verticais (uma série): discretas, com destaque em violeta. Dica nativa (title) em cada uma. */
 function MiniBars({
   label,
   bars,
@@ -100,7 +96,6 @@ function MiniBars({
 }) {
   const max = Math.max(1, ...bars.map((bar) => bar.value))
   return (
-    // Poucas barras (etapas) ficam mais espaçadas; muitas (dias) ficam finas
     <div
       role="img"
       aria-label={label}
@@ -119,7 +114,6 @@ function MiniBars({
   )
 }
 
-/** Anel de progresso: trilha discreta, preenchimento violeta. */
 function Ring({ ratio, label }: { ratio: number; label: string }) {
   const radius = 15
   const circumference = 2 * Math.PI * radius

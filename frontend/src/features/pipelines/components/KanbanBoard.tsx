@@ -88,7 +88,6 @@ export function KanbanBoard({
 
   const leadsById = new Map(board.stages.flatMap((stage) => stage.leads).map((lead) => [lead.id, lead]))
   const stageName = (id: string | undefined) => board.stages.find((stage) => stage.id === id)?.name ?? ''
-  const lastStageId = board.stages.at(-1)?.id
 
   // ← → pulam para a coluna vizinha pela ordem das etapas. O getter padrão escolhe a
   // coluna pela geometria, e a rotação do card arrastado o faz "achar" a própria coluna.
@@ -212,7 +211,7 @@ export function KanbanBoard({
             stageCount={board.stages.length}
             stageLeadCount={stage.leads.length}
             leads={(columns[stage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible)}
-            closed={stage.id === lastStageId}
+            closed={stage.stageType === 'WON'}
             dragDisabled={query !== ''}
             onAddLead={onAddLead}
             onOpenLead={onOpenLead}
@@ -225,7 +224,7 @@ export function KanbanBoard({
         {activeLead && (
           <LeadCard
             lead={activeLead}
-            closed={findStage(columns, activeLead.id) === lastStageId}
+            closed={board.stages.find((stage) => stage.id === findStage(columns, activeLead.id))?.stageType === 'WON'}
             dragging
             actions={cardActions(activeLead)}
           />

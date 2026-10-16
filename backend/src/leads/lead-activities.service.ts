@@ -12,6 +12,10 @@ const stageSummary = {
   select: { id: true, name: true, pipelineId: true },
 } satisfies Prisma.StageDefaultArgs;
 
+const listSummary = {
+  select: { id: true, name: true, archived: true },
+} satisfies Prisma.LeadListDefaultArgs;
+
 /** Limite do histórico devolvido de uma vez (os mais recentes). */
 const HISTORY_LIMIT = 200;
 
@@ -29,8 +33,8 @@ export class LeadActivitiesService {
   /** Leads com próximo contato agendado, do mais atrasado para o mais distante (tela "Hoje"). */
   listFollowUps() {
     return this.prisma.lead.findMany({
-      where: { followUpAt: { not: null } },
-      include: { stage: stageSummary },
+      where: { followUpAt: { not: null }, archived: false, list: { archived: false } },
+      include: { stage: stageSummary, list: listSummary },
       orderBy: { followUpAt: 'asc' },
       take: FOLLOW_UPS_LIMIT,
     });
@@ -78,7 +82,7 @@ export class LeadActivitiesService {
       return tx.lead.update({
         where: { id: leadId },
         data: { followUpAt: date, followUpNote: text },
-        include: { stage: stageSummary },
+        include: { stage: stageSummary, list: listSummary },
       });
     });
   }
@@ -102,7 +106,7 @@ export class LeadActivitiesService {
       return tx.lead.update({
         where: { id: leadId },
         data: { followUpAt: null, followUpNote: null },
-        include: { stage: stageSummary },
+        include: { stage: stageSummary, list: listSummary },
       });
     });
   }
@@ -113,7 +117,7 @@ export class LeadActivitiesService {
     return this.prisma.lead.update({
       where: { id: leadId },
       data: { followUpAt: null, followUpNote: null },
-      include: { stage: stageSummary },
+      include: { stage: stageSummary, list: listSummary },
     });
   }
 

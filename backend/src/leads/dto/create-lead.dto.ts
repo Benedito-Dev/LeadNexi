@@ -1,12 +1,18 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
+  IsDateString,
   IsEmail,
+  IsIn,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Matches,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -76,6 +82,76 @@ export class CreateLeadDto {
   @IsString()
   @MaxLength(5000)
   notes?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  listId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  archived?: boolean;
+
+  @IsOptional()
+  @IsIn(['celular', 'fixo', 'desconhecido'])
+  phoneType?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  address?: string;
+
+  @IsOptional()
+  @IsUrl({ require_protocol: true })
+  @MaxLength(500)
+  mapsUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  googlePlaceId?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0)
+  @Max(5)
+  googleRating?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  googleReviewCount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isNetwork?: boolean;
+
+  @IsOptional()
+  @IsIn(['anuncia', 'nao', 'nao_verificado'])
+  adStatus?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  cadenceStep?: number;
+
+  @IsOptional()
+  @IsDateString()
+  followUpAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  meetingAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  lostReason?: string;
 
   /** Etapa onde o lead será criado (entra no fim da coluna) */
   @IsUUID('4')

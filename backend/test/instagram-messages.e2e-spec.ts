@@ -87,10 +87,12 @@ describe('Mandar direct pelo LeadNexi (e2e)', () => {
   /** Lead que mandou direct há `hoursAgo` horas (null: nunca mandou) */
   async function leadFromDirect(hoursAgo: number | null = 1) {
     const stage = await prisma.stage.findFirstOrThrow();
+    const list = await prisma.leadList.findFirstOrThrow();
     return prisma.lead.create({
       data: {
         name: hoursAgo === null ? 'Lead sem direct' : 'Maria Souza',
         stageId: stage.id,
+        listId: list.id,
         instagramUserId: hoursAgo === null ? null : 'igsid-maria',
         instagramLastMessageAt:
           hoursAgo === null ? null : new Date(Date.now() - hoursAgo * HOUR),

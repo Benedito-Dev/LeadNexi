@@ -1,7 +1,8 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsInt,
   IsOptional,
+  IsBoolean,
   IsString,
   IsUUID,
   Max,
@@ -29,6 +30,21 @@ export class QueryLeadsDto {
   @IsString()
   @MaxLength(60)
   source?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  listId?: string;
+
+  /** Por padrão, listas e leads arquivados ficam fora da operação. */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  includeArchived?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  archived?: boolean;
 
   /** @example 1 */
   @IsOptional()

@@ -6,6 +6,21 @@ export class LeadEntity {
   phone: string | null;
   email: string | null;
   source: string | null;
+  listId: string;
+  archived: boolean;
+  phoneType: string | null;
+  neighborhood: string | null;
+  address: string | null;
+  mapsUrl: string | null;
+  googlePlaceId: string | null;
+  googleRating: number | null;
+  googleReviewCount: number | null;
+  isNetwork: boolean;
+  adStatus: string | null;
+  cadenceStep: number | null;
+  meetingAt: Date | null;
+  lostReason: string | null;
+  wonAt: Date | null;
 
   @ApiProperty({
     type: String,
@@ -40,10 +55,18 @@ export class LeadStageSummaryEntity {
   id: string;
   name: string;
   pipelineId: string;
+  stageType: string;
+}
+
+export class LeadListSummaryEntity {
+  id: string;
+  name: string;
+  archived: boolean;
 }
 
 export class LeadWithStageEntity extends LeadEntity {
   stage: LeadStageSummaryEntity;
+  list: LeadListSummaryEntity;
 }
 
 export class PaginationMetaEntity {

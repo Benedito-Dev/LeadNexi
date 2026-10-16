@@ -4,70 +4,133 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 
-/** Linhas por importação */
 export const IMPORT_LIMIT = 1000;
 
-/**
- * Uma linha da planilha, já com as colunas ligadas aos campos do lead. Os valores chegam como
- * estão na planilha: o serviço confere cada linha e diz o que há de errado nela, sem recusar o
- * resto da importação.
- */
+export type DuplicateMode = 'skip' | 'update' | 'duplicate';
+
 export class ImportLeadRowDto {
-  /** @example "Aki Pets" */
   @IsString()
   @MaxLength(500)
   name: string;
 
-  /** @example "(85) 99999-0000" */
   @IsOptional()
   @IsString()
   @MaxLength(100)
   phone?: string;
 
-  /** @example "contato@akipets.com" */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  phoneType?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(300)
   email?: string;
 
-  /** Com ou sem o @, ou o link do perfil. @example "@akipets" */
   @IsOptional()
   @IsString()
   @MaxLength(300)
   instagramUsername?: string;
 
-  /** @example 1500.5 */
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   estimatedValue?: number;
 
-  /** Colunas sem campo próprio, já juntas em texto ("Bairro: Messejana · Prioridade: Alta") */
   @IsOptional()
   @IsString()
   @MaxLength(20000)
   notes?: string;
 
-  /** Etapa do lead (do status da planilha, ou a escolhida para quem não tem status) */
+  @IsOptional()
+  @IsUUID('4')
+  listId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mapsUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  googlePlaceId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0)
+  @Max(5)
+  googleRating?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  googleReviewCount?: number;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isNetwork?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  adStatus?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  cadenceStep?: number;
+
+  @IsOptional()
+  @IsDateString()
+  followUpAt?: string;
+
   @IsUUID('4')
   stageId: string;
 }
 
 export class ImportLeadsDto {
-  /** Só confere (tela "Conferir"): diz o que entraria, sem gravar nada */
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean;
+
+  @IsOptional()
+  @IsUUID('4')
+  listId?: string;
+
+  @IsOptional()
+  @IsIn(['skip', 'update', 'duplicate'])
+  duplicateMode: DuplicateMode = 'skip';
 
   @IsArray()
   @ArrayMinSize(1)

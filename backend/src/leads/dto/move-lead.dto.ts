@@ -1,4 +1,4 @@
-import { IsInt, IsUUID, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class MoveLeadDto {
   /** Etapa de destino (pode ser a mesma, para reordenar dentro da coluna) */
@@ -12,4 +12,10 @@ export class MoveLeadDto {
   @IsInt()
   @Min(0)
   position: number;
+
+  /** Obrigatório ao mover para uma etapa com tipo LOST. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  lostReason?: string;
 }

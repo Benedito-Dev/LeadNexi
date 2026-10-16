@@ -4,6 +4,7 @@ export interface Stage {
   id: string
   name: string
   color: string | null
+  stageType: 'CONTACT' | 'SENT' | 'RESPONDED' | 'MEETING' | 'PROPOSAL' | 'WON' | 'LOST' | 'CUSTOM'
   position: number
   pipelineId: string
 }

@@ -1,9 +1,27 @@
+import type { Stage } from '../pipelines/types.ts'
+
 export interface Lead {
   id: string
   name: string
   phone: string | null
   email: string | null
   source: string | null
+  listId: string
+  list: { id: string; name: string; archived: boolean }
+  archived: boolean
+  phoneType: string | null
+  neighborhood: string | null
+  address: string | null
+  mapsUrl: string | null
+  googlePlaceId: string | null
+  googleRating: number | null
+  googleReviewCount: number | null
+  isNetwork: boolean
+  adStatus: string | null
+  cadenceStep: number | null
+  meetingAt: string | null
+  lostReason: string | null
+  wonAt: string | null
   /** Decimal serializado como string pela API (ex.: "1500.5") */
   estimatedValue: string | null
   notes: string | null
@@ -64,6 +82,21 @@ export interface LeadInput {
   instagramUsername?: string | null
   estimatedValue?: number | null
   notes?: string | null
+  listId?: string
+  archived?: boolean
+  phoneType?: string | null
+  neighborhood?: string | null
+  address?: string | null
+  mapsUrl?: string | null
+  googlePlaceId?: string | null
+  googleRating?: number | null
+  googleReviewCount?: number | null
+  isNetwork?: boolean
+  adStatus?: string | null
+  cadenceStep?: number | null
+  followUpAt?: string | null
+  meetingAt?: string | null
+  lostReason?: string | null
 }
 
 export interface CreateLeadInput extends LeadInput {
@@ -74,11 +107,12 @@ export interface MoveLeadInput {
   stageId: string
   /** Posição de destino na coluna (0 = topo) */
   position: number
+  lostReason?: string
 }
 
 /** Lead como vem de GET /leads e GET /leads/:id: com o resumo da etapa */
 export interface LeadWithStage extends Lead {
-  stage: { id: string; name: string; pipelineId: string }
+  stage: { id: string; name: string; pipelineId: string; stageType: Stage['stageType'] }
 }
 
 /** Filtros de GET /leads */
@@ -86,8 +120,23 @@ export interface LeadListQuery {
   search?: string
   stageId?: string
   source?: string
+  listId?: string
+  includeArchived?: boolean
+  archived?: boolean
   page: number
   limit: number
+}
+
+export interface LeadList {
+  id: string
+  name: string
+  niche: string | null
+  city: string | null
+  targetContacts: number | null
+  archived: boolean
+  leadCount: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Paginated<T> {

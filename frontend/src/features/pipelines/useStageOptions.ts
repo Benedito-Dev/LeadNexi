@@ -20,7 +20,7 @@ export function useStageOptions() {
     })),
   )
   const byId = new Map(stageOptions.map((option) => [option.id, option]))
-  const closedStageIds = new Set(allPipelines.flatMap((pipeline) => pipeline.stages.at(-1)?.id ?? []))
+  const closedStageIds = new Set(allPipelines.flatMap((pipeline) => pipeline.stages.filter((stage) => stage.stageType === 'WON').map((stage) => stage.id)))
 
   const stageInfo = (id: string, fallbackName: string): StageInfo => ({
     label: byId.get(id)?.label ?? fallbackName,

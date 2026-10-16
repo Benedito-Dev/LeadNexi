@@ -8,7 +8,7 @@ import { Input } from '../components/ui/Input.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
 import { LeadsTable } from '../features/leads/components/LeadsTable.tsx'
 import { SourceIcon } from '../features/leads/components/SourceIcon.tsx'
-import { useLeads } from '../features/leads/hooks.ts'
+import { useLeadLists, useLeads } from '../features/leads/hooks.ts'
 import { LEAD_SOURCES } from '../features/leads/sources.ts'
 import { useStageOptions } from '../features/pipelines/useStageOptions.ts'
 import { useDebouncedValue } from '../lib/useDebouncedValue.ts'
@@ -20,6 +20,8 @@ export function LeadsPage() {
   const [params, setParams] = useSearchParams()
   const stageId = params.get('etapa') ?? ''
   const source = params.get('origem') ?? ''
+  const listId = params.get('lista') ?? ''
+  const archiveMode = params.get('arquivados') ?? 'active'
   const page = Math.max(1, Number(params.get('pagina')) || 1)
 
   // A busca responde ao digitar, mas só consulta a API depois de uma pausa
@@ -28,7 +30,17 @@ export function LeadsPage() {
 
   const [formTarget, setFormTarget] = useState<LeadFormTarget | null>(null)
   const { stageOptions, stageInfo } = useStageOptions()
-  const leads = useLeads({ search, stageId, source, page, limit: PAGE_SIZE })
+  const lists = useLeadLists()
+  const leads = useLeads({
+    search,
+    stageId,
+    source,
+    listId,
+    includeArchived: archiveMode !== 'active',
+    archived: archiveMode === 'archived' ? true : undefined,
+    page,
+    limit: PAGE_SIZE,
+  })
 
   const updateParams = useCallback(
     (changes: Record<string, string>) =>
@@ -55,13 +67,13 @@ export function LeadsPage() {
     updateParams({ busca: search, pagina: '' })
   }, [search, updateParams])
 
-  const hasFilters = search !== '' || stageId !== '' || source !== ''
+  const hasFilters = search !== '' || stageId !== '' || source !== '' || listId !== '' || archiveMode !== 'active'
   const meta = leads.data?.meta
   const firstStageId = stageOptions[0]?.id
 
   function clearFilters() {
     setSearchInput('')
-    updateParams({ busca: '', etapa: '', origem: '', pagina: '' })
+    updateParams({ busca: '', etapa: '', origem: '', lista: '', arquivados: '', pagina: '' })
   }
 
   return (
@@ -133,6 +145,32 @@ export function LeadsPage() {
                 label: option,
                 icon: <SourceIcon source={option} size={16} />,
               })),
+            ]}
+          />
+        </div>
+        <div className="min-w-0 sm:w-56">
+          <Dropdown
+            label="Filtrar por lista"
+            value={listId}
+            onChange={(value) => updateParams({ lista: value, pagina: '' })}
+            options={[
+              { value: '', label: 'Todas as listas' },
+              ...(lists.data ?? []).map((list) => ({
+                value: list.id,
+                label: `${list.name}${list.archived ? ' · arquivada' : ''}`,
+              })),
+            ]}
+          />
+        </div>
+        <div className="min-w-0 sm:w-44">
+          <Dropdown
+            label="Filtrar por arquivamento"
+            value={archiveMode}
+            onChange={(value) => updateParams({ arquivados: value === 'active' ? '' : value, pagina: '' })}
+            options={[
+              { value: 'active', label: 'Leads ativos' },
+              { value: 'archived', label: 'Arquivados' },
+              { value: 'all', label: 'Ativos e arquivados' },
             ]}
           />
         </div>

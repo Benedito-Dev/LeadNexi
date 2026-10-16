@@ -6,9 +6,11 @@ import {
   addLeadNote,
   cancelFollowUp,
   completeFollowUp,
+  createLeadList,
   createLead,
   deleteLead,
   getLead,
+  getLeadLists,
   getFollowUps,
   getLeadActivities,
   getLeads,
@@ -27,6 +29,19 @@ export const leadKeys = {
   detail: (id: string) => ['leads', 'detail', id] as const,
   activities: (id: string) => ['leads', 'activities', id] as const,
   followUps: ['leads', 'follow-ups'] as const,
+  lists: ['lead-lists'] as const,
+}
+
+export function useLeadLists() {
+  return useQuery({ queryKey: leadKeys.lists, queryFn: getLeadLists })
+}
+
+export function useCreateLeadList() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createLeadList,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: leadKeys.lists }),
+  })
 }
 
 /** Lead atualizado do servidor; `initial` (ex.: o card clicado) aparece na hora, sem esperar. */
@@ -81,7 +96,17 @@ export function useCreateLead() {
 export function useImportLeads() {
   const invalidate = useInvalidateLeads()
   return useMutation({
-    mutationFn: ({ leads, dryRun }: { leads: ImportLeadRow[]; dryRun: boolean }) => importLeads(leads, dryRun),
+    mutationFn: ({
+      leads,
+      dryRun,
+      listId,
+      duplicateMode,
+    }: {
+      leads: ImportLeadRow[]
+      dryRun: boolean
+      listId?: string
+      duplicateMode?: 'skip' | 'update' | 'duplicate'
+    }) => importLeads(leads, { dryRun, listId, duplicateMode }),
     onSuccess: (_result, { dryRun }) => (dryRun ? undefined : invalidate()),
   })
 }
@@ -137,24 +162,24 @@ export function useCancelFollowUp(id: string) {
  * Move o card de forma otimista: o quadro muda na hora e o servidor confirma depois.
  * Se a API falhar, o quadro é recarregado e volta ao estado real.
  */
-export function useMoveLead(pipelineId: string) {
+export function useMoveLead(pipelineId: string, options: { listId?: string; includeArchived?: boolean } = {}) {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateLeads()
-  const key = pipelineKeys.board(pipelineId)
+  const key = pipelineKeys.board(pipelineId, options.listId, options.includeArchived)
 
   const mutation = useMutation({
-    mutationFn: ({ leadId, stageId, position }: { leadId: string; stageId: string; position: number }) =>
-      moveLead(leadId, { stageId, position }),
+    mutationFn: ({ leadId, stageId, position, lostReason }: { leadId: string; stageId: string; position: number; lostReason?: string }) =>
+      moveLead(leadId, { stageId, position, ...(lostReason ? { lostReason } : {}) }),
     onSettled: invalidate,
   })
 
-  function move(leadId: string, stageId: string, position: number) {
+  function move(leadId: string, stageId: string, position: number, lostReason?: string) {
     // Síncrono, antes da requisição: o card não "pisca" de volta ao soltar
     void queryClient.cancelQueries({ queryKey: key })
     queryClient.setQueryData<PipelineBoard>(key, (board) =>
       board ? applyLeadMove(board, leadId, stageId, position) : board,
     )
-    mutation.mutate({ leadId, stageId, position })
+    mutation.mutate({ leadId, stageId, position, lostReason })
   }
 
   return { move, error: mutation.error, reset: mutation.reset }

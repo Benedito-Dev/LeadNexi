@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import {
   changedPositions,
   insertAt,
   without,
 } from '../common/utils/positions.js';
+import { LeadListsService } from '../lead-lists/lead-lists.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StagesService } from '../stages/stages.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -15,8 +16,12 @@ import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import { avatarKey } from './lead-avatar.js';
 
 const stageSummary = {
-  select: { id: true, name: true, pipelineId: true },
+  select: { id: true, name: true, pipelineId: true, stageType: true },
 } satisfies Prisma.StageDefaultArgs;
+
+const listSummary = {
+  select: { id: true, name: true, archived: true },
+} satisfies Prisma.LeadListDefaultArgs;
 
 type Tx = Prisma.TransactionClient;
 
@@ -28,6 +33,7 @@ export class LeadsService {
     private readonly prisma: PrismaService,
     private readonly stagesService: StagesService,
     private readonly storage: StorageService,
+    private readonly leadLists: LeadListsService,
   ) {}
 
   async findAll({
@@ -35,12 +41,18 @@ export class LeadsService {
     pipelineId,
     stageId,
     source,
+    listId,
+    includeArchived = false,
+    archived,
     page,
     limit,
   }: QueryLeadsDto) {
     const where: Prisma.LeadWhereInput = {
       stageId,
       source,
+      listId,
+      archived: archived ?? (includeArchived ? undefined : false),
+      list: includeArchived ? undefined : { archived: false },
       stage: pipelineId ? { pipelineId } : undefined,
       OR: search
         ? [
@@ -60,7 +72,7 @@ export class LeadsService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.lead.findMany({
         where,
-        include: { stage: stageSummary },
+        include: { stage: stageSummary, list: listSummary },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -77,7 +89,7 @@ export class LeadsService {
   async findOne(id: string) {
     const lead = await this.prisma.lead.findUnique({
       where: { id },
-      include: { stage: stageSummary },
+      include: { stage: stageSummary, list: listSummary },
     });
     if (!lead) throw new NotFoundException('Lead não encontrado');
     return lead;
@@ -86,13 +98,20 @@ export class LeadsService {
   /** Cria o lead no fim da coluna informada e registra "Criado" no histórico. */
   async create(dto: CreateLeadDto) {
     const stage = await this.stagesService.findOrFail(dto.stageId);
+    const list = dto.listId
+      ? await this.leadLists.findOrFail(dto.listId)
+      : await this.leadLists.defaultList();
     const position = await this.prisma.lead.count({
       where: { stageId: dto.stageId },
     });
+    const { listId: _listId, followUpAt, meetingAt, ...leadData } = dto;
     // Escrita aninhada: lead e evento são gravados juntos (atômico)
     return this.prisma.lead.create({
       data: {
-        ...dto,
+        ...leadData,
+        listId: list.id,
+        ...(followUpAt ? { followUpAt: new Date(followUpAt) } : {}),
+        ...(meetingAt ? { meetingAt: new Date(meetingAt) } : {}),
         position,
         activities: {
           create: {
@@ -102,16 +121,26 @@ export class LeadsService {
           },
         },
       },
-      include: { stage: stageSummary },
+      include: { stage: stageSummary, list: listSummary },
     });
   }
 
   async update(id: string, dto: UpdateLeadDto) {
     await this.findOne(id);
+    const { listId, followUpAt, meetingAt, ...leadData } = dto;
     return this.prisma.lead.update({
       where: { id },
-      data: dto,
-      include: { stage: stageSummary },
+      data: {
+        ...leadData,
+        ...(listId ? { list: { connect: { id: listId } } } : {}),
+        ...(followUpAt !== undefined
+          ? { followUpAt: followUpAt ? new Date(followUpAt) : null }
+          : {}),
+        ...(meetingAt !== undefined
+          ? { meetingAt: meetingAt ? new Date(meetingAt) : null }
+          : {}),
+      },
+      include: { stage: stageSummary, list: listSummary },
     });
   }
 
@@ -120,9 +149,15 @@ export class LeadsService {
    * Reordena a coluna de origem e a de destino na mesma transação; trocar de etapa
    * registra "de → para" no histórico, também na mesma transação.
    */
-  async move(id: string, { stageId, position }: MoveLeadDto) {
+  async move(id: string, dto: MoveLeadDto) {
+    const { stageId, position } = dto;
     const lead = await this.findOne(id);
     const targetStage = await this.stagesService.findOrFail(stageId);
+    const lostReason = dto.lostReason?.trim() || null;
+    if (targetStage.stageType === 'LOST' && !lostReason) {
+      throw new BadRequestException('Informe o motivo ao mover o lead para Perdido.');
+    }
+    const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
       if (lead.stageId === stageId) {
@@ -142,7 +177,14 @@ export class LeadsService {
       const source = await this.columnOf(tx, lead.stageId);
       const target = await this.columnOf(tx, stageId);
 
-      await tx.lead.update({ where: { id }, data: { stageId } });
+      await tx.lead.update({
+        where: { id },
+        data: {
+          stageId,
+          lostReason: targetStage.stageType === 'LOST' ? lostReason : null,
+          wonAt: targetStage.stageType === 'WON' ? (lead.wonAt ?? now) : null,
+        },
+      });
       await tx.leadActivity.create({
         data: {
           leadId: id,
@@ -197,7 +239,7 @@ export class LeadsService {
   /** Cards de uma coluna, ordenados pela posição atual. */
   private columnOf(tx: Tx, stageId: string) {
     return tx.lead.findMany({
-      where: { stageId },
+      where: { stageId, archived: false, list: { archived: false } },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       select: { id: true, position: true },
     });

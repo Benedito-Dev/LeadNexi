@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LeadListsModule } from '../lead-lists/lead-lists.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { InstagramApiClient } from './instagram-api.client.js';
 import { InstagramCronController } from './instagram-cron.controller.js';
@@ -16,7 +17,7 @@ import { InstagramService } from './instagram.service.js';
 import { PublishAlarmService } from './publish-alarm.service.js';
 
 @Module({
-  imports: [StorageModule],
+  imports: [LeadListsModule, StorageModule],
   controllers: [
     InstagramController,
     InstagramPostsController,

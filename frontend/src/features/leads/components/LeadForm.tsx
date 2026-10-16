@@ -1,4 +1,4 @@
-import { CircleAlert, LoaderCircle, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, CircleAlert, LoaderCircle, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Dropdown } from '../../../components/ui/Dropdown.tsx'
@@ -59,6 +59,8 @@ export function LeadForm({
     const email = text('email')
     const instagramUsername = text('instagramUsername').replace(/^@/, '')
     const estimatedValue = parseCurrency(text('estimatedValue'))
+    const meetingInput = text('meetingAt')
+    const meetingAt = meetingInput ? new Date(meetingInput).toISOString() : ''
 
     const invalid = validate(name, email, instagramUsername, estimatedValue)
     setFieldError(invalid)
@@ -78,6 +80,8 @@ export function LeadForm({
       source: optional(text('source')),
       notes: optional(text('notes')),
       estimatedValue: optional(estimatedValue),
+      meetingAt: optional(meetingAt),
+      ...(lead && { archived: data.get('archived') === 'on' }),
     }
 
     if (lead) update.mutate({ id: lead.id, input }, { onSuccess: onDone })
@@ -194,6 +198,32 @@ export function LeadForm({
         />
       </Field>
 
+      {lead && (
+        <label className="flex cursor-pointer items-center gap-3 rounded-md border border-navy-600 bg-navy-750 px-3.5 py-3 text-ui text-slate-300">
+          <input
+            type="checkbox"
+            name="archived"
+            defaultChecked={lead.archived}
+            className="size-4 accent-violet-600"
+          />
+          {lead.archived ? (
+            <ArchiveRestore aria-hidden size={18} strokeWidth={1.75} className="text-cyan" />
+          ) : (
+            <Archive aria-hidden size={18} strokeWidth={1.75} className="text-slate-400" />
+          )}
+          <span>{lead.archived ? 'Restaurar lead no funil' : 'Arquivar lead e tirar do funil'}</span>
+        </label>
+      )}
+
+      <Field label="Reunião marcada" htmlFor="lead-meeting-at" hint="Opcional; aparece como próximo passo no card.">
+        <Input
+          id="lead-meeting-at"
+          name="meetingAt"
+          type="datetime-local"
+          defaultValue={lead?.meetingAt ? toLocalDateTime(lead.meetingAt) : ''}
+        />
+      </Field>
+
       {error && (
         <p role="alert" className="flex items-start gap-2 text-small text-danger">
           <CircleAlert aria-hidden size={16} strokeWidth={1.75} className="mt-px shrink-0" />
@@ -228,6 +258,12 @@ export function LeadForm({
       </div>
     </form>
   )
+}
+
+function toLocalDateTime(iso: string) {
+  const date = new Date(iso)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function validate(
