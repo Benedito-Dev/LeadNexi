@@ -21,7 +21,7 @@ export function ResultsPage() {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <PageHeader title="Resultados" description="Veja o que está funcionando e decida o próximo movimento." />
       {dashboard.isPending ? <ResultsSkeleton /> : dashboard.isError || !dashboard.data ? <ErrorState onRetry={() => void dashboard.refetch()} /> : (
         <>

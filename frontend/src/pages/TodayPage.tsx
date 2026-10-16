@@ -54,7 +54,7 @@ export function TodayPage() {
     : 'Organizando sua fila de prospecção…'
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <PageHeader
         title={`${greeting}, ${name} ☀️`}
         description={`${capitalize(formattedDate)} · ${summary}`}
