@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, Download, LogOut, Moon, Sun, Users } from 'lucide-react'
+import { BarChart3, CalendarCheck, Download, LogOut, Moon, Sparkles, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { InstagramIcon, KanbanIcon } from '../brand/icons.tsx'
@@ -13,6 +13,7 @@ type NavIcon = ComponentType<{ size?: number; strokeWidth?: number; className?: 
 const NAV_ITEMS: { to: string; label: string; icon: NavIcon }[] = [
   { to: '/hoje', label: 'Hoje', icon: CalendarCheck },
   { to: '/resultados', label: 'Resultados', icon: BarChart3 },
+  { to: '/ia-prototipo', label: 'IA (protótipo)', icon: Sparkles },
   { to: '/kanban', label: 'Funil', icon: KanbanIcon },
   { to: '/leads', label: 'Leads', icon: Users },
   { to: '/instagram', label: 'Instagram', icon: InstagramIcon },

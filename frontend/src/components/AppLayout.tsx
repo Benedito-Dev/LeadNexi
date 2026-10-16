@@ -98,7 +98,7 @@ export function AppLayout() {
           onClick={openMenu}
           aria-haspopup="dialog"
           aria-expanded={menuOpen}
-          className={`flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-2 text-[11px] font-bold transition-colors ${location.pathname === '/resultados' || location.pathname.startsWith('/instagram') || location.pathname.startsWith('/leads/importar') ? 'text-cyan' : 'text-slate-400 hover:text-slate-300'}`}
+          className={`flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-2 text-[11px] font-bold transition-colors ${location.pathname === '/resultados' || location.pathname === '/ia-prototipo' || location.pathname.startsWith('/instagram') || location.pathname.startsWith('/leads/importar') ? 'text-cyan' : 'text-slate-400 hover:text-slate-300'}`}
         >
           <Menu aria-hidden size={20} strokeWidth={1.75} />
           <span>Mais</span>
