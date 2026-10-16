@@ -17,6 +17,8 @@ import {
   importLeads,
   moveLead,
   removeLeadNote,
+  recordWhatsAppResponse,
+  recordWhatsAppSent,
   scheduleFollowUp,
   updateLead,
 } from './api.ts'
@@ -156,6 +158,24 @@ export function useCompleteFollowUp(id: string) {
 export function useCancelFollowUp(id: string) {
   const invalidate = useInvalidateLeads()
   return useMutation({ mutationFn: () => cancelFollowUp(id), onSuccess: invalidate })
+}
+
+/** Confirma o envio no WhatsApp e deixa o backend avançar etapa e cadência. */
+export function useRecordWhatsAppSent(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({
+    mutationFn: (message: string) => recordWhatsAppSent(id, message),
+    onSuccess: invalidate,
+  })
+}
+
+/** Registra resposta manual e cancela o próximo follow-up. */
+export function useRecordWhatsAppResponse(id: string) {
+  const invalidate = useInvalidateLeads()
+  return useMutation({
+    mutationFn: (text?: string) => recordWhatsAppResponse(id, text),
+    onSuccess: invalidate,
+  })
 }
 
 /**

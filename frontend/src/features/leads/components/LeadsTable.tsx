@@ -2,7 +2,7 @@ import { formatCurrency, formatElapsed } from '../../../lib/format.ts'
 import type { LeadWithStage } from '../types.ts'
 import { LeadAvatar } from './LeadAvatar.tsx'
 import { SourceIcon } from './SourceIcon.tsx'
-import { WhatsAppLink } from './WhatsAppLink.tsx'
+import { WhatsAppCadenceAction } from './WhatsAppCadenceAction.tsx'
 
 export interface StageInfo {
   label: string
@@ -106,9 +106,8 @@ export function LeadsTable({
                   <time dateTime={lead.updatedAt}>{formatElapsed(lead.updatedAt)}</time>
                 </td>
                 <td className="pr-4">
-                  <WhatsAppLink
-                    name={lead.name}
-                    phone={lead.phone}
+                  <WhatsAppCadenceAction
+                    lead={lead}
                     className="ml-auto opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   />
                 </td>
@@ -150,7 +149,7 @@ export function LeadsTable({
                   </span>
                 </span>
               </button>
-              <WhatsAppLink name={lead.name} phone={lead.phone} reserveSpace className="mt-3" />
+              <WhatsAppCadenceAction lead={lead} className="mt-3" />
             </li>
           )
         })}

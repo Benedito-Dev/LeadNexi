@@ -16,5 +16,9 @@ export class LeadActivityEntity {
   toStage: string | null;
   /** Data do follow-up agendado ou concluído */
   dueAt: Date | null;
+  /** Canal do contato, quando houver */
+  channel: string | null;
+  /** Passo da cadência, quando houver */
+  cadenceStep: number | null;
   createdAt: Date;
 }

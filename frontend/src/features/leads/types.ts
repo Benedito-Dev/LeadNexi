@@ -53,6 +53,10 @@ export type LeadActivityType =
   | 'INSTAGRAM_MESSAGE'
   /** Mensagem enviada ao lead no direct (pelo app do Instagram ou pelo LeadNexi) */
   | 'INSTAGRAM_MESSAGE_SENT'
+  /** Mensagem enviada manualmente no WhatsApp */
+  | 'WHATSAPP_MESSAGE_SENT'
+  /** Resposta recebida manualmente no WhatsApp */
+  | 'WHATSAPP_MESSAGE_RECEIVED'
 
 /** Item do histórico do lead (GET /leads/:id/activities, mais novo primeiro) */
 export interface LeadActivity {
@@ -66,6 +70,10 @@ export interface LeadActivity {
   toStage: string | null
   /** Data do follow-up agendado/concluído (ISO) */
   dueAt: string | null
+  /** Canal do contato, quando houver */
+  channel: string | null
+  /** Passo da cadência, quando houver */
+  cadenceStep: number | null
   createdAt: string
 }
 

@@ -22,6 +22,7 @@ const DEFAULT_STAGES = [
   { name: 'Proposta enviada', stageType: 'PROPOSAL' as const, color: '#3DB3F1' },
   { name: 'Fechou', stageType: 'WON' as const, color: '#22D3EE' },
   { name: 'Perdido', stageType: 'LOST' as const, color: '#64748B' },
+  { name: 'Sem resposta', stageType: 'LOST' as const, color: '#64748B' },
 ];
 
 function requireEnv(name: string): string {

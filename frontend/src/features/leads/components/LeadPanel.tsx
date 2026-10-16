@@ -27,6 +27,7 @@ import {
   useCompleteFollowUp,
   useLead,
   useLeadActivities,
+  useRecordWhatsAppResponse,
   useRemoveLeadNote,
   useScheduleFollowUp,
 } from '../hooks.ts'
@@ -35,7 +36,7 @@ import { Conversation } from '../../conversations/components/Conversation.tsx'
 import { LeadAvatar } from './LeadAvatar.tsx'
 import { InstagramLink } from './InstagramLink.tsx'
 import { LeadForm, type StageOption } from './LeadForm.tsx'
-import { WhatsAppLink } from './WhatsAppLink.tsx'
+import { WhatsAppCadenceAction } from './WhatsAppCadenceAction.tsx'
 
 type Tab = 'history' | 'conversation' | 'details'
 
@@ -96,7 +97,7 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
           </p>
         </div>
         <InstagramLink name={lead.name} username={lead.instagramUsername} />
-        <WhatsAppLink name={lead.name} phone={lead.phone} />
+        <WhatsAppCadenceAction lead={lead} showLabel />
         <button
           type="button"
           onClick={onClose}
@@ -135,6 +136,7 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
               {tab === 'history' ? (
                 <div className="flex flex-col gap-6">
                   <FollowUp lead={lead} />
+                  <WhatsAppResponse lead={lead} />
                   <NoteComposer leadId={lead.id} />
                   <Timeline leadId={lead.id} />
                 </div>
@@ -259,6 +261,58 @@ function FollowUp({ lead }: { lead: Lead }) {
       </div>
       {error && <ErrorText>Não foi possível atualizar o contato. Tente de novo.</ErrorText>}
     </section>
+  )
+}
+
+function WhatsAppResponse({ lead }: { lead: Lead }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const response = useRecordWhatsAppResponse(lead.id)
+
+  if (!open) {
+    return (
+      <div>
+        <Button variant="secondary" className="h-9 px-3.5" onClick={() => setOpen(true)}>
+          <Reply aria-hidden size={16} strokeWidth={1.75} />
+          Ele respondeu
+        </Button>
+      </div>
+    )
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    response.mutate(text, {
+      onSuccess: () => {
+        setText('')
+        setOpen(false)
+      },
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-md border border-cyan/40 bg-navy-750 p-4">
+      <SectionTitle id="whatsapp-response-title" icon={Reply}>
+        Registrar resposta do WhatsApp
+      </SectionTitle>
+      <Textarea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        rows={3}
+        maxLength={5000}
+        placeholder="Cole a resposta aqui (opcional)"
+        aria-label="Resposta recebida no WhatsApp"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" className="h-9 px-3.5" disabled={response.isPending}>
+          {response.isPending ? 'Registrando…' : 'Mover para Respondeu'}
+        </Button>
+        <Button type="button" variant="secondary" className="h-9 px-3.5" onClick={() => setOpen(false)} disabled={response.isPending}>
+          Cancelar
+        </Button>
+      </div>
+      {response.error && <ErrorText>Não foi possível registrar a resposta. Tente de novo.</ErrorText>}
+    </form>
   )
 }
 
@@ -504,6 +558,28 @@ function describe(activity: LeadActivity): {
         title: activity.text ?? '',
         bubble: true,
         label: 'Você respondeu no direct',
+      }
+    case 'WHATSAPP_MESSAGE_SENT': {
+      const stepLabel = activity.cadenceStep === 1
+        ? '1ª mensagem enviada via WhatsApp'
+        : activity.cadenceStep === 2
+          ? 'Follow-up 1 enviado via WhatsApp'
+          : 'Follow-up final enviado via WhatsApp'
+      return {
+        icon: Reply,
+        tone: 'text-cyan',
+        title: activity.text ? `${stepLabel}: ${activity.text}` : stepLabel,
+        bubble: true,
+        label: 'WhatsApp',
+      }
+    }
+    case 'WHATSAPP_MESSAGE_RECEIVED':
+      return {
+        icon: Reply,
+        tone: 'text-success',
+        title: activity.text ?? 'Resposta recebida no WhatsApp',
+        bubble: true,
+        label: 'Resposta no WhatsApp',
       }
     case 'FOLLOW_UP_SCHEDULED':
       return {

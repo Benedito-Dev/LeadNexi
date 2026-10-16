@@ -6,7 +6,7 @@ import { elapsedDays, followUpTone, formatCurrency, formatDateTime, formatDay, f
 import { ConversationButton } from '../../conversations/components/ConversationButton.tsx'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
-import { WhatsAppLink } from '../../leads/components/WhatsAppLink.tsx'
+import { WhatsAppCadenceAction } from '../../leads/components/WhatsAppCadenceAction.tsx'
 import type { Lead } from '../../leads/types.ts'
 import { cardActions } from '../cardActions.ts'
 
@@ -177,9 +177,8 @@ export function SortableLeadCard({
       </div>
       {!isDragging && cardActions(lead) > 0 && (
         <div className="absolute top-3 right-2.5 flex">
-          <WhatsAppLink
-            name={lead.name}
-            phone={lead.phone}
+          <WhatsAppCadenceAction
+            lead={lead}
             className="opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
           />
           <ConversationButton lead={lead} />

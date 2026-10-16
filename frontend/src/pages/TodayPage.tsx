@@ -4,7 +4,7 @@ import { PageHeader } from '../components/PageHeader.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { LeadAvatar } from '../features/leads/components/LeadAvatar.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
-import { WhatsAppLink } from '../features/leads/components/WhatsAppLink.tsx'
+import { WhatsAppCadenceAction } from '../features/leads/components/WhatsAppCadenceAction.tsx'
 import { useCompleteFollowUp, useFollowUps } from '../features/leads/hooks.ts'
 import type { LeadWithStage } from '../features/leads/types.ts'
 import { useStageOptions } from '../features/pipelines/useStageOptions.ts'
@@ -146,7 +146,7 @@ function FollowUpRow({
           {when}
         </time>
       </button>
-      <WhatsAppLink name={lead.name} phone={lead.phone} reserveSpace />
+      <WhatsAppCadenceAction lead={lead} />
       <Button
         variant="secondary"
         className="h-9 px-3"

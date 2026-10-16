@@ -24,6 +24,7 @@ import { CreateLeadDto } from './dto/create-lead.dto.js';
 import { ImportLeadsDto } from './dto/import-leads.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
+import { RecordWhatsAppDto, RecordWhatsAppResponseDto } from './dto/record-whatsapp.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import {
   LeadWithStageEntity,
@@ -106,6 +107,26 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Lead ou etapa não encontrados' })
   move(@Param('id', ParseUUIDPipe) id: string, @Body() dto: MoveLeadDto) {
     return this.leadsService.move(id, dto);
+  }
+
+  @Post(':id/whatsapp/sent')
+  @ApiOperation({ summary: 'Registra uma mensagem enviada pelo usuário no WhatsApp' })
+  @ApiOkResponse({ type: LeadWithStageEntity })
+  recordWhatsAppSent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordWhatsAppDto,
+  ) {
+    return this.leadsService.recordWhatsAppSent(id, dto);
+  }
+
+  @Post(':id/whatsapp/responded')
+  @ApiOperation({ summary: 'Registra uma resposta manual recebida no WhatsApp' })
+  @ApiOkResponse({ type: LeadWithStageEntity })
+  recordWhatsAppResponse(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordWhatsAppResponseDto,
+  ) {
+    return this.leadsService.recordWhatsAppResponse(id, dto);
   }
 
   @Delete(':id')

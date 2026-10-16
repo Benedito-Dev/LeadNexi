@@ -136,6 +136,10 @@ enum LeadActivityType {
   INSTAGRAM_MESSAGE
   /// Mensagem enviada ao lead no direct (pelo app do Instagram ou pelo LeadNexi)
   INSTAGRAM_MESSAGE_SENT
+  /// Mensagem enviada manualmente pelo usuário no WhatsApp
+  WHATSAPP_MESSAGE_SENT
+  /// Resposta do lead registrada manualmente pelo usuário no WhatsApp
+  WHATSAPP_MESSAGE_RECEIVED
 }
 
 // Histórico do lead: uma linha por acontecimento, da mais nova para a mais antiga
@@ -151,6 +155,10 @@ model LeadActivity {
   toStage    String?          @map("to_stage")
   /// Data do follow-up agendado
   dueAt      DateTime?        @map("due_at")
+  /// Canal do contato, quando houver
+  channel    String?
+  /// Passo da cadência associado ao contato, quando houver
+  cadenceStep Int?            @map("cadence_step")
   /// ID da mensagem na Meta: a mesma mensagem avisada duas vezes entra uma vez só
   externalId String?          @unique @map("external_id")
   createdAt  DateTime         @default(now()) @map("created_at")

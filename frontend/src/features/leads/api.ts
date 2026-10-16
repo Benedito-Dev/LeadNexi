@@ -75,6 +75,20 @@ export function cancelFollowUp(id: string) {
   return api<LeadWithStage>(`/leads/${id}/follow-up`, { method: 'DELETE' })
 }
 
+export function recordWhatsAppSent(id: string, message: string) {
+  return api<LeadWithStage>(`/leads/${id}/whatsapp/sent`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  })
+}
+
+export function recordWhatsAppResponse(id: string, text?: string) {
+  return api<LeadWithStage>(`/leads/${id}/whatsapp/responded`, {
+    method: 'POST',
+    body: JSON.stringify(text?.trim() ? { text: text.trim() } : {}),
+  })
+}
+
 export interface ImportLeadRow {
   name: string
   phone?: string

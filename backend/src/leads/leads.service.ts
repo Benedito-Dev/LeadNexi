@@ -12,6 +12,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { CreateLeadDto } from './dto/create-lead.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
+import { RecordWhatsAppDto, RecordWhatsAppResponseDto } from './dto/record-whatsapp.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import { avatarKey } from './lead-avatar.js';
 
@@ -24,6 +25,21 @@ const listSummary = {
 } satisfies Prisma.LeadListDefaultArgs;
 
 type Tx = Prisma.TransactionClient;
+
+/** Soma dias corridos, sem contar domingos, preservando o horário do envio. */
+export function addCadenceDays(from: Date, days: number): Date {
+  const result = new Date(from);
+  let remaining = days;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (result.getDay() !== 0) remaining -= 1;
+  }
+  return result;
+}
+
+function cadenceNote(step: number): string {
+  return step === 1 ? 'Follow-up 1 (dia 2)' : 'Follow-up final (dia 5)';
+}
 
 @Injectable()
 export class LeadsService {
@@ -210,6 +226,133 @@ export class LeadsService {
           position,
         ),
       );
+    });
+
+    return this.findOne(id);
+  }
+
+  /** Registra uma mensagem confirmada pelo usuário no WhatsApp e avança a cadência. */
+  async recordWhatsAppSent(id: string, { message }: RecordWhatsAppDto) {
+    const lead = await this.findOne(id);
+    const text = message.trim();
+    if (!text) throw new BadRequestException('A mensagem não pode ficar vazia.');
+    if (lead.stage.stageType !== 'CONTACT' && lead.stage.stageType !== 'SENT') {
+      throw new BadRequestException('Este lead não está em uma etapa de prospecção ativa.');
+    }
+
+    const nextStep = (lead.cadenceStep ?? 0) + 1;
+    if (nextStep > 3) {
+      throw new BadRequestException('A cadência deste lead já foi concluída.');
+    }
+
+    const sentStage = await this.prisma.stage.findFirst({
+      where: { pipelineId: lead.stage.pipelineId, stageType: 'SENT' },
+      orderBy: { position: 'asc' },
+    });
+    const noResponseStage =
+      nextStep === 3
+        ? await this.prisma.stage.findFirst({
+            where: {
+              pipelineId: lead.stage.pipelineId,
+              name: 'Sem resposta',
+            },
+          })
+        : null;
+    const targetStage = nextStep === 3 ? noResponseStage : sentStage;
+    if (!targetStage) {
+      throw new BadRequestException('As etapas da cadência não estão configuradas neste funil.');
+    }
+
+    const now = new Date();
+    const followUpAt = nextStep === 1 ? addCadenceDays(now, 2) : nextStep === 2 ? addCadenceDays(now, 3) : null;
+    await this.prisma.$transaction(async (tx) => {
+      const source = await this.columnOf(tx, lead.stageId);
+      const target = lead.stageId === targetStage.id ? source : await this.columnOf(tx, targetStage.id);
+      const withoutLead = without(source.map((row) => row.id), id);
+      const orderedTarget = insertAt(
+        lead.stageId === targetStage.id ? withoutLead : target.map((row) => row.id),
+        id,
+        0,
+      );
+
+      await tx.lead.update({
+        where: { id },
+        data: {
+          stageId: targetStage.id,
+          cadenceStep: nextStep,
+          followUpAt,
+          followUpNote: followUpAt ? cadenceNote(nextStep) : null,
+          lostReason: nextStep === 3 ? 'Sem resposta' : null,
+        },
+      });
+      await tx.leadActivity.create({
+        data: {
+          leadId: id,
+          type: 'WHATSAPP_MESSAGE_SENT',
+          text,
+          channel: 'whatsapp',
+          cadenceStep: nextStep,
+          fromStage: lead.stage.name,
+          toStage: targetStage.name,
+        },
+      });
+      await this.applyPositions(tx, source, lead.stageId === targetStage.id ? orderedTarget : withoutLead);
+      if (lead.stageId !== targetStage.id) {
+        await this.applyPositions(tx, target, orderedTarget);
+      }
+    });
+
+    return this.findOne(id);
+  }
+
+  /** Registra uma resposta manual do WhatsApp e cancela qualquer próximo follow-up. */
+  async recordWhatsAppResponse(id: string, { text: responseText }: RecordWhatsAppResponseDto) {
+    const lead = await this.findOne(id);
+    if (lead.stage.stageType === 'WON' || lead.stage.stageType === 'LOST') {
+      throw new BadRequestException('Este lead já está em uma etapa encerrada.');
+    }
+    const respondedStage = await this.prisma.stage.findFirst({
+      where: { pipelineId: lead.stage.pipelineId, stageType: 'RESPONDED' },
+      orderBy: { position: 'asc' },
+    });
+    if (!respondedStage) {
+      throw new BadRequestException('A etapa Respondeu não está configurada neste funil.');
+    }
+
+    const text = responseText?.trim() || null;
+    await this.prisma.$transaction(async (tx) => {
+      const source = await this.columnOf(tx, lead.stageId);
+      const target = lead.stageId === respondedStage.id ? source : await this.columnOf(tx, respondedStage.id);
+      const withoutLead = without(source.map((row) => row.id), id);
+      const orderedTarget = insertAt(
+        lead.stageId === respondedStage.id ? withoutLead : target.map((row) => row.id),
+        id,
+        0,
+      );
+      await tx.lead.update({
+        where: { id },
+        data: {
+          stageId: respondedStage.id,
+          followUpAt: null,
+          followUpNote: null,
+          lostReason: null,
+        },
+      });
+      await tx.leadActivity.create({
+        data: {
+          leadId: id,
+          type: 'WHATSAPP_MESSAGE_RECEIVED',
+          text,
+          channel: 'whatsapp',
+          cadenceStep: lead.cadenceStep,
+          fromStage: lead.stage.name,
+          toStage: respondedStage.name,
+        },
+      });
+      await this.applyPositions(tx, source, lead.stageId === respondedStage.id ? orderedTarget : withoutLead);
+      if (lead.stageId !== respondedStage.id) {
+        await this.applyPositions(tx, target, orderedTarget);
+      }
     });
 
     return this.findOne(id);

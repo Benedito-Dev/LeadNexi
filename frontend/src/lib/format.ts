@@ -52,10 +52,17 @@ export function formatPercent(ratio: number): string {
  * Link do WhatsApp para o telefone: "+55 85 95555-7788" → "https://wa.me/5585955557788".
  * Número nacional (10 ou 11 dígitos, com DDD) ganha o 55 do Brasil. Retorna null se não parecer telefone.
  */
-export function whatsappUrl(phone: string): string | null {
+export function whatsappUrl(phone: string, message?: string): string | null {
   const digits = phone.replace(/\D/g, '')
   const full = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits
-  return full.length >= 12 && full.length <= 15 ? `https://wa.me/${full}` : null
+  if (full.length < 12 || full.length > 15) return null
+  return `https://wa.me/${full}${message ? `?text=${encodeURIComponent(message)}` : ''}`
+}
+
+/** Texto provisório da prospecção até a geração de mensagens da F4. */
+export function defaultWhatsAppMessage(name: string, now = new Date()): string {
+  const greeting = now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
+  return `Oi, ${greeting}! Tudo bem? Me chamo Benedito, sou da Alvo Digital, aqui de Fortaleza. Trabalho com anúncios no Instagram pra lojas de celular e gostaria de apresentar meu trabalho pro responsável da ${name}.\n\nVocê consegue me dizer qual o melhor jeito de falar com ele? Obrigado!`
 }
 
 const sameDay = (a: Date, b: Date) =>
