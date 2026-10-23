@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '../components/AppLayout.tsx'
 import { RequireAuth } from '../features/auth/RequireAuth.tsx'
 import { ImportLeadsPage } from '../pages/ImportLeadsPage.tsx'
+import { ClientsPage } from '../pages/ClientsPage.tsx'
+import { DirectPage } from '../pages/DirectPage.tsx'
 import { InstagramPage } from '../pages/InstagramPage.tsx'
 import { KanbanPage } from '../pages/KanbanPage.tsx'
 import { DataDeletionPage } from '../pages/legal/DataDeletionPage.tsx'
@@ -32,6 +34,8 @@ export const router = createBrowserRouter([
           { path: '/leads', element: <LeadsPage /> },
           { path: '/leads/importar', element: <ImportLeadsPage /> },
           { path: '/instagram', element: <InstagramPage /> },
+          { path: '/direct', element: <DirectPage /> },
+          { path: '/clientes', element: <ClientsPage /> },
         ],
       },
     ],

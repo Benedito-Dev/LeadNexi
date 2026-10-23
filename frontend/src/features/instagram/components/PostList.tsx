@@ -25,6 +25,7 @@ import type { InstagramPost } from '../types.ts'
 import type { PostView } from '../view.ts'
 import { PostDetails } from './PostDetails.tsx'
 import { GRID_COLUMNS, PostGrid } from './PostGrid.tsx'
+import { ProofToggle } from './ProofToggle.tsx'
 import { StatusIcon } from './StatusIcon.tsx'
 
 // Posts do Instagram (BRAND.md, seção 9.5): primeiro os que ainda não saíram (do mais próximo ao mais
@@ -159,6 +160,7 @@ function PostItem({ post }: { post: InstagramPost }) {
         )}
       </div>
 
+      {post.status === 'PUBLISHED' && <ProofToggle post={post} compact />}
       {post.status === 'PUBLISHED' && post.permalink && (
         <a
           href={post.permalink}

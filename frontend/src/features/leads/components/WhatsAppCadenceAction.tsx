@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { WhatsAppIcon } from '../../../brand/icons.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
 import { defaultWhatsAppMessage, whatsappUrl } from '../../../lib/format.ts'
+import type { MessageOrigin } from '../api.ts'
 import { useRecordWhatsAppSent } from '../hooks.ts'
 import type { Lead } from '../types.ts'
 
@@ -12,11 +13,14 @@ import type { Lead } from '../types.ts'
 export function WhatsAppCadenceAction({
   lead,
   message: suggestedMessage,
+  origin,
   showLabel = false,
   className = '',
 }: {
   lead: Lead
   message?: string
+  /** Template e variação do texto (ex.: sugestão da IA), gravados junto com o envio */
+  origin?: MessageOrigin
   showLabel?: boolean
   className?: string
 }) {
@@ -57,7 +61,7 @@ export function WhatsAppCadenceAction({
   }
 
   function confirmSent() {
-    record.mutate(message, {
+    record.mutate({ message, origin }, {
       onSuccess: () => setConfirming(false),
     })
   }

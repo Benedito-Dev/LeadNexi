@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { Button } from '../components/ui/Button.tsx'
 import { Input } from '../components/ui/Input.tsx'
 import { PageHeader } from '../components/PageHeader.tsx'
+import { ProofsCard } from '../features/ai/components/ProofsCard.tsx'
 import { useResultsDashboard, useUpdateProspectingSettings } from '../features/results/hooks.ts'
 import type { FunnelPeriod, ProspectingSettings } from '../features/results/types.ts'
 import { formatPercent } from '../lib/format.ts'
@@ -43,6 +44,7 @@ export function ResultsPage() {
           </section>
           <MessageTests performance={dashboard.data.messagePerformance} />
           <SettingsCard settings={dashboard.data.settings} />
+          <ProofsCard />
         </>
       )}
     </div>

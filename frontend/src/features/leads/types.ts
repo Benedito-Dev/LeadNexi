@@ -39,8 +39,22 @@ export interface Lead {
   instagramLastMessageAt: string | null
   /** Foto de perfil guardada (GET /api/leads/avatars/:id); null = iniciais */
   avatarId: string | null
+  /** Nome de quem decide na loja (o "responsável") */
+  responsibleName: string | null
+  /** Resumo da conversa feito pela IA (GET do lead); null = nunca resumido */
+  aiSummary: LeadAiSummary | null
+  aiSummaryAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** Resumo da IA: 3 linhas e o próximo passo (em quantos dias; null = nenhum) */
+export interface LeadAiSummary {
+  situation: string
+  wants: string
+  nextStep: string
+  nextStepDays: number | null
+  suggestionId?: string
 }
 
 export type LeadActivityType =
@@ -105,6 +119,7 @@ export interface LeadInput {
   followUpAt?: string | null
   meetingAt?: string | null
   lostReason?: string | null
+  responsibleName?: string | null
 }
 
 export interface CreateLeadInput extends LeadInput {

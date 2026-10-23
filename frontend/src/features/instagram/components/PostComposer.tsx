@@ -16,6 +16,7 @@ import {
   type PreparedImage,
 } from '../images.ts'
 import type { CreatedInstagramPost } from '../types.ts'
+import { HashtagSets } from './HashtagSets.tsx'
 
 type Mode = 'now' | 'schedule'
 
@@ -310,6 +311,7 @@ function ComposerContent({
               {caption.length}/{CAPTION_LIMIT}
             </span>
           </p>
+          <HashtagSets caption={caption} onChange={setCaption} />
         </section>
 
         {/* Quando publicar */}

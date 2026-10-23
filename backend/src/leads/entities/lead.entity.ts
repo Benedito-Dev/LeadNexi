@@ -47,6 +47,12 @@ export class LeadEntity {
   /** Foto de perfil guardada (GET /leads/avatars/:avatarId); null = mostrar as iniciais */
   avatarId: string | null;
   avatarUpdatedAt: Date | null;
+  /** Nome de quem decide na loja (o "responsável") */
+  responsibleName: string | null;
+  /** Resumo da conversa gerado pela IA (situação, o que o lead quer, próximo passo) */
+  @ApiProperty({ type: Object, nullable: true })
+  aiSummary: unknown;
+  aiSummaryAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

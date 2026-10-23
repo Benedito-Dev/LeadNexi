@@ -35,6 +35,10 @@ export interface InstagramPost {
   publishedAt: string | null
   /** Link do post no Instagram, depois de publicado */
   permalink: string | null
+  /** Publicado e usado como exemplo no follow-up */
+  isProof: boolean
+  /** Do que é o exemplo, ex.: "Case da loja de celular" */
+  proofNote: string | null
   createdAt: string
   /** Na ordem do carrossel: a primeira é a capa */
   images: InstagramPostImage[]
@@ -81,4 +85,45 @@ export interface SaveInstagramAppSettingsInput {
   appId: string
   /** Vazio: mantém a chave já salva */
   appSecret?: string
+}
+
+/** PATCH /instagram/posts/:id: remarcar e/ou marcar como exemplo */
+export interface UpdateInstagramPostInput {
+  scheduledAt?: string
+  isProof?: boolean
+  proofNote?: string | null
+}
+
+/** GET /instagram/posts/proofs: publicado marcado como exemplo, para anexar no follow-up */
+export interface ProofPost {
+  id: string
+  permalink: string
+  proofNote: string | null
+  /** Começo da legenda (até 140 caracteres) */
+  caption: string
+  publishedAt: string | null
+  /** Capa (link assinado, vale 1 hora) */
+  coverUrl: string | null
+}
+
+/** Grupo de hashtags salvo ("#celular #fortaleza") */
+export interface HashtagSet {
+  id: string
+  name: string
+  tags: string
+}
+
+/** GET /instagram/inbox: uma conversa do direct */
+export interface InboxConversation {
+  id: string
+  name: string
+  instagramUsername: string | null
+  avatarId: string | null
+  /** Arquivado = "não é lead" (fora do funil) */
+  archived: boolean
+  stageName: string
+  /** Última mensagem do lead (a janela de 24 h conta daqui) */
+  instagramLastMessageAt: string | null
+  canReply: boolean
+  lastMessage: { text: string; direction: 'sent' | 'received'; createdAt: string } | null
 }

@@ -18,10 +18,4 @@
   .mobile-bottom-nav {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
-
-  @media (max-width: 1023px) {
-    .app-content {
-      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
-    }
-  }
 }

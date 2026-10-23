@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,6 +9,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -30,6 +32,10 @@ import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { stableOrigin } from '../common/utils/public-origin.js';
 import { CreateInstagramPostDto } from './dto/create-instagram-post.dto.js';
+import {
+  QueryInstagramPostsDto,
+  UpdateInstagramPostDto,
+} from './dto/update-instagram-post.dto.js';
 import {
   InstagramPostsService,
   type UploadedImage,
@@ -92,8 +98,38 @@ export class InstagramPostsController {
     summary:
       'Posts do Instagram: os que ainda não saíram (do mais próximo ao mais distante) e depois os publicados',
   })
-  list() {
-    return this.posts.list();
+  list(@Query() { from, to }: QueryInstagramPostsDto) {
+    if (!from !== !to) {
+      throw new BadRequestException('Informe o período completo (from e to).');
+    }
+    return this.posts.list(
+      from && to ? { from: new Date(from), to: new Date(to) } : undefined,
+    );
+  }
+
+  @Get('posts/proofs')
+  @ApiOperation({
+    summary:
+      'Posts publicados marcados como exemplo, para anexar no follow-up (o mais recente primeiro)',
+  })
+  proofs() {
+    return this.posts.proofs();
+  }
+
+  @Patch('posts/:id')
+  @ApiOperation({
+    summary:
+      'Remarca um post agendado ou com falha (arrastar no calendário) e/ou marca um publicado como exemplo',
+  })
+  @ApiConflictResponse({
+    description: 'O post já foi enviado (remarcar) ou não está publicado (exemplo)',
+  })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateInstagramPostDto,
+    @Req() request: Request,
+  ) {
+    return this.publisher.update(id, dto, stableOrigin(request));
   }
 
   @Post('posts/sync')

@@ -2,6 +2,10 @@ import { api } from '../../lib/api.ts'
 import type {
   CreatedInstagramPost,
   CreateInstagramPostInput,
+  HashtagSet,
+  InboxConversation,
+  ProofPost,
+  UpdateInstagramPostInput,
   InstagramAccountStatus,
   InstagramAppSettings,
   InstagramPost,
@@ -43,8 +47,32 @@ export function createInstagramPost(input: CreateInstagramPostInput) {
   return api<CreatedInstagramPost>('/instagram/posts', { method: 'POST', body: JSON.stringify(input) })
 }
 
-export function listInstagramPosts() {
-  return api<InstagramPost[]>('/instagram/posts')
+export function listInstagramPosts(range?: { from: string; to: string }) {
+  return api<InstagramPost[]>(range ? `/instagram/posts?${new URLSearchParams(range)}` : '/instagram/posts')
+}
+
+export function updateInstagramPost(id: string, input: UpdateInstagramPostInput) {
+  return api<CreatedInstagramPost>(`/instagram/posts/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
+}
+
+export function getProofPosts() {
+  return api<ProofPost[]>('/instagram/posts/proofs')
+}
+
+export function getHashtagSets() {
+  return api<HashtagSet[]>('/instagram/hashtag-sets')
+}
+
+export function createHashtagSet(input: { name: string; tags: string }) {
+  return api<HashtagSet>('/instagram/hashtag-sets', { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function deleteHashtagSet(id: string) {
+  return api<void>(`/instagram/hashtag-sets/${id}`, { method: 'DELETE' })
+}
+
+export function getInbox() {
+  return api<InboxConversation[]>('/instagram/inbox')
 }
 
 /** Confere os publicados com o perfil: apagado lá vira REMOVED (e volta se reaparecer) */

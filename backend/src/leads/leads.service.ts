@@ -5,6 +5,7 @@ import {
   insertAt,
   without,
 } from '../common/utils/positions.js';
+import { localDay } from '../clients/billing.js';
 import { LeadListsService } from '../lead-lists/lead-lists.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StagesService } from '../stages/stages.service.js';
@@ -209,6 +210,20 @@ export class LeadsService {
           toStage: targetStage.name,
         },
       });
+      // Fechou: nasce a ficha de cliente (uma por lead; voltar e fechar de novo mantém a mesma)
+      if (targetStage.stageType === 'WON') {
+        const wonAt = lead.wonAt ?? now;
+        await tx.client.upsert({
+          where: { leadId: id },
+          create: {
+            leadId: id,
+            startDate: wonAt,
+            billingDay: Math.min(Number(localDay(wonAt).slice(8)), 28),
+            monthlyFee: lead.estimatedValue ?? new Prisma.Decimal(500),
+          },
+          update: { status: 'ACTIVE' },
+        });
+      }
       await this.applyPositions(
         tx,
         source,

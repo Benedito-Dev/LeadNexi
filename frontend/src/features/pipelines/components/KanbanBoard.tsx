@@ -18,10 +18,13 @@ import {
   type UniqueIdentifier,
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { Flame } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useMediaQuery } from '../../../lib/useMediaQuery.ts'
 import type { Lead } from '../../leads/types.ts'
 import { NewStageColumn } from '../../stages/components/NewStageColumn.tsx'
 import { cardActions } from '../cardActions.ts'
+import { HOT_STAGES, nextAction } from '../nextAction.ts'
 import type { PipelineBoard } from '../types.ts'
 import { KanbanColumn } from './KanbanColumn.tsx'
 import { LeadCard } from './LeadCard.tsx'
@@ -62,9 +65,23 @@ function matchesSearch(lead: Lead, search: string): boolean {
   return haystack.includes(normalize(search))
 }
 
+/**
+ * Aba aberta de cara no celular: onde está a ação mais urgente. Primeiro quem respondeu, depois a
+ * etapa com follow-up vencendo, depois a fila de contatos; sem nada disso, a primeira etapa.
+ */
+function defaultMobileStage(board: PipelineBoard): string | undefined {
+  const withLeads = board.stages.filter((stage) => stage.leads.length > 0)
+  const hot = withLeads.find((stage) => HOT_STAGES.includes(stage.stageType))
+  const due = withLeads.find((stage) =>
+    stage.leads.some((lead) => ['overdue', 'today'].includes(nextAction(lead, stage.stageType)?.tone ?? '')),
+  )
+  return (hot ?? due ?? withLeads.find((stage) => stage.stageType === 'CONTACT') ?? board.stages[0])?.id
+}
+
 export function KanbanBoard({
   board,
   search = '',
+  landedId = null,
   onMoveLead,
   onAddLead,
   onOpenLead,
@@ -72,6 +89,8 @@ export function KanbanBoard({
   board: PipelineBoard
   /** Com busca ativa o quadro só filtra: arrastar fica desligado (as posições não batem) */
   search?: string
+  /** Lead que acabou de avançar de etapa: o card brilha uma vez */
+  landedId?: string | null
   onMoveLead: (leadId: string, stageId: string, position: number) => void
   onAddLead: (stageId: string) => void
   onOpenLead: (lead: Lead) => void
@@ -81,6 +100,15 @@ export function KanbanBoard({
   const [activeId, setActiveId] = useState<string | null>(null)
   const columns = dragColumns ?? toColumns(board)
   // O sensor de teclado guarda o getter do início do arraste: ele lê a ordem atual por aqui
+  // No celular: uma etapa por vez, escolhida nas abas (nada de rolar o quadro para o lado)
+  const mobile = useMediaQuery('(max-width: 767px)')
+  const [mobileStageId, setMobileStageId] = useState<string | undefined>(() => defaultMobileStage(board))
+  const currentMobileStage = board.stages.find((stage) => stage.id === mobileStageId) ?? board.stages[0]
+  // A aba escolhida fica à vista (a de abertura pode estar além da borda da tela)
+  const tabsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    tabsRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [mobile, currentMobileStage?.id])
   const columnsRef = useRef(columns)
   useLayoutEffect(() => {
     columnsRef.current = columns
@@ -202,29 +230,76 @@ export function KanbanBoard({
         },
       }}
     >
-      <div className="flex items-stretch gap-4 overflow-x-auto pb-2">
-        {board.stages.map((stage, index) => (
-          <KanbanColumn
-            key={stage.id}
-            stage={stage}
-            index={index}
-            stageCount={board.stages.length}
-            stageLeadCount={stage.leads.length}
-            leads={(columns[stage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible)}
-            closed={stage.stageType === 'WON'}
-            dragDisabled={query !== ''}
-            onAddLead={onAddLead}
-            onOpenLead={onOpenLead}
-          />
-        ))}
-        <NewStageColumn pipelineId={board.id} />
-      </div>
+      {mobile ? (
+        <div className="flex flex-col gap-3">
+          <div ref={tabsRef} role="tablist" aria-label="Etapas do funil" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {board.stages.map((stage) => {
+              const count = (columns[stage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible).length
+              const selected = stage.id === currentMobileStage?.id
+              const hot = HOT_STAGES.includes(stage.stageType) && count > 0
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setMobileStageId(stage.id)}
+                  className={`flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-small font-bold whitespace-nowrap transition-colors ${
+                    selected
+                      ? 'border-violet-600 bg-violet-tint text-white'
+                      : hot
+                        ? 'border-cyan/40 text-cyan'
+                        : 'border-navy-600 text-slate-300'
+                  }`}
+                >
+                  {hot && <Flame aria-hidden size={13} strokeWidth={1.75} />}
+                  {stage.name}
+                  <span className={`tabular-nums ${selected ? 'text-violet-300' : 'text-slate-400'}`}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
+          {currentMobileStage && (
+            <KanbanColumn
+              key={currentMobileStage.id}
+              stage={currentMobileStage}
+              index={board.stages.indexOf(currentMobileStage)}
+              stageCount={board.stages.length}
+              stageLeadCount={currentMobileStage.leads.length}
+              leads={(columns[currentMobileStage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible)}
+              dragDisabled={query !== ''}
+              landedId={landedId}
+              fullWidth
+              onAddLead={onAddLead}
+              onOpenLead={onOpenLead}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="flex items-stretch gap-4 overflow-x-auto pb-2">
+          {board.stages.map((stage, index) => (
+            <KanbanColumn
+              key={stage.id}
+              stage={stage}
+              index={index}
+              stageCount={board.stages.length}
+              stageLeadCount={stage.leads.length}
+              leads={(columns[stage.id] ?? []).flatMap((id) => leadsById.get(id) ?? []).filter(visible)}
+              dragDisabled={query !== ''}
+              landedId={landedId}
+              onAddLead={onAddLead}
+              onOpenLead={onOpenLead}
+            />
+          ))}
+          <NewStageColumn pipelineId={board.id} />
+        </div>
+      )}
 
       <DragOverlay>
         {activeLead && (
           <LeadCard
             lead={activeLead}
-            closed={board.stages.find((stage) => stage.id === findStage(columns, activeLead.id))?.stageType === 'WON'}
+            stageType={board.stages.find((stage) => stage.id === findStage(columns, activeLead.id))?.stageType ?? 'CUSTOM'}
             dragging
             actions={cardActions(activeLead)}
           />

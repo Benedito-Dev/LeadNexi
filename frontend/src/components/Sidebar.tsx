@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, Download, LogOut, Moon, Sparkles, Sun, Users } from 'lucide-react'
+import { BarChart3, CalendarCheck, Download, Handshake, LogOut, MessageCircle, Moon, Sparkles, Sun, Users } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { InstagramIcon, KanbanIcon } from '../brand/icons.tsx'
@@ -16,7 +16,9 @@ const NAV_ITEMS: { to: string; label: string; icon: NavIcon }[] = [
   { to: '/ia-prototipo', label: 'IA (protótipo)', icon: Sparkles },
   { to: '/kanban', label: 'Funil', icon: KanbanIcon },
   { to: '/leads', label: 'Leads', icon: Users },
+  { to: '/clientes', label: 'Clientes', icon: Handshake },
   { to: '/instagram', label: 'Instagram', icon: InstagramIcon },
+  { to: '/direct', label: 'Direct', icon: MessageCircle },
 ]
 
 // Conteúdo da sidebar (BRAND.md, seções 8 e 9.1), usado no desktop e no menu do celular.

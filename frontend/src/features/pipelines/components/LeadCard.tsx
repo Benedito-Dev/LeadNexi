@@ -1,38 +1,60 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Bell, Clock } from 'lucide-react'
+import {
+  Bell,
+  CalendarClock,
+  CircleCheck,
+  CircleSlash,
+  Clock,
+  Hourglass,
+  MessageCircleReply,
+  Send,
+  type LucideIcon,
+} from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import { elapsedDays, followUpTone, formatCurrency, formatDateTime, formatDay, formatElapsed } from '../../../lib/format.ts'
+import { formatCurrency } from '../../../lib/format.ts'
 import { ConversationButton } from '../../conversations/components/ConversationButton.tsx'
 import { LeadAvatar } from '../../leads/components/LeadAvatar.tsx'
 import { SourceIcon } from '../../leads/components/SourceIcon.tsx'
 import { WhatsAppCadenceAction } from '../../leads/components/WhatsAppCadenceAction.tsx'
 import type { Lead } from '../../leads/types.ts'
 import { cardActions } from '../cardActions.ts'
+import { isActionable, nextAction, type NextAction, type NextActionIcon, type NextActionTone } from '../nextAction.ts'
+import type { Stage } from '../types.ts'
 
 // Card de lead (BRAND.md, seção 8): corpo com iniciais, nome e origem (com ícone do canal); rodapé separado por
-// divisória com o valor (verde na etapa final) e o tempo desde a última movimentação.
+// divisória com o PRÓXIMO PASSO à esquerda (o que fazer agora, colorido pela urgência) e o valor à direita,
+// só quando existe (verde na etapa final). Lead quente (respondeu) ou atrasado ganha a borda na cor do tom.
 // `actions`: quantos botões (WhatsApp, conversa do direct) o SortableLeadCard sobrepõe no canto direito
-// do corpo; o nome deixa o espaço deles livre.
+// do corpo; o nome deixa o espaço deles livre. `landed`: acabou de avançar de etapa (brilho uma vez).
 export function LeadCard({
   lead,
-  closed,
+  stageType,
   dragging = false,
+  landed = false,
   actions = 0,
 }: {
   lead: Lead
-  closed: boolean
+  stageType: Stage['stageType']
   dragging?: boolean
+  landed?: boolean
   actions?: number
 }) {
-  const stoppedDays = elapsedDays(lead.updatedAt)
-  const stoppedTone = stoppedDays >= 7 ? 'text-danger' : stoppedDays >= 3 ? 'text-warning' : dragging ? 'text-cyan' : 'text-slate-400'
+  const action = dragging ? null : nextAction(lead, stageType)
+  const closed = stageType === 'WON'
+  const border = dragging
+    ? 'border-cyan'
+    : action?.tone === 'hot'
+      ? 'border-cyan/50'
+      : action?.tone === 'overdue'
+        ? 'border-danger/45'
+        : ''
 
   return (
     <div
-      className={`rounded-md border transition-colors ${
-        dragging ? '-rotate-[1.5deg] border-cyan bg-navy-drag shadow-drag' : 'bg-navy-800'
-      }`}
+      className={`rounded-md border transition-colors ${border} ${
+        dragging ? '-rotate-[1.5deg] bg-navy-drag shadow-drag' : 'bg-navy-800'
+      } ${landed ? 'motion-safe:animate-card-land' : ''} ${stageType === 'LOST' ? 'opacity-70' : ''}`}
     >
       <div className="flex items-start gap-3 px-3.5 pt-3.5 pb-3">
         <LeadAvatar name={lead.name} avatarId={lead.avatarId} />
@@ -45,37 +67,30 @@ export function LeadCard({
             </p>
           )}
           {lead.neighborhood && <p className="mt-1 truncate text-xs font-medium text-slate-400">{lead.neighborhood}</p>}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {lead.adStatus === 'anuncia' && <CardTag tone="violet">Anuncia</CardTag>}
-            {lead.phoneType === 'fixo' && <CardTag tone="slate">Fixo</CardTag>}
-            {lead.isNetwork && <CardTag tone="cyan">Rede</CardTag>}
-          </div>
+          {(lead.adStatus === 'anuncia' || lead.phoneType === 'fixo' || lead.isNetwork) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {lead.adStatus === 'anuncia' && <CardTag tone="violet">Anuncia</CardTag>}
+              {lead.phoneType === 'fixo' && <CardTag tone="slate">Fixo</CardTag>}
+              {lead.isNetwork && <CardTag tone="cyan">Rede</CardTag>}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
-        {lead.estimatedValue ? (
-          <span className={`text-ui font-bold ${closed ? 'text-success' : 'text-white'}`}>
-            {formatCurrency(lead.estimatedValue)}
-          </span>
-        ) : (
-          <span className="text-xs font-semibold text-slate-400">Sem valor</span>
-        )}
-        {lead.meetingAt ? (
-          <NextStepBadge label={`Reunião · ${formatDay(new Date(lead.meetingAt))}`} dateTime={lead.meetingAt} />
-        ) : lead.followUpAt && !dragging ? (
-            <FollowUpBadge dueAt={lead.followUpAt} note={lead.followUpNote} step={lead.cadenceStep} />
-        ) : (
-          <time
-            dateTime={lead.updatedAt}
-            title="Última movimentação"
-            className={`flex shrink-0 items-center gap-1 text-xs font-semibold ${stoppedTone}`}
-          >
-            <Clock aria-hidden size={13} strokeWidth={1.75} />
-            {dragging ? 'agora' : stoppedDays === 0 ? formatElapsed(lead.updatedAt) : `${stoppedDays} d parado`}
-          </time>
-        )}
-      </div>
+      {(action || lead.estimatedValue || dragging) && (
+        <div className="flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
+          {dragging ? (
+            <span className="text-xs font-bold text-cyan">Solte na próxima etapa</span>
+          ) : (
+            action && <NextStep action={action} />
+          )}
+          {lead.estimatedValue && (
+            <span className={`ml-auto shrink-0 text-ui font-bold tabular-nums ${closed ? 'text-success' : 'text-white'}`}>
+              {formatCurrency(lead.estimatedValue)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -89,30 +104,53 @@ function CardTag({ children, tone }: { children: string; tone: 'violet' | 'cyan'
   return <span className={`rounded-full px-2 py-0.5 text-[10px] leading-none font-bold ${classes[tone]}`}>{children}</span>
 }
 
-function NextStepBadge({ label, dateTime }: { label: string; dateTime: string }) {
-  return (
-    <time dateTime={dateTime} title={`Próximo passo: ${formatDateTime(dateTime)}`} className="max-w-32 truncate text-xs font-bold text-cyan">
-      {label}
-    </time>
-  )
+const ACTION_TONE: Record<NextActionTone, string> = {
+  hot: 'text-cyan',
+  overdue: 'text-danger',
+  today: 'text-warning',
+  go: 'text-violet-300',
+  scheduled: 'text-slate-300',
+  done: 'text-success',
+  idle: 'text-slate-400',
 }
 
-const FOLLOW_UP_TONE = { overdue: 'text-danger', today: 'text-warning', future: 'text-slate-400' } as const
+const ACTION_ICON: Record<NextActionIcon, LucideIcon> = {
+  reply: MessageCircleReply,
+  bell: Bell,
+  send: Send,
+  calendar: CalendarClock,
+  wait: Hourglass,
+  check: CircleCheck,
+  clock: Clock,
+  lost: CircleSlash,
+}
 
-/** Próximo contato no rodapé do card: vermelho se atrasado, amarelo se hoje (BRAND.md, seção 8 · "Card de lead"). */
-function FollowUpBadge({ dueAt, note, step }: { dueAt: string; note: string | null; step: number | null }) {
-  const tone = followUpTone(dueAt)
-  const label = tone === 'overdue' ? 'Atrasado' : `${step ? `Follow-up ${step} · ` : ''}${formatDay(new Date(dueAt))}`
-  return (
-    <time
-      dateTime={dueAt}
-      title={`Próximo contato: ${formatDateTime(dueAt)}${note ? ` · ${note}` : ''}`}
-      className={`flex shrink-0 items-center gap-1 text-xs font-bold ${FOLLOW_UP_TONE[tone]}`}
-    >
-      <Bell aria-hidden size={13} strokeWidth={1.75} />
-      <span className="sr-only">Próximo contato: </span>
-      {label}
+/** Próximo passo no rodapé do card (BRAND.md, seção 8 · "Card de lead"): ícone 13 + texto 12/700 no tom da urgência. */
+function NextStep({ action }: { action: NextAction }) {
+  const Icon = ACTION_ICON[action.icon]
+  const content = (
+    <>
+      {action.tone === 'hot' ? (
+        <span aria-hidden className="relative flex size-2 shrink-0">
+          <span className="absolute inset-0 rounded-full bg-cyan opacity-60 motion-safe:animate-ping" />
+          <span className="relative size-2 rounded-full bg-cyan" />
+        </span>
+      ) : (
+        <Icon aria-hidden size={13} strokeWidth={1.75} className="shrink-0" />
+      )}
+      <span className="sr-only">Próximo passo: </span>
+      <span className="truncate">{action.label}</span>
+    </>
+  )
+  const className = `flex min-w-0 items-center gap-1.5 text-xs font-bold ${ACTION_TONE[action.tone]}`
+  return action.dateTime ? (
+    <time dateTime={action.dateTime} title={action.title} className={className}>
+      {content}
     </time>
+  ) : (
+    <span title={action.title} className={className}>
+      {content}
+    </span>
   )
 }
 
@@ -122,18 +160,21 @@ function FollowUpBadge({ dueAt, note, step }: { dueAt: string; note: string | nu
  * Os botões de WhatsApp e da conversa do direct ficam FORA da área arrastável (irmãos, sobrepostos no
  * canto): assim não há elemento interativo dentro do card, e Enter/clique neles não abrem a edição nem
  * iniciam o arraste. O WhatsApp aparece no hover/foco do card no desktop (grupo nomeado `card`: a coluna
- * também é `group`) e sempre em toque; a conversa fica sempre à vista (a bolinha verde diz que dá para
+ * também é `group`) e sempre em toque, ou sempre quando o próximo passo é agora (1ª mensagem, follow-up
+ * de hoje ou atrasado, resposta esperando): 1 toque do card ao WhatsApp. A conversa fica sempre à vista (a bolinha verde diz que dá para
  * responder agora).
  */
 export function SortableLeadCard({
   lead,
-  closed,
+  stageType,
   disabled = false,
+  landed = false,
   onOpen,
 }: {
   lead: Lead
-  closed: boolean
+  stageType: Stage['stageType']
   disabled?: boolean
+  landed?: boolean
   onOpen: (lead: Lead) => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -151,6 +192,7 @@ export function SortableLeadCard({
     listeners?.onKeyDown?.(event)
   }
 
+  const actionable = isActionable(nextAction(lead, stageType))
 
   return (
     <div
@@ -173,13 +215,17 @@ export function SortableLeadCard({
           disabled ? 'cursor-pointer' : 'cursor-grab'
         }`}
       >
-        <LeadCard lead={lead} closed={closed} actions={cardActions(lead)} />
+        <LeadCard lead={lead} stageType={stageType} landed={landed} actions={cardActions(lead)} />
       </div>
       {!isDragging && cardActions(lead) > 0 && (
         <div className="absolute top-3 right-2.5 flex">
           <WhatsAppCadenceAction
             lead={lead}
-            className="opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+            className={
+              actionable
+                ? ''
+                : 'opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
+            }
           />
           <ConversationButton lead={lead} />
         </div>

@@ -24,6 +24,8 @@ export const MAX_MESSAGE_BYTES = 1000;
 const WINDOW_CLOSED_SUBCODE = 2534022;
 /** Erro da Meta: a pessoa não pode receber mensagens (bloqueou, desativou a conta...) */
 const USER_UNAVAILABLE_CODE = 551;
+/** Conversas mostradas no inbox (as mais recentes) */
+export const INBOX_LIMIT = 100;
 /** Mensagens mostradas na conversa (as mais recentes) */
 export const CONVERSATION_LIMIT = 200;
 
@@ -64,6 +66,52 @@ export class InstagramMessagesService {
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
   ) {}
+
+  /**
+   * Inbox do direct: todo mundo que mandou direct (lead ou não), da última mensagem recebida para
+   * a mais antiga, com a última mensagem trocada. "Não é lead" = lead arquivado (fora do funil).
+   * Uma consulta só: a última mensagem de cada um vem junto (sem uma consulta por conversa).
+   */
+  async inbox(now = new Date()) {
+    const leads = await this.prisma.lead.findMany({
+      where: { instagramUserId: { not: null } },
+      orderBy: [
+        { instagramLastMessageAt: { sort: 'desc', nulls: 'last' } },
+        { createdAt: 'desc' },
+      ],
+      take: INBOX_LIMIT,
+      select: {
+        id: true,
+        name: true,
+        instagramUsername: true,
+        avatarId: true,
+        archived: true,
+        instagramLastMessageAt: true,
+        stage: { select: { name: true } },
+        activities: {
+          where: { type: { in: ['INSTAGRAM_MESSAGE', 'INSTAGRAM_MESSAGE_SENT'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { type: true, text: true, createdAt: true },
+        },
+      },
+    });
+    return leads.map(({ activities: [last], stage, ...lead }) => ({
+      ...lead,
+      stageName: stage.name,
+      canReply: isWindowOpen(lead.instagramLastMessageAt, now),
+      lastMessage: last
+        ? {
+            text: last.text ?? '',
+            direction:
+              last.type === 'INSTAGRAM_MESSAGE_SENT'
+                ? ('sent' as const)
+                : ('received' as const),
+            createdAt: last.createdAt,
+          }
+        : null,
+    }));
+  }
 
   /**
    * Conversa do direct com o lead: as mensagens (mais antiga primeiro, as últimas 200) e se dá

@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button.tsx'
 import { AccountCard } from '../features/instagram/components/AccountCard.tsx'
 import { AppSettingsCard } from '../features/instagram/components/AppSettingsCard.tsx'
 import { ConnectCard } from '../features/instagram/components/ConnectCard.tsx'
+import { PostCalendar } from '../features/instagram/components/PostCalendar.tsx'
 import { PostComposer } from '../features/instagram/components/PostComposer.tsx'
 import { PostList } from '../features/instagram/components/PostList.tsx'
 import { ViewToggle } from '../features/instagram/components/ViewToggle.tsx'
@@ -42,7 +43,7 @@ export function InstagramPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Instagram"
-        description="Agende e publique fotos e carrosséis no seu perfil."
+        description="Agende e publique fotos e carrosséis no seu perfil. No calendário, arraste para remarcar."
         actions={
           <Button variant={canPublish ? 'primary' : 'secondary'} onClick={() => setComposerOpen(true)}>
             <Plus aria-hidden size={18} strokeWidth={1.75} />
@@ -91,7 +92,7 @@ export function InstagramPage() {
                 <ViewToggle view={view} onChange={setView} />
               </div>
             </div>
-            <PostList view={view} />
+            {view === 'calendario' ? <PostCalendar /> : <PostList view={view} />}
           </section>
           {/* Dá para trocar o app da Meta a qualquer hora (ex.: nova chave secreta) */}
           <div className="xl:col-start-2 xl:row-start-2">

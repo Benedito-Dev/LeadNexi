@@ -9,10 +9,15 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
+import { useSearchParams } from 'react-router'
 import { Button } from '../components/ui/Button.tsx'
 import { PageHeader } from '../components/PageHeader.tsx'
 import { useMe } from '../features/auth/hooks.ts'
+import { MessageSuggestions } from '../features/ai/components/MessageSuggestions.tsx'
+import { ClientReminders } from '../features/clients/components/ClientReminders.tsx'
 import { ConversationButton } from '../features/conversations/components/ConversationButton.tsx'
+import { AttachExample } from '../features/instagram/components/AttachExample.tsx'
+import type { MessageOrigin } from '../features/leads/api.ts'
 import { LeadAvatar } from '../features/leads/components/LeadAvatar.tsx'
 import { LeadFormDialog, type LeadFormTarget } from '../features/leads/components/LeadFormDialog.tsx'
 import { WhatsAppCadenceAction } from '../features/leads/components/WhatsAppCadenceAction.tsx'
@@ -43,8 +48,15 @@ export function TodayPage() {
   const { data: user } = useMe()
   const { stageOptions } = useStageOptions()
   const [target, setTarget] = useState<LeadFormTarget | null>(null)
-  const [focusMode, setFocusMode] = useState(false)
+  // "Começar" na fila do funil (/hoje?prospectar=1) abre já no modo prospecção, com os novos contatos
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [focusMode, setFocusMode] = useState<'all' | 'new' | null>(() => (searchParams.has('prospectar') ? 'new' : null))
   const queue = useMemo(() => (dashboard.data ? makeQueue(dashboard.data) : []), [dashboard.data])
+  useEffect(() => {
+    if (searchParams.has('prospectar')) setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
+  const newItems = queue.filter((item) => item.kind === 'new')
+  const focusItems = focusMode === 'new' && newItems.length > 0 ? newItems : queue
   const [date] = useState(() => new Date())
   const greeting = date.getHours() < 12 ? 'Bom dia' : date.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
   const formattedDate = date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -59,7 +71,7 @@ export function TodayPage() {
         title={`${greeting}, ${name} ☀️`}
         description={`${capitalize(formattedDate)} · ${summary}`}
         actions={
-          <Button variant="secondary" className="h-10 px-3.5" onClick={() => setFocusMode(true)} disabled={queue.length === 0}>
+          <Button variant="secondary" className="h-10 px-3.5" onClick={() => setFocusMode('all')} disabled={queue.length === 0}>
             <Target aria-hidden size={16} strokeWidth={1.75} />
             Modo prospecção
           </Button>
@@ -92,6 +104,7 @@ export function TodayPage() {
                 {queue.length} {queue.length === 1 ? 'ação' : 'ações'}
               </span>
             </div>
+            <ClientReminders />
             {queue.length === 0 ? (
               <EmptyQueue />
             ) : (
@@ -105,7 +118,7 @@ export function TodayPage() {
       )}
 
       <LeadFormDialog target={target} stages={stageOptions} onClose={() => setTarget(null)} />
-      {focusMode && <FocusMode items={queue} onClose={() => setFocusMode(false)} onOpen={(lead) => setTarget({ mode: 'edit', lead })} />}
+      {focusMode && focusItems.length > 0 && <FocusMode items={focusItems} onClose={() => setFocusMode(null)} onOpen={(lead) => setTarget({ mode: 'edit', lead })} />}
     </div>
   )
 }
@@ -164,6 +177,7 @@ function QueueSection({ kind, items, onOpen }: { kind: QueueKind; items: QueueIt
 function ActionCard({ kind, lead, onOpen }: { kind: QueueKind; lead: LeadWithStage; onOpen: (lead: LeadWithStage) => void }) {
   const complete = useCompleteFollowUp(lead.id)
   const [message, setMessage] = useState(() => suggestedMessage(lead, kind))
+  const [origin, setOrigin] = useState<MessageOrigin | undefined>()
   const context = kind === 'response' ? `Respondeu ${formatElapsed(lead.updatedAt)}` : kind === 'follow-up' ? `${lead.cadenceStep === 2 ? 'Follow-up final' : 'Follow-up 1'} · ${lead.followUpAt ? formatDay(new Date(lead.followUpAt)) : 'hoje'}` : kind === 'meeting' ? `Reunião marcada · ${lead.meetingAt ? formatDateTime(lead.meetingAt) : 'a confirmar'}` : '1ª mensagem · novo contato'
 
   return (
@@ -176,12 +190,24 @@ function ActionCard({ kind, lead, onOpen }: { kind: QueueKind; lead: LeadWithSta
       <p className="mt-3 flex items-center gap-2 text-small font-bold text-slate-300"><span className="size-2 rounded-full bg-cyan" aria-hidden />{context}</p>
       {(kind === 'new' || kind === 'follow-up') && <label className="mt-3 block"><span className="sr-only">Mensagem sugerida para {lead.name}</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={2} maxLength={5000} className="w-full resize-y rounded-md border border-navy-600 bg-navy-750 px-3 py-2 text-small leading-5 text-slate-300 outline-none placeholder:text-slate-500 focus:border-cyan" /></label>}
       <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        {(kind === 'new' || kind === 'follow-up') && <WhatsAppCadenceAction lead={lead} message={message} showLabel className="!h-11 w-full sm:!h-9 sm:w-auto" />}
+        {(kind === 'new' || kind === 'follow-up') && <WhatsAppCadenceAction lead={lead} message={message} origin={origin} showLabel className="!h-11 w-full sm:!h-9 sm:w-auto" />}
         {lead.instagramUserId && <ConversationButton lead={lead} />}
         {(kind === 'response' || kind === 'meeting') && <Button variant="secondary" className="h-9 px-3.5" onClick={() => onOpen(lead)}>{kind === 'response' ? 'Tratar resposta' : 'Abrir compromisso'}</Button>}
         {kind === 'follow-up' && <Button variant="secondary" className="h-9 px-3.5" onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? 'Salvando…' : <><Check aria-hidden size={16} strokeWidth={1.75} /> Feito</>}</Button>}
         {(kind === 'new' || kind === 'follow-up') && <DelayMenu leadId={lead.id} />}
+        {kind === 'follow-up' && <AttachExample message={message} onChange={setMessage} />}
       </div>
+      {(kind === 'new' || kind === 'follow-up') && lead.phone && (
+        <div className="mt-3">
+          <MessageSuggestions
+            lead={lead}
+            onPick={(text, picked) => {
+              setMessage(text)
+              setOrigin(picked)
+            }}
+          />
+        </div>
+      )}
       {complete.error && <p className="mt-2 text-small text-danger">Não foi possível marcar como feito.</p>}
     </article>
   )
