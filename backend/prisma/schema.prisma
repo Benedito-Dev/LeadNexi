@@ -115,7 +115,15 @@ model Lead {
   avatarUpdatedAt        DateTime?      @map("avatar_updated_at")
   /// Última mensagem que o lead mandou no direct: a janela de 24 h para responder conta daqui
   instagramLastMessageAt DateTime?      @map("instagram_last_message_at")
+  /// Nome de quem decide na loja (o "responsável"), quando já se sabe
+  responsibleName        String?        @map("responsible_name")
+  /// Resumo da conversa gerado pela IA: { situation, wants, nextStep, nextStepDays }
+  aiSummary              Json?          @map("ai_summary")
+  aiSummaryAt            DateTime?      @map("ai_summary_at")
   activities             LeadActivity[]
+  aiSuggestions          AiSuggestion[]
+  /// Ficha de cliente, criada quando o lead vai para "Fechou"
+  client                 Client?
   createdAt              DateTime       @default(now()) @map("created_at")
   updatedAt              DateTime       @updatedAt @map("updated_at")
 
@@ -123,6 +131,8 @@ model Lead {
   @@index([listId])
   @@index([archived])
   @@index([followUpAt])
+  @@index([meetingAt])
+  @@index([wonAt])
   @@map("leads")
 }
 
@@ -168,6 +178,8 @@ model LeadActivity {
   createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([leadId, createdAt])
+  @@index([channel])
+  @@index([templateId])
   @@map("lead_activities")
 }
 
@@ -184,6 +196,127 @@ model ProspectingSettings {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("prospecting_settings")
+}
+
+// Banco de provas: resultados reais (com fonte e data) que a IA pode citar. Nada fora daqui.
+model Proof {
+  id            String   @id @default(uuid())
+  /// Frase pronta para citar, ex.: "Loja de celular em Fortaleza: R$ 2,26 por conversa..."
+  text          String
+  /// Número em destaque, ex.: "R$ 2,26 por conversa"
+  highlight     String?
+  /// De onde saiu o número, ex.: "Gerenciador de Anúncios"
+  source        String
+  /// Período ou data do resultado, ex.: "out/2026"
+  referenceDate String?  @map("reference_date")
+  /// O cliente autorizou citar o nome da loja?
+  canNameClient Boolean  @default(false) @map("can_name_client")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("proofs")
+}
+
+enum AiFeature {
+  /// Gerar mensagem (1ª mensagem e follow-ups)
+  MESSAGE
+  /// Sugerir resposta a uma mensagem do lead
+  REPLY
+  /// Resumir conversa (com próximo passo sugerido)
+  SUMMARY
+  /// Textos da análise grátis
+  ANALYSIS
+}
+
+// Cada resposta da IA: o que foi pedido, o que voltou e o que o usuário fez com ela
+model AiSuggestion {
+  id            String    @id @default(uuid())
+  leadId        String    @map("lead_id")
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  feature       AiFeature
+  /// Versão do prompt de sistema usado (ex.: "message-v1")
+  promptVersion String    @map("prompt_version")
+  model         String
+  /// Contexto enviado ao modelo (para depurar)
+  input         Json
+  /// Resposta estruturada do modelo
+  output        Json
+  /// Opção escolhida pelo usuário (0, 1, 2), quando houver
+  chosenIndex   Int?      @map("chosen_index")
+  /// 1 = gostou, -1 = não gostou
+  feedback      Int?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([leadId, createdAt])
+  @@map("ai_suggestions")
+}
+
+enum ClientStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+// Cliente ativo (pós-venda, spec F9): nasce quando o lead vai para "Fechou". Um por lead.
+model Client {
+  id                  String          @id @default(uuid())
+  leadId              String          @unique @map("lead_id")
+  lead                Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status              ClientStatus    @default(ACTIVE)
+  plan                String          @default("Gestão de anúncios no Meta")
+  /// Mensalidade do serviço (R$ 500 no 1º mês, pela oferta de entrada)
+  monthlyFee          Decimal         @default(500) @map("monthly_fee") @db.Decimal(12, 2)
+  startDate           DateTime        @map("start_date")
+  /// Dia do mês da cobrança (1 a 28: existe em todo mês)
+  billingDay          Int             @map("billing_day")
+  /// Verba diária de anúncio combinada (paga pelo cliente direto à Meta)
+  dailyAdBudget       Decimal?        @map("daily_ad_budget") @db.Decimal(12, 2)
+  /// Checklist de entrada
+  partnerAccess       Boolean         @default(false) @map("partner_access")
+  whatsappGreeting    Boolean         @default(false) @map("whatsapp_greeting")
+  firstCampaignLive   Boolean         @default(false) @map("first_campaign_live")
+  notes               String?
+  reports             ClientReport[]
+  payments            ClientPayment[]
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("clients")
+}
+
+// Relatório semanal do cliente: gasto e conversas iniciadas no WhatsApp
+model ClientReport {
+  id            String   @id @default(uuid())
+  clientId      String   @map("client_id")
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /// Segunda-feira da semana do relatório
+  weekStart     DateTime @map("week_start") @db.Date
+  spend         Decimal  @db.Decimal(12, 2)
+  conversations Int
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([clientId, weekStart])
+  @@map("client_reports")
+}
+
+// Pagamento recebido do cliente (Pix)
+model ClientPayment {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(12, 2)
+  paidAt    DateTime @map("paid_at")
+  /// Mês que o pagamento cobre, ex.: "2026-11"
+  period    String
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clientId, paidAt])
+  @@map("client_payments")
 }
 
 // Sessões de login: refresh tokens com rotação. Cada login abre uma família; cada renovação cria
@@ -268,12 +401,29 @@ model InstagramPost {
   /// ID do post no Instagram e o link público dele
   igMediaId           String?             @map("ig_media_id")
   permalink           String?
+  /// Post publicado usado como exemplo no follow-up ("Te mando um exemplo do que fizemos")
+  isProof             Boolean             @default(false) @map("is_proof")
+  /// Do que é o exemplo, ex.: "Case da loja de celular"
+  proofNote           String?             @map("proof_note")
   images              InstagramMedia[]
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
   @@index([status, scheduledAt])
+  @@index([isProof])
   @@map("instagram_posts")
+}
+
+// Grupo de hashtags salvo para inserir na legenda com 1 clique
+model InstagramHashtagSet {
+  id        String   @id @default(uuid())
+  name      String
+  /// As hashtags, separadas por espaço: "#celular #fortaleza"
+  tags      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("instagram_hashtag_sets")
 }
 
 // Imagem (JPEG) guardada no armazenamento de arquivos (padrão S3; a chave é o caminho lá).

@@ -100,6 +100,12 @@ export class CreateLeadDto {
   @MaxLength(120)
   neighborhood?: string;
 
+  /** Nome de quem decide na loja (o "responsável") */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  responsibleName?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(240)

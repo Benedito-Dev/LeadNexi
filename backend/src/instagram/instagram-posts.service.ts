@@ -17,6 +17,7 @@ import {
   CreateInstagramPostDto,
   HASHTAG_LIMIT,
 } from './dto/create-instagram-post.dto.js';
+import { UpdateInstagramPostDto } from './dto/update-instagram-post.dto.js';
 
 /** Proporções que o Instagram aceita num post do feed: de 4:5 (retrato) a 1,91:1 (paisagem) */
 const MIN_RATIO = 4 / 5;
@@ -33,6 +34,8 @@ export const ORPHAN_MEDIA_MS = 24 * 60 * 60 * 1000;
 
 /** Pode ser cancelado: o que ainda não foi para o Instagram, ou o que já saiu de lá (tira da lista) */
 const CANCELABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED', 'REMOVED'];
+/** Pode mudar de horário: o que ainda não foi para o Instagram (com falha volta a "Agendado") */
+const RESCHEDULABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED'];
 /** Já foram para o Instagram (os removidos de lá seguem na lista, marcados, até alguém tirar) */
 const SENT: InstagramPostStatus[] = ['PUBLISHED', 'REMOVED'];
 
@@ -144,8 +147,18 @@ export class InstagramPostsService {
    * Primeiro os que ainda não saíram (agendados, publicando, com falha), do mais próximo ao mais
    * distante; depois os publicados, do mais recente ao mais antigo (só os últimos 20).
    */
-  async list() {
+  async list(range?: { from: Date; to: Date }) {
     const include = { images: { orderBy: { position: 'asc' as const } } };
+    // Calendário: tudo que cai no período (pelo horário agendado ou pelo de publicação)
+    if (range) {
+      const between = { gte: range.from, lt: range.to };
+      const posts = await this.prisma.instagramPost.findMany({
+        where: { OR: [{ scheduledAt: between }, { publishedAt: between }] },
+        orderBy: { scheduledAt: 'asc' },
+        include,
+      });
+      return Promise.all(posts.map((post) => this.toView(post)));
+    }
     const [pending, published] = await Promise.all([
       this.prisma.instagramPost.findMany({
         where: { status: { notIn: SENT } },
@@ -161,6 +174,68 @@ export class InstagramPostsService {
     ]);
     return Promise.all(
       [...pending, ...published].map((post) => this.toView(post)),
+    );
+  }
+
+  /**
+   * Remarca (agendado ou com falha: volta a "Agendado", com as tentativas zeradas) e/ou marca um
+   * publicado como exemplo para o follow-up. O despertador é remarcado por quem chama.
+   */
+  async update(id: string, dto: UpdateInstagramPostDto, now = new Date()) {
+    const post = await this.prisma.instagramPost.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!post) throw new NotFoundException('Post não encontrado');
+
+    if (dto.scheduledAt) {
+      const scheduledAt = new Date(dto.scheduledAt);
+      // 1 minuto de folga para o relógio do navegador
+      if (scheduledAt.getTime() < now.getTime() - 60_000) {
+        throw new BadRequestException('Escolha um horário no futuro.');
+      }
+      // Condição no próprio UPDATE: se a publicação começou agora, nada muda
+      const { count } = await this.prisma.instagramPost.updateMany({
+        where: { id, status: { in: RESCHEDULABLE } },
+        data: { scheduledAt, status: 'SCHEDULED', error: null, attempts: 0 },
+      });
+      if (count === 0) {
+        throw new ConflictException('Esse post já foi enviado ao Instagram.');
+      }
+    }
+
+    if (dto.isProof !== undefined || dto.proofNote !== undefined) {
+      const { count } = await this.prisma.instagramPost.updateMany({
+        where: { id, status: 'PUBLISHED' },
+        data: {
+          ...(dto.isProof !== undefined ? { isProof: dto.isProof } : {}),
+          ...(dto.proofNote !== undefined ? { proofNote: dto.proofNote?.trim() || null } : {}),
+        },
+      });
+      if (count === 0) {
+        throw new ConflictException('Só um post publicado pode virar exemplo.');
+      }
+    }
+    return this.findOne(id);
+  }
+
+  /** Posts publicados marcados como exemplo (para anexar no follow-up), o mais recente primeiro. */
+  async proofs() {
+    const posts = await this.prisma.instagramPost.findMany({
+      where: { isProof: true, status: 'PUBLISHED', permalink: { not: null } },
+      orderBy: { publishedAt: 'desc' },
+      take: 20,
+      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
+    });
+    return Promise.all(
+      posts.map(async (post) => ({
+        id: post.id,
+        permalink: post.permalink!,
+        proofNote: post.proofNote,
+        caption: post.caption.slice(0, 140),
+        publishedAt: post.publishedAt,
+        coverUrl: post.images[0] ? await this.signedMediaUrl(post.images[0].id) : null,
+      })),
     );
   }
 
@@ -263,6 +338,8 @@ export class InstagramPostsService {
     error: string | null;
     publishedAt: Date | null;
     permalink: string | null;
+    isProof: boolean;
+    proofNote: string | null;
     createdAt: Date;
     images: { id: string; width: number; height: number }[];
   }) {
@@ -275,6 +352,8 @@ export class InstagramPostsService {
       error: post.status === 'FAILED' ? post.error : null,
       publishedAt: post.publishedAt,
       permalink: post.permalink,
+      isProof: post.isProof,
+      proofNote: post.proofNote,
       createdAt: post.createdAt,
       images: await Promise.all(
         post.images.map(async ({ id, width, height }) => ({

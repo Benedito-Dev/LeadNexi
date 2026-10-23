@@ -326,25 +326,22 @@ Contador: pílula fundo `#0E3440`, texto `#22D3EE` Geist Mono 11.
 ### Card KPI
 `padding 18 20` · `radius 16` · fundo `#141A2E` · borda `#232B45` · rótulo 13/600 `#94A3B8` · valor Geist Mono 28/500 (valor de receita em `#22D3EE`).
 
-### Cards de KPI (topo do Kanban)
-Quatro cards compactos (grade de 4 no desktop, 2 no tablet, 1 no celular, gap 16): fundo `navy-800` · borda `navy-700` · `radius 16` · `padding 14 16`.
-À esquerda: rótulo 13/600 `slate-400`, valor Manrope 24/700 e legenda 12/600 `slate-400`. À direita, alinhado à base, um gráfico pequeno (≈ 36 px de altura):
-
-| Card | Gráfico | Legenda |
-|---|---|---|
-| Leads no funil | barrinhas dos leads criados por dia (14 dias); hoje em violeta, demais `navy-600`, dia vazio = traço `slate-tint` | "N novos em 7 dias" |
-| Em negociação | uma barrinha violeta por etapa aberta (dica com nome e valor) | "N leads abertos" |
-| Taxa de conversão | anel 40 px, traço 4, trilha `slate-tint`, preenchimento violeta | "N de M em Fechado" |
-| Fechado | sem gráfico; valor em verde (`success`) | "Ticket médio R$ …" |
-
-Gráficos só com dado real (nada de série inventada). Barras com dica nativa (`title`) e rótulo acessível.
+### Placar da semana (topo do Kanban)
+Uma faixa só (`navy-800` · borda `navy-700` · `radius 16` · `padding 14 16`), no lugar dos antigos 4 cards de KPI. Mostra o quanto se andou, não o quanto falta.
+- **Esquerda:** "Esta semana" 13 `slate-400`; contatos feitos em Manrope 24/700 + "/ 30 contatos" 14/700 `slate-400`; barra de 4 px com gradiente `bg-flow` sobre trilha `slate-tint` (um traço mínimo mesmo no zero). À direita do rótulo, a frase de ritmo 12/700 `slate-300`: "A primeira mensagem abre a semana" → "Faltam N para a meta" → "Passou da metade · faltam N" → "Reta final: faltam N" → "Meta da semana batida" (`success`).
+- **Direita:** Respostas (ícone cyan), Reuniões (ícone `violet-300`) e Fechado no mês (`success`) — sem fechamento, "Meta do mês" em `slate-400`. Zero fica em `slate-400`, nunca em destaque. No celular, as três em grade de 3 abaixo da barra.
+- Mesmos números da tela Hoje (`GET /leads/today`).
 
 ### Coluna do Kanban
 `padding 10` (topo 12) · `radius 16` · fundo `navy-850` · **sem borda em repouso**; ao receber um card arrastado, borda 1 px `navy-600` · gap 10 entre cabeçalho e cards, 8 entre cards. **Todas as colunas têm a mesma altura**: descem até o fim da tela (mínimo 320 px), e a coluna inteira aceita soltar card. Gap 16 entre colunas.
 No topo, faixa de 2 px na cor da etapa (recuada 16 px das bordas, pontas arredondadas embaixo). É a identidade da etapa na coluna; não há bolinha.
-Cabeçalho numa linha (altura 32): nome 14/700 + contagem (só o número, 13 `slate-400`) à esquerda e total da etapa em R$ (13 `slate-400`) à direita. No desktop, os botões "+" (novo lead na etapa) e "⋯" (ações), 28 px, aparecem **no lugar do total** no hover/foco da coluna (ou com o menu aberto); em tela de toque ficam sempre visíveis, ao lado do total.
+Cabeçalho numa linha (altura 32): nome 14/700 + contagem (só o número, 13 `slate-400`) à esquerda e total da etapa em R$ (13 `slate-400`; em "Fechou", `success`) à direita, **só quando é maior que zero**. No desktop, os botões "+" (novo lead na etapa) e "⋯" (ações), 28 px, aparecem **no lugar do total** no hover/foco da coluna (ou com o menu aberto); em tela de toque ficam sempre visíveis, ao lado do total.
 Largura mínima 248 px; as colunas dividem o espaço. No fim do quadro, botão "+" de 32 px (só ícone, `aria-label` "Nova etapa") alinhado ao cabeçalho; ao clicar vira um campo.
-Coluna vazia: caixa tracejada "Arraste um card para cá." em 13/600 `slate-400`.
+Coluna vazia: caixa tracejada em 13/600 `slate-400` com um convite para o próximo degrau, pela etapa ("Quem responder aparece aqui.", "Sua próxima reunião aparece aqui.", "Seu próximo cliente fecha aqui."…); etapa personalizada: "Arraste um card para cá.".
+**Temperatura:** etapas quentes (Respondeu, Reunião marcada, Proposta enviada) com leads ganham borda `cyan/20`, brilho `cyan/12` descendo do topo (160 px), a faixa do topo com brilho e a etiqueta "Quente" (`Flame` 11 + 10/700 cyan sobre `cyan-tint`) ao lado da contagem.
+**Fila (primeira etapa, "A contatar"):** no topo, caixa `violet-tint` com borda `violet-600/40`: "N na fila" 13/700 e o botão primário "Começar" (`Play` 14), que abre a tela Hoje já no modo prospecção com os novos contatos (`/hoje?prospectar=1`). Mostra as 5 primeiras lojas; o resto fica atrás de "Mostrar mais N" (botão tracejado). Com busca, mostra tudo.
+**Celular (< 768 px):** uma etapa por vez. Acima, abas em pílula (altura 40, rolam para o lado): nome + contagem; escolhida em `violet-tint` com borda `violet-600`; quente com borda `cyan/40`, texto cyan e `Flame`. Abre na etapa mais urgente (Respondeu → etapa com follow-up vencendo → A contatar). O botão "Novo lead" vira só o "+" (44 px).
+**Avanço:** lead arrastado para uma etapa à direita (menos Perdido) brilha uma vez (`animate-card-land`, 1,4 s) e, quando o servidor confirma, aparece um aviso no canto inferior direito (no celular, acima da barra): ícone da etapa num círculo `slate-tint` + frase 13/700 ("Mikkis Tech respondeu. Agora é conversa.", "Reunião com X. É aqui que se vende.", "X fechou. A ficha de cliente já está pronta.") + "Um passo mais perto da venda." 12/600 `slate-400`. Some em 4 s; `animate-toast-in`; tudo com `motion-safe:`.
 Ações da etapa (menu "⋯"): Renomear (o nome vira campo: Enter salva, Esc cancela), Mover para a esquerda/direita (a cor acompanha a nova posição) e Excluir etapa (desativado enquanto houver leads, com a explicação; confirma em modal).
 
 ### Menu suspenso
@@ -364,13 +361,14 @@ Substitui o `<select>` nativo em todo o app, inclusive em formulários (`<Dropdo
 ### Card de lead
 `radius 12` · fundo `navy-800` · borda `navy-700` (hover `navy-600`). Duas partes:
 - **Corpo** (`padding 14 14 12`): foto do lead num círculo de 32 px (`LeadAvatar`: a foto de perfil do Instagram, quando o lead veio do direct, recortada em círculo; sem foto, ou se ela não carregar, as iniciais 12/800 `slate-300` sobre `slate-tint`) + nome 14/700 (até 2 linhas) + origem 12/600 `slate-400` com o ícone do canal (14 px, traço 1.75).
-- **Rodapé** (divisória 1 px `navy-700`, `padding 10 14`): valor 14/700 à esquerda (sem valor: "Sem valor" 12/600 `slate-400`) e tempo desde a última movimentação à direita (ícone relógio 13 + 12/600 `slate-400`).
+- **Rodapé** (divisória 1 px `navy-700`, `padding 10 14`): o **próximo passo** à esquerda (ícone 13 + 12/700, no tom da urgência) e o valor 14/700 à direita, só quando existe (nunca "Sem valor"). Sem passo nem valor, o rodapé não aparece.
+- **Próximo passo** (`nextAction.ts`): Respondeu → bolinha cyan pulsando + "Responder · há 2 h" (cyan, borda do card `cyan/50`); follow-up atrasado → "Follow-up 1 atrasado" (`danger`, borda `danger/45`); hoje → "Follow-up 1 hoje" (`warning`); futuro → "Follow-up 1 · seg., 19/10" (`slate-300`); A contatar → "Enviar 1ª mensagem" (`violet-300`) ou "1ª mensagem · seg., 19/10"; reunião → "Reunião hoje · 15:00" / "Reunião · qui., 22/10" ou "Marcar a data"; proposta → "Cobrar retorno"; enviada sem data → "Aguardando resposta" (`slate-400`); Fechou → "Cliente" (`success`); Perdido → o motivo (card a 70%).
+- Quando o próximo passo é agora (resposta, atrasado, hoje, 1ª mensagem), o botão do WhatsApp fica sempre à vista, também no desktop.
 - Telefone e e-mail não aparecem no card: ficam no detalhe (a busca continua encontrando por eles).
 - **WhatsApp:** com telefone válido, botão 32 px (ícone cyan, hover `cyan-tint`) no canto superior direito do corpo; abre `wa.me/<número>` em nova aba. No desktop aparece no hover/foco do card, em toque sempre. Fica fora da área arrastável (irmão sobreposto), então clicar ou dar Enter nele não abre a edição nem inicia o arraste; o nome reserva o espaço do botão.
 - **Conversa do direct:** lead que já mandou direct ganha, no canto (à direita do WhatsApp), um botão 32 px com `MessageCircle` em `violet-300` (hover `violet-tint`), sempre à vista; com a janela de 24 h aberta, bolinha `success` de 8 px no canto do ícone (contorno 2 px `navy-800`). Abre o modal da conversa. Fora da área arrastável, como o WhatsApp; o nome reserva o espaço dos dois botões.
 - **Ícones de origem:** Instagram (violet-300) e WhatsApp (cyan), desenhados em `src/brand/icons.tsx` no traço do Lucide (adaptados do Tabler, MIT); Site = `Globe`, Indicação = `Users`, outras = `Tag`, em `slate-400`.
-- **Próximo contato:** com follow-up agendado, o rodapé troca o tempo por um sino 13 + dia ("Hoje", "Amanhã", "qui., 02/10"), 12/700: `danger` e "Atrasado" se já passou, `warning` se é hoje, `slate-400` se é depois.
-- **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, tempo "agora" em cyan.
+- **Sendo arrastado:** fundo `navy-drag`, borda 1 px cyan, sombra drag, rotação -1.5°, rodapé "Solte na próxima etapa" em cyan.
 - **Fechado:** valor em verde (`success`: `#34D399` no escuro, `#047857` no claro).
 
 ### Transição de login

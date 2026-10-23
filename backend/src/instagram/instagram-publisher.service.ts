@@ -7,6 +7,7 @@ import {
 import { decryptSecret } from '../common/crypto/secret-box.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateInstagramPostDto } from './dto/create-instagram-post.dto.js';
+import { UpdateInstagramPostDto } from './dto/update-instagram-post.dto.js';
 import {
   InstagramApiClient,
   InstagramApiError,
@@ -110,6 +111,17 @@ export class InstagramPublisherService {
       await this.publish(post.id, origin, 'manual');
       return this.posts.findOne(post.id);
     }
+    const armed = await this.alarm.wakeAt(post.scheduledAt, origin);
+    return { ...post, alarmFailed: this.alarm.configured && !armed };
+  }
+
+  /**
+   * Remarca (arrastar no calendário) e/ou marca como exemplo. Novo horário arma o despertador; o
+   * antigo, se tocar antes, não acha nada vencido e remarca o próximo sozinho.
+   */
+  async update(id: string, dto: UpdateInstagramPostDto, origin: string) {
+    const post = await this.posts.update(id, dto);
+    if (!dto.scheduledAt) return post;
     const armed = await this.alarm.wakeAt(post.scheduledAt, origin);
     return { ...post, alarmFailed: this.alarm.configured && !armed };
   }

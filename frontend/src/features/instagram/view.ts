@@ -1,7 +1,9 @@
 import { useState } from 'react'
 
-/** Como a lista de posts aparece: lista (detalhes) ou grade (capas, como o perfil do Instagram) */
-export type PostView = 'lista' | 'grade'
+/** Como os posts aparecem: lista (detalhes), grade (capas, como o perfil) ou calendário */
+export type PostView = 'lista' | 'grade' | 'calendario'
+
+const VIEWS: PostView[] = ['lista', 'grade', 'calendario']
 
 const STORAGE_KEY = 'leadnexi.instagram.view'
 
@@ -9,7 +11,8 @@ const STORAGE_KEY = 'leadnexi.instagram.view'
 export function usePostView() {
   const [view, setView] = useState<PostView>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) === 'grade' ? 'grade' : 'lista'
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return VIEWS.find((view) => view === saved) ?? 'lista'
     } catch {
       return 'lista'
     }

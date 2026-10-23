@@ -79,6 +79,7 @@ export function LeadForm({
       instagramUsername: optional(instagramUsername),
       source: optional(text('source')),
       notes: optional(text('notes')),
+      responsibleName: optional(text('responsibleName')),
       estimatedValue: optional(estimatedValue),
       meetingAt: optional(meetingAt),
       ...(lead && { archived: data.get('archived') === 'on' }),
@@ -156,6 +157,16 @@ export function LeadForm({
           />
         </Field>
       </div>
+
+      <Field label="Responsável na loja" htmlFor="lead-responsible" hint="Quem decide. A IA usa o nome nas mensagens.">
+        <Input
+          id="lead-responsible"
+          name="responsibleName"
+          maxLength={120}
+          defaultValue={lead?.responsibleName ?? ''}
+          placeholder="Nome de quem decide"
+        />
+      </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Valor estimado" htmlFor="lead-value">

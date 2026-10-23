@@ -2,19 +2,25 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import {
   cancelInstagramPost,
+  createHashtagSet,
   createInstagramPost,
+  deleteHashtagSet,
   disconnectInstagram,
+  getHashtagSets,
+  getInbox,
   getInstagramAccount,
   getInstagramPublishing,
   getInstagramSettings,
+  getProofPosts,
   listInstagramPosts,
   publishInstagramPost,
   saveInstagramSettings,
   startInstagramConnect,
   syncInstagramPosts,
+  updateInstagramPost,
   uploadInstagramMedia,
 } from './api.ts'
-import type { InstagramPost } from './types.ts'
+import type { InstagramPost, UpdateInstagramPostInput } from './types.ts'
 
 export const instagramKeys = {
   account: ['instagram', 'account'] as const,
@@ -22,6 +28,10 @@ export const instagramKeys = {
   settings: ['instagram', 'settings'] as const,
   publishing: ['instagram', 'publishing'] as const,
   sync: ['instagram', 'sync'] as const,
+  calendar: (from: string, to: string) => ['instagram', 'posts', 'range', from, to] as const,
+  proofs: ['instagram', 'proofs'] as const,
+  hashtags: ['instagram', 'hashtag-sets'] as const,
+  inbox: ['instagram', 'inbox'] as const,
 }
 
 export function useInstagramSettings() {
@@ -60,7 +70,7 @@ export function useDisconnectInstagram() {
 export function useInstagramPosts() {
   return useQuery({
     queryKey: instagramKeys.posts,
-    queryFn: listInstagramPosts,
+    queryFn: () => listInstagramPosts(),
     refetchInterval: (query) => {
       const posts = query.state.data ?? []
       const soon = Date.now() + 2 * 60_000
@@ -167,4 +177,69 @@ export function useCancelPost() {
     mutationFn: cancelInstagramPost,
     onSettled: () => queryClient.invalidateQueries({ queryKey: instagramKeys.posts }),
   })
+}
+
+/** Posts do período do calendário (agendados ou publicados entre `from` e `to`). */
+export function useCalendarPosts(from: string, to: string) {
+  return useQuery({
+    queryKey: instagramKeys.calendar(from, to),
+    queryFn: () => listInstagramPosts({ from, to }),
+    refetchInterval: 60_000,
+  })
+}
+
+/**
+ * Remarca (arrastar no calendário) e/ou marca como exemplo. No calendário o post muda de dia na
+ * hora (otimista); se o servidor recusar, a lista recarrega e ele volta.
+ */
+export function useUpdatePost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateInstagramPostInput }) => updateInstagramPost(id, input),
+    onMutate: ({ id, input }) => {
+      queryClient.setQueriesData<InstagramPost[]>({ queryKey: instagramKeys.posts }, (posts) =>
+        posts?.map((post) =>
+          post.id === id
+            ? {
+                ...post,
+                ...input,
+                proofNote: input.proofNote !== undefined ? input.proofNote : post.proofNote,
+                ...(input.scheduledAt ? { status: 'SCHEDULED' as const, error: null } : {}),
+              }
+            : post,
+        ),
+      )
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['instagram'] }),
+  })
+}
+
+/** Publicados marcados como exemplo (para anexar no follow-up) */
+export function useProofPosts() {
+  return useQuery({ queryKey: instagramKeys.proofs, queryFn: getProofPosts, staleTime: 5 * 60_000 })
+}
+
+export function useHashtagSets() {
+  return useQuery({ queryKey: instagramKeys.hashtags, queryFn: getHashtagSets })
+}
+
+export function useCreateHashtagSet() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createHashtagSet,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: instagramKeys.hashtags }),
+  })
+}
+
+export function useDeleteHashtagSet() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteHashtagSet,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: instagramKeys.hashtags }),
+  })
+}
+
+/** Inbox do direct. Atualiza a cada 30 s (as mensagens chegam pelo webhook). */
+export function useInbox() {
+  return useQuery({ queryKey: instagramKeys.inbox, queryFn: getInbox, refetchInterval: 30_000 })
 }

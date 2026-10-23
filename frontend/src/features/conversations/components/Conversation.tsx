@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ApiError } from '../../../lib/api.ts'
 import { formatDay } from '../../../lib/format.ts'
+import { ReplySuggestions } from '../../ai/components/ReplySuggestions.tsx'
 import type { Lead } from '../../leads/types.ts'
 import { useConversation, useNow, useSendMessage } from '../hooks.ts'
 import type { ConversationMessage, ReplyBlock } from '../types.ts'
@@ -90,7 +91,7 @@ export function Conversation({ lead }: { lead: ConversationLead }) {
         )}
       </div>
 
-      {blocked ? <BlockedNotice lead={lead} reason={blocked} /> : <Composer onSend={(text) => deliver(text)} />}
+      {blocked ? <BlockedNotice lead={lead} reason={blocked} /> : <Composer lead={lead} onSend={(text) => deliver(text)} />}
     </div>
   )
 }
@@ -200,8 +201,11 @@ function Bubble({
   )
 }
 
-/** Caixa de texto: Enter envia, Shift+Enter quebra a linha; contador de bytes (limite da Meta). */
-function Composer({ onSend }: { onSend: (text: string) => void }) {
+/**
+ * Caixa de texto: Enter envia, Shift+Enter quebra a linha; contador de bytes (limite da Meta).
+ * Em cima, "Sugerir resposta" (IA): "Usar esta" joga o texto na caixa, para revisar antes de enviar.
+ */
+function Composer({ lead, onSend }: { lead: ConversationLead; onSend: (text: string) => void }) {
   const [text, setText] = useState('')
   const bytes = new TextEncoder().encode(text.trim()).length
   const tooLong = bytes > MAX_MESSAGE_BYTES
@@ -223,6 +227,9 @@ function Composer({ onSend }: { onSend: (text: string) => void }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 border-t px-5 py-3">
+      <div className="max-h-64 overflow-y-auto">
+        <ReplySuggestions lead={lead} channel="instagram" onUse={setText} />
+      </div>
       <div className="flex items-end gap-2">
         <label htmlFor="conversation-text" className="sr-only">
           Mensagem

@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
+import { AiModule } from './ai/ai.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ClientsModule } from './clients/clients.module.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 import { HealthController } from './health/health.controller.js';
 import { InstagramModule } from './instagram/instagram.module.js';
@@ -23,6 +25,8 @@ import { StagesModule } from './stages/stages.module.js';
     LeadsModule,
     InstagramModule,
     ResultsModule,
+    AiModule,
+    ClientsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: PrismaExceptionFilter }],

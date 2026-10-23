@@ -80,10 +80,16 @@ export function cancelFollowUp(id: string) {
   return api<LeadWithStage>(`/leads/${id}/follow-up`, { method: 'DELETE' })
 }
 
-export function recordWhatsAppSent(id: string, message: string) {
+/** De onde veio o texto enviado (alimenta o "Teste de mensagens" em Resultados) */
+export interface MessageOrigin {
+  templateId?: string
+  variation?: string
+}
+
+export function recordWhatsAppSent(id: string, message: string, origin: MessageOrigin = {}) {
   return api<LeadWithStage>(`/leads/${id}/whatsapp/sent`, {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...origin }),
   })
 }
 

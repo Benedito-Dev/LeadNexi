@@ -5,7 +5,9 @@ import {
   Check,
   CircleAlert,
   CircleCheck,
+  FileText,
   LoaderCircle,
+  MessageSquareText,
   NotebookPen,
   Plus,
   Reply,
@@ -19,7 +21,7 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { Modal } from '../../../components/ui/Modal.tsx'
 import { Textarea } from '../../../components/ui/Field.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
-import { formatAgo, formatCurrency, formatDateTime, followUpTone } from '../../../lib/format.ts'
+import { defaultWhatsAppMessage, formatAgo, formatCurrency, formatDateTime, followUpTone } from '../../../lib/format.ts'
 import { useMediaQuery } from '../../../lib/useMediaQuery.ts'
 import {
   useAddLeadNote,
@@ -31,8 +33,14 @@ import {
   useRemoveLeadNote,
   useScheduleFollowUp,
 } from '../hooks.ts'
-import type { Lead, LeadActivity } from '../types.ts'
+import type { MessageOrigin } from '../api.ts'
+import type { Lead, LeadActivity, LeadWithStage } from '../types.ts'
+import { FreeAnalysisDialog } from '../../ai/components/FreeAnalysisDialog.tsx'
+import { LeadSummary } from '../../ai/components/LeadSummary.tsx'
+import { MessageSuggestions } from '../../ai/components/MessageSuggestions.tsx'
+import { ReplySuggestions } from '../../ai/components/ReplySuggestions.tsx'
 import { Conversation } from '../../conversations/components/Conversation.tsx'
+import { AttachExample } from '../../instagram/components/AttachExample.tsx'
 import { LeadAvatar } from './LeadAvatar.tsx'
 import { InstagramLink } from './InstagramLink.tsx'
 import { LeadForm, type StageOption } from './LeadForm.tsx'
@@ -67,6 +75,9 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
   // No desktop os dados ficam na coluna da direita, então a aba "Dados" não existe
   const tab = wide && selectedTab === 'details' ? 'history' : selectedTab
   const stage = stages.find((option) => option.id === lead.stageId)
+  // O lead vindo da API traz o tipo da etapa; o card do Kanban (dado inicial) pode não trazer
+  const stageType = 'stage' in lead ? (lead as LeadWithStage).stage.stageType : undefined
+  const prospecting = (stageType === 'CONTACT' || stageType === 'SENT') && (lead.cadenceStep ?? 0) < 3
   const form = <LeadForm target={{ mode: 'edit', lead }} stages={stages} onDone={onClose} />
 
   return (
@@ -135,6 +146,8 @@ function PanelContent({ initial, stages, onClose }: { initial: Lead; stages: Sta
             <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {tab === 'history' ? (
                 <div className="flex flex-col gap-6">
+                  <AiTools lead={lead} />
+                  {prospecting && lead.phone && <NextMessage key={lead.cadenceStep ?? 0} lead={lead} />}
                   <FollowUp lead={lead} />
                   <WhatsAppResponse lead={lead} />
                   <NoteComposer leadId={lead.id} />
@@ -184,6 +197,59 @@ function TabButton({
     >
       {children}
     </button>
+  )
+}
+
+// ── IA: resumo, análise grátis e próxima mensagem ───────────────────────────────
+
+function AiTools({ lead }: { lead: Lead }) {
+  const [analysisOpen, setAnalysisOpen] = useState(false)
+  return (
+    <div className="flex flex-col gap-3">
+      <LeadSummary lead={lead} />
+      <div>
+        <Button variant="secondary" className="h-9 px-3.5" onClick={() => setAnalysisOpen(true)}>
+          <FileText aria-hidden size={16} strokeWidth={1.75} />
+          Análise grátis
+        </Button>
+      </div>
+      <FreeAnalysisDialog lead={lead} open={analysisOpen} onClose={() => setAnalysisOpen(false)} />
+    </div>
+  )
+}
+
+/** Mensagem da cadência: texto editável, "Gerar com IA" e o botão que abre o WhatsApp. */
+function NextMessage({ lead }: { lead: Lead }) {
+  const [message, setMessage] = useState(() => ((lead.cadenceStep ?? 0) === 0 ? defaultWhatsAppMessage(lead.name) : ''))
+  const [origin, setOrigin] = useState<MessageOrigin | undefined>()
+  const title = lead.cadenceStep === 1 ? 'Follow-up 1' : lead.cadenceStep === 2 ? 'Follow-up final' : '1ª mensagem'
+
+  return (
+    <section aria-labelledby="next-message-title" className="flex flex-col gap-3">
+      <SectionTitle id="next-message-title" icon={MessageSquareText}>
+        {`Próxima mensagem · ${title}`}
+      </SectionTitle>
+      <Textarea
+        value={message}
+        onChange={(event) => setMessage(event.target.value)}
+        rows={4}
+        maxLength={5000}
+        placeholder="Escreva a mensagem ou gere com a IA"
+        aria-label="Texto da próxima mensagem"
+        className="text-ui"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        {message.trim() && <WhatsAppCadenceAction lead={lead} message={message.trim()} origin={origin} showLabel />}
+        <AttachExample message={message} onChange={setMessage} />
+      </div>
+      <MessageSuggestions
+        lead={lead}
+        onPick={(text, picked) => {
+          setMessage(text)
+          setOrigin(picked)
+        }}
+      />
+    </section>
   )
 }
 
@@ -303,6 +369,7 @@ function WhatsAppResponse({ lead }: { lead: Lead }) {
         placeholder="Cole a resposta aqui (opcional)"
         aria-label="Resposta recebida no WhatsApp"
       />
+      <ReplySuggestions lead={lead} channel="whatsapp" message={text} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" className="h-9 px-3.5" disabled={response.isPending}>
           {response.isPending ? 'Registrando…' : 'Mover para Respondeu'}

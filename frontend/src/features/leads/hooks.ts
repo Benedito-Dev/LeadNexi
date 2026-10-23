@@ -23,7 +23,7 @@ import {
   scheduleFollowUp,
   updateLead,
 } from './api.ts'
-import type { ImportLeadRow } from './api.ts'
+import type { ImportLeadRow, MessageOrigin } from './api.ts'
 import type { CreateLeadInput, Lead, LeadInput, LeadListQuery } from './types.ts'
 
 export const leadKeys = {
@@ -89,6 +89,8 @@ function useInvalidateLeads() {
       queryClient.invalidateQueries({ queryKey: pipelineKeys.all }),
       queryClient.invalidateQueries({ queryKey: leadKeys.all }),
       queryClient.invalidateQueries({ queryKey: ['results'] }),
+      // Lead em "Fechou" ganha a ficha de cliente
+      queryClient.invalidateQueries({ queryKey: ['clients'] }),
     ])
 }
 
@@ -170,7 +172,8 @@ export function useCancelFollowUp(id: string) {
 export function useRecordWhatsAppSent(id: string) {
   const invalidate = useInvalidateLeads()
   return useMutation({
-    mutationFn: (message: string) => recordWhatsAppSent(id, message),
+    mutationFn: ({ message, origin }: { message: string; origin?: MessageOrigin }) =>
+      recordWhatsAppSent(id, message, origin),
     onSuccess: invalidate,
   })
 }
@@ -199,13 +202,14 @@ export function useMoveLead(pipelineId: string, options: { listId?: string; incl
     onSettled: invalidate,
   })
 
-  function move(leadId: string, stageId: string, position: number, lostReason?: string) {
+  /** `onSuccess`: depois que o servidor confirmou (ex.: comemorar o avanço só quando ele valeu) */
+  function move(leadId: string, stageId: string, position: number, lostReason?: string, onSuccess?: () => void) {
     // Síncrono, antes da requisição: o card não "pisca" de volta ao soltar
     void queryClient.cancelQueries({ queryKey: key })
     queryClient.setQueryData<PipelineBoard>(key, (board) =>
       board ? applyLeadMove(board, leadId, stageId, position) : board,
     )
-    mutation.mutate({ leadId, stageId, position, lostReason })
+    mutation.mutate({ leadId, stageId, position, lostReason }, { onSuccess })
   }
 
   return { move, error: mutation.error, reset: mutation.reset }

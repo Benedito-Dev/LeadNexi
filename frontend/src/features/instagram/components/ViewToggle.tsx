@@ -1,12 +1,13 @@
-import { LayoutGrid, List } from 'lucide-react'
+import { CalendarDays, LayoutGrid, List } from 'lucide-react'
 import type { PostView } from '../view.ts'
 
 const OPTIONS = [
   { value: 'lista', label: 'Ver em lista', icon: List },
   { value: 'grade', label: 'Ver em grade', icon: LayoutGrid },
+  { value: 'calendario', label: 'Ver no calendário', icon: CalendarDays },
 ] as const
 
-// Alterna a lista de posts entre lista e grade (BRAND.md, seção 9.5): dois ícones num seletor
+// Alterna os posts entre lista, grade e calendário (BRAND.md, seção 9.5): dois ícones num seletor
 // Navy 750; o escolhido fica em Navy 800 com ícone branco.
 export function ViewToggle({ view, onChange }: { view: PostView; onChange: (view: PostView) => void }) {
   return (

@@ -16,6 +16,7 @@ import { formatDateTime } from '../../../lib/format.ts'
 import { useCancelPost, usePublishPost } from '../hooks.ts'
 import { actionErrorMessage, isPending, POST_STATUS, postDate } from '../status.ts'
 import type { InstagramPost, InstagramPostStatus } from '../types.ts'
+import { ProofToggle } from './ProofToggle.tsx'
 import { StatusIcon } from './StatusIcon.tsx'
 
 const TITLES: Record<InstagramPostStatus, string> = {
@@ -81,6 +82,8 @@ function DetailsContent({ post, onClose }: { post: InstagramPost; onClose: () =>
             {post.caption || 'Sem legenda'}
           </p>
         </section>
+
+        {post.status === 'PUBLISHED' && <ProofToggle post={post} />}
       </div>
 
       <DetailsActions post={post} />
