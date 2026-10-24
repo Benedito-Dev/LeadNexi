@@ -3,20 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/brand/app-icon-violet.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0B1020" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Manrope e Geist Mono: fontes da marca LeadNexi, usadas pela tela de login -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LeadNexi</title>
     <script>
-      // Aplica o tema salvo antes da primeira pintura (ver src/lib/theme.ts)
+      // Aplica o tema antes da primeira pintura (ver src/lib/theme.ts)
       try {
-        if (localStorage.getItem('leadnexi.theme') === 'light') {
-          document.documentElement.dataset.theme = 'light'
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F4F6FA')
+        var modo = localStorage.getItem('@leadnexi-theme-mode') || 'auto'
+        if (modo === 'dark' || (modo === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
         }
       } catch {}
     </script>

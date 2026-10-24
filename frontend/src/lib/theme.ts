@@ -1,33 +1,47 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 
-// Tema da interface: escuro por padrão (BRAND.md, regra 3); a escolha fica no localStorage.
-// O index.html aplica o tema salvo antes do React montar, para a tela não piscar.
-export type Theme = 'dark' | 'light'
+export type ModoTema = 'light' | 'dark' | 'auto'
 
-const STORAGE_KEY = 'leadnexi.theme'
-const THEME_COLOR: Record<Theme, string> = { dark: '#0B1020', light: '#F4F6FA' }
-const listeners = new Set<() => void>()
+const CHAVE = '@leadnexi-theme-mode'
+const MODOS: ModoTema[] = ['light', 'dark', 'auto']
 
-function readTheme(): Theme {
-  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
-}
-
-export function setTheme(theme: Theme) {
-  document.documentElement.dataset.theme = theme
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme])
+function lerModo(): ModoTema {
   try {
-    localStorage.setItem(STORAGE_KEY, theme)
+    const salvo = localStorage.getItem(CHAVE) as ModoTema | null
+    if (salvo && MODOS.includes(salvo)) return salvo
   } catch {
-    // Sem storage (aba privada): o tema vale só nesta sessão
+    // Armazenamento bloqueado: segue o sistema
   }
-  listeners.forEach((listener) => listener())
+  return 'auto'
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+const media = () => window.matchMedia('(prefers-color-scheme: dark)')
 
-export function useTheme(): Theme {
-  return useSyncExternalStore(subscribe, readTheme)
+/** Claro, escuro ou sistema, com a classe `dark` no <html> (mesmo esquema do Rizar). */
+export function useTheme() {
+  const [mode, setModeState] = useState<ModoTema>(lerModo)
+  const [sistemaEscuro, setSistemaEscuro] = useState(() => media().matches)
+  const isDark = mode === 'dark' || (mode === 'auto' && sistemaEscuro)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [isDark])
+
+  useEffect(() => {
+    const m = media()
+    const aoMudar = (e: MediaQueryListEvent) => setSistemaEscuro(e.matches)
+    m.addEventListener('change', aoMudar)
+    return () => m.removeEventListener('change', aoMudar)
+  }, [])
+
+  const setMode = (novo: ModoTema) => {
+    setModeState(novo)
+    try {
+      localStorage.setItem(CHAVE, novo)
+    } catch {
+      // Sem armazenamento, o tema vale só nesta aba
+    }
+  }
+
+  return { mode, setMode, isDark }
 }

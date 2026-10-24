@@ -3,12 +3,12 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, type Location } from 'react-router'
 import { FunnelTrail } from '../brand/FunnelTrail.tsx'
 import { LeadNexiLogo } from '../brand/LeadNexiMark.tsx'
-import { Button } from '../components/ui/Button.tsx'
-import { Input } from '../components/ui/Input.tsx'
-import { useLogin, useStartSession } from '../features/auth/hooks.ts'
+import { useAuth } from '../auth/contexto.ts'
+import { Button } from '../brand/ui/Button.tsx'
+import { Input } from '../brand/ui/Input.tsx'
+import '../brand/login.css'
 import { LoginTransition, type LoginPhase } from '../features/auth/LoginTransition.tsx'
-import { ApiError } from '../lib/api.ts'
-import { useSessionStatus, useToken } from '../lib/session.ts'
+import { ErroDeApi } from '../lib/api.ts'
 
 type Field = 'email' | 'password'
 
@@ -21,20 +21,19 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function LoginPage() {
-  const token = useToken()
-  const sessionStatus = useSessionStatus()
+  const { user, carregando, conferir, abrirSessao } = useAuth()
   const location = useLocation()
-  const login = useLogin()
-  const startSession = useStartSession()
+  const [pending, setPending] = useState(false)
+  const [loginError, setLoginError] = useState<Error | null>(null)
   const [phase, setPhase] = useState<LoginPhase | null>(null)
   const [shaking, setShaking] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [fieldError, setFieldError] = useState<{ field: Field; message: string } | null>(null)
 
   // Já logado (ou acabou de entrar): volta para a página que pediu o login
-  if (token) return <Navigate to={redirectTarget(location.state)} replace />
+  if (user) return <Navigate to={redirectTarget(location.state)} replace />
   // Ainda restaurando a sessão: não mostra o formulário à toa
-  if (sessionStatus === 'checking') return <div aria-busy="true" className="min-h-screen" />
+  if (carregando) return <div aria-busy="true" className="lnx-brand" />
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -53,24 +52,30 @@ export function LoginPage() {
     // Loop enquanto o servidor responde; confirmação curta; só então o app abre
     const startedAt = Date.now()
     setPhase('loading')
+    setPending(true)
+    setLoginError(null)
     try {
-      const session = await login.mutateAsync({ email, password })
+      const session = await conferir(email, password)
       if (!prefersReducedMotion()) {
         await wait(MIN_LOOP_MS - (Date.now() - startedAt))
         setPhase('done')
         await wait(DONE_MS)
       }
-      startSession(session)
-    } catch {
-      // Volta ao formulário com a mensagem (login.error) e a tremida
+      abrirSessao(session)
+    } catch (err) {
+      // Volta ao formulário com a mensagem (loginError) e a tremida
+      setLoginError(err as Error)
       setPhase(null)
       setShaking(true)
+    } finally {
+      setPending(false)
     }
   }
 
-  const error = fieldError?.message ?? (login.error ? loginErrorMessage(login.error) : null)
+  const error = fieldError?.message ?? (loginError ? loginErrorMessage(loginError) : null)
 
   return (
+    <div className="lnx-brand">
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <title>Entrar · LeadNexi</title>
       {phase && <LoginTransition phase={phase} />}
@@ -148,8 +153,8 @@ export function LoginPage() {
                 </p>
               )}
 
-              <Button type="submit" disabled={login.isPending} className="w-full">
-                {login.isPending ? (
+              <Button type="submit" disabled={pending} className="w-full">
+                {pending ? (
                   <>
                     <LoaderCircle aria-hidden size={18} strokeWidth={1.75} className="animate-spin" />
                     Entrando…
@@ -173,6 +178,7 @@ export function LoginPage() {
         <FunnelTrail className="mt-16 max-w-xl" />
       </aside>
     </div>
+    </div>
   )
 }
 
@@ -186,9 +192,9 @@ function validate(email: string, password: string): { field: Field; message: str
 }
 
 function loginErrorMessage(error: Error): string {
-  if (error instanceof ApiError && error.status === 401) return 'E-mail ou senha inválidos.'
-  if (error instanceof ApiError && error.status === 429) return 'Muitas tentativas. Aguarde um minuto e tente de novo.'
-  if (error instanceof ApiError && error.status < 500) return 'Confira o e-mail e a senha.'
+  if (error instanceof ErroDeApi && error.status === 401) return 'E-mail ou senha inválidos.'
+  if (error instanceof ErroDeApi && error.status === 429) return 'Muitas tentativas. Aguarde um minuto e tente de novo.'
+  if (error instanceof ErroDeApi && error.status !== null && error.status < 500) return 'Confira o e-mail e a senha.'
   return 'Não foi possível conectar ao servidor. Tente de novo em instantes.'
 }
 

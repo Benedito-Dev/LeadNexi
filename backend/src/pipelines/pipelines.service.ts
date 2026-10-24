@@ -35,7 +35,11 @@ export class PipelinesService {
                 list: query.includeArchived ? undefined : { archived: false },
               },
               orderBy: { position: 'asc' },
-              include: { list: { select: { id: true, name: true, archived: true } } },
+              include: {
+                list: { select: { id: true, name: true, archived: true } },
+                // Quantas anotações o lead tem: o rodapé do card do quadro mostra o número
+                _count: { select: { activities: { where: { type: 'NOTE' } } } },
+              },
             },
           },
         },

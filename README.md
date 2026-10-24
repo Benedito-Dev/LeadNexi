@@ -23,15 +23,10 @@ LeadNexi/
 │       ├── common/        # filtro de erros do Prisma, utilitários de posição
 │       ├── prisma/        # PrismaService (global)
 │       └── generated/     # Prisma Client (gerado, fora do git)
-└── frontend/              # React + Vite + Tailwind v4
+└── frontend/              # React + Vite, em reconstrução (tela em branco)
     ├── public/brand/      # SVGs da marca (símbolo, logo, favicon, ícones de app)
-    └── src/
-        ├── brand/         # tokens.css, tema do Tailwind e <LeadNexiMark>/<LeadNexiLogo>
-        ├── app/           # App, providers e rotas
-        ├── pages/         # telas (Login, Hoje, Resultados, Kanban, Leads, Clientes, Instagram, Direct)
-        ├── features/      # auth, leads, pipelines (tipos, chamadas à API, hooks)
-        ├── components/    # componentes compartilhados
-        └── lib/           # cliente HTTP
+    ├── public/*.html      # páginas legais estáticas (/privacidade, /exclusao-de-dados)
+    └── src/               # App vazio
 ```
 
 ## Rodando localmente
@@ -50,6 +45,16 @@ cd ../frontend
 npm install
 npm run dev                # http://localhost:5173
 ```
+
+### Tudo no Docker
+
+```bash
+cp backend/.env.example backend/.env     # troque o JWT_SECRET
+docker compose up -d --build             # front: http://localhost:8080 · API: http://localhost:3000/api
+docker compose exec backend npx prisma db seed
+```
+
+O backend aplica as migrations ao subir. O front é servido por um nginx que repete o roteamento do `vercel.json` (`/api` vai para o backend).
 
 ## API
 
@@ -75,7 +80,7 @@ A documentação completa (com "Try it out") está em **http://localhost:3000/ap
 
 **Instagram:** "Conectar" leva ao login oficial do Instagram; a Meta devolve o navegador para `/api/instagram/callback`, que confere o `state` (JWT de 10 min), troca o código pelo token de 60 dias, lê o perfil (só contas profissionais) e volta para `/instagram?conectado=1` ou `?erro=negado|conta|expirado|falha`. O ID e a chave secreta do app da Meta são salvos pela própria tela (cartão "App da Meta"; a chave fica criptografada e nunca volta para o navegador); as variáveis `INSTAGRAM_APP_ID`/`INSTAGRAM_APP_SECRET` só valem enquanto nada foi salvo pela tela. O endereço de retorno é montado a partir do endereço do site (a tela mostra o valor para colar na Meta); `INSTAGRAM_REDIRECT_URI` só é preciso para forçar outro. O token e a chave secreta ficam criptografados no banco (AES-256-GCM) com `TOKEN_ENCRYPTION_KEY` ou, sem ela, com uma chave derivada do `JWT_SECRET` (trocar a chave em uso obriga a salvar o app e conectar a conta de novo). Um cron diário renova os tokens que vencem em até 10 dias; se a Meta recusar o token, a tela pede para conectar de novo (`needsReconnect`).
 
-**Direct vira lead:** o login pede também `instagram_business_manage_messages` e, ao conectar, liga os avisos de mensagem da conta (`POST /me/subscribed_apps`; `messagesEnabled` na conta). No app da Meta, "Configurar webhooks" recebe a URL de callback (`/api/instagram/webhook`) e o token de verificação que o cartão "App da Meta" mostra (derivado da chave de criptografia) e assina o campo `messages`; a Meta só manda avisos com o app publicado. Cada aviso é conferido pela assinatura `X-Hub-Signature-256` (HMAC do corpo original com a chave secreta do app; por isso o Nest sobe com `rawBody`). Mensagem de quem ainda não é lead cria o lead no fim da primeira etapa do primeiro funil, com nome e @ lidos da Meta (sem eles, "Contato do Instagram") e origem "Instagram"; cada mensagem entra no histórico (`INSTAGRAM_MESSAGE`), uma vez só (ID da Meta em `externalId`). Ecos (mensagens da própria conta), apagadas e avisos de outra conta são ignorados. A foto de perfil (`profile_pic`, cujo link da Meta expira em poucos dias) é baixada e guardada no armazenamento (`leads/avatars/<avatarId>.jpg`) no lead novo e, depois, conferida de novo no máximo uma vez por semana, a cada mensagem; `GET /api/leads/avatars/:avatarId` a entrega (pública, com cache longo: o ID muda a cada foto nova). Excluir o lead apaga a foto. As páginas públicas `/privacidade` e `/exclusao-de-dados` são as que a Meta pede para publicar o app; o build do frontend também as gera em HTML (`scripts/prerender-legal.mjs`, apontadas no `vercel.json`), para o robô da Meta ler o texto sem rodar JavaScript.
+**Direct vira lead:** o login pede também `instagram_business_manage_messages` e, ao conectar, liga os avisos de mensagem da conta (`POST /me/subscribed_apps`; `messagesEnabled` na conta). No app da Meta, "Configurar webhooks" recebe a URL de callback (`/api/instagram/webhook`) e o token de verificação que o cartão "App da Meta" mostra (derivado da chave de criptografia) e assina o campo `messages`; a Meta só manda avisos com o app publicado. Cada aviso é conferido pela assinatura `X-Hub-Signature-256` (HMAC do corpo original com a chave secreta do app; por isso o Nest sobe com `rawBody`). Mensagem de quem ainda não é lead cria o lead no fim da primeira etapa do primeiro funil, com nome e @ lidos da Meta (sem eles, "Contato do Instagram") e origem "Instagram"; cada mensagem entra no histórico (`INSTAGRAM_MESSAGE`), uma vez só (ID da Meta em `externalId`). Ecos (mensagens da própria conta), apagadas e avisos de outra conta são ignorados. A foto de perfil (`profile_pic`, cujo link da Meta expira em poucos dias) é baixada e guardada no armazenamento (`leads/avatars/<avatarId>.jpg`) no lead novo e, depois, conferida de novo no máximo uma vez por semana, a cada mensagem; `GET /api/leads/avatars/:avatarId` a entrega (pública, com cache longo: o ID muda a cada foto nova). Excluir o lead apaga a foto. As páginas públicas `/privacidade` e `/exclusao-de-dados` são as que a Meta pede para publicar o app; com o front em reconstrução, elas ficam como HTML estático em `frontend/public/` (estilo em `public/legal/legal.css`, apontadas no `vercel.json`), para o robô da Meta ler o texto sem rodar JavaScript.
 
 **Posts do Instagram:** as imagens viram JPEG no navegador e sobem uma por requisição (a Vercel limita cada uma a 4,5 MB) para o armazenamento no padrão S3 (`STORAGE_*`; hoje Telnyx Cloud Storage). O bucket fica privado: a tela (e, na publicação, o Instagram) lê cada imagem por um link assinado da própria API, válido por 1 hora. Agendar prende as imagens ao post; cancelar apaga post e imagens; imagens enviadas que não entram em post em 24 h são apagadas pelo cron diário.
 

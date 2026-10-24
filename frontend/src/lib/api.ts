@@ -1,53 +1,88 @@
-import { getToken, refreshSession } from './session.ts'
+/**
+ * Cliente HTTP da API (`/api`, mesmo domínio: o proxy do Vite em dev, a Vercel em produção).
+ *
+ * Sessão: o access token (JWT curto) fica só em memória; o refresh token mora num cookie
+ * httpOnly que o navegador manda sozinho para `/api/auth`. Num 401, troca o refresh por um
+ * access novo uma vez e repete a chamada.
+ */
 
-// Erro HTTP da API, com a mensagem enviada pelo backend (NestJS).
-export class ApiError extends Error {
-  readonly status: number
+export class ErroDeApi extends Error {
+  readonly status: number | null
 
-  constructor(status: number, message: string) {
-    super(message)
-    this.name = 'ApiError'
+  constructor(mensagem: string, status: number | null) {
+    super(mensagem)
+    this.name = 'ErroDeApi'
     this.status = status
   }
 }
 
-// Cliente HTTP base. O Vite faz proxy de /api para o backend (localhost:3000).
-// Access token vencido (401): renova a sessão pelo cookie e repete a chamada uma vez.
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  let res = await send(path, init, getToken())
+let accessToken: string | null = null
+let aoPerderSessao: (() => void) | null = null
+let renovando: Promise<boolean> | null = null
 
-  // Rotas de /auth tratam o próprio 401 (ex.: senha errada no login)
-  if (res.status === 401 && !path.startsWith('/auth/')) {
-    const refreshed = await refreshSession()
-    if (refreshed === 'error') throw new ApiError(0, 'Não foi possível conectar ao servidor.')
-    // Sem sessão: refreshSession já limpou o token; as rotas protegidas levam ao login
-    if (refreshed !== 'unauthenticated') res = await send(path, init, refreshed.token)
-  }
-
-  if (!res.ok) throw new ApiError(res.status, await readErrorMessage(res))
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+export function definirAccessToken(token: string | null) {
+  accessToken = token
 }
 
-function send(path: string, init: RequestInit | undefined, token: string | null) {
-  return fetch(`/api${path}`, {
-    ...init,
-    headers: {
-      // Com FormData (upload de arquivo) o navegador define o Content-Type com o boundary
-      ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
+/** Chamado quando a sessão acaba (refresh recusado): o app volta para o login. */
+export function aoExpirarSessao(callback: () => void) {
+  aoPerderSessao = callback
+}
+
+export type Sessao = { accessToken: string; user: { id: string; email: string; name: string } }
+
+/** Troca o cookie de refresh por um access token novo. Chamadas simultâneas dividem a mesma troca. */
+export function renovarSessao(): Promise<Sessao | null> {
+  const troca = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' }).then(async (res) => {
+    if (!res.ok) return null
+    const sessao = (await res.json()) as Sessao
+    accessToken = sessao.accessToken
+    return sessao
+  })
+  renovando = troca.then(Boolean)
+  return troca.finally(() => {
+    renovando = null
   })
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function mensagemDoErro(res: Response) {
   try {
-    const body = (await res.json()) as { message?: string | string[] }
-    if (Array.isArray(body.message)) return body.message.join('\n')
-    if (body.message) return body.message
+    const corpo = await res.json()
+    const msg = Array.isArray(corpo?.message) ? corpo.message[0] : corpo?.message
+    if (typeof msg === 'string' && msg) return msg
   } catch {
-    // Corpo vazio ou não-JSON (ex.: proxy sem backend)
+    // Corpo sem JSON: fica a mensagem genérica
   }
-  return `Erro ${res.status}`
+  return `O servidor recusou o pedido (erro ${res.status}).`
 }
+
+async function chamar(caminho: string, init: RequestInit, jaRenovou = false): Promise<Response> {
+  const headers = new Headers(init.headers)
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+
+  let res: Response
+  try {
+    res = await fetch(`/api${caminho}`, { ...init, headers, credentials: 'include' })
+  } catch {
+    throw new ErroDeApi('Não foi possível falar com o servidor.', null)
+  }
+
+  if (res.status === 401 && !jaRenovou) {
+    const ok = await (renovando ?? renovarSessao().then(Boolean))
+    if (ok) return chamar(caminho, init, true)
+    accessToken = null
+    aoPerderSessao?.()
+  }
+  return res
+}
+
+export async function api<T>(caminho: string, init: RequestInit = {}): Promise<T> {
+  const res = await chamar(caminho, init)
+  if (!res.ok) throw new ErroDeApi(await mensagemDoErro(res), res.status)
+  if (res.status === 204) return undefined as T
+  const texto = await res.text()
+  return (texto ? JSON.parse(texto) : undefined) as T
+}
+
+export const corpo = (dados: unknown) => JSON.stringify(dados)

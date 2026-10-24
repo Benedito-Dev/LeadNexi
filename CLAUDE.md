@@ -1,6 +1,8 @@
 # LeadNexi
 
-CRM que conecta Instagram → Lead → Kanban → WhatsApp → Venda. Monorepo com `backend/` (NestJS + Prisma) e `frontend/` (React 19 + Vite + Tailwind v4). Estrutura, API e como rodar: `README.md`.
+CRM que conecta Instagram → Lead → Kanban → WhatsApp → Venda. Monorepo com `backend/` (NestJS + Prisma) e `frontend/` (React 19 + Vite).
+
+**Front em reconstrução:** o front antigo foi apagado (backup na branch `backup/main-2026-10-23`). Hoje `frontend/` é só um App vazio mais as páginas legais estáticas em `frontend/public/` (`privacidade.html`, `exclusao-de-dados.html`), que a Meta exige no ar. Estrutura, API e como rodar: `README.md`.
 
 ## Identidade visual (obrigatório em qualquer UI)
 
@@ -17,12 +19,8 @@ Antes de criar ou alterar tela, componente, estilo, ícone ou texto de interface
 
 ## Onde está cada coisa
 
-- `frontend/src/brand/tokens.css` — variáveis `--lnx-*`. Fonte única de cores, fontes, raios e sombras.
-- `frontend/src/brand/theme.css` — mapeia os tokens para o Tailwind. A paleta padrão do Tailwind está desligada: classes como `bg-blue-500` não existem.
-- `frontend/src/brand/LeadNexiMark.tsx` — símbolo e logo em React.
+- `docs/brand/BRAND.md` — valores dos tokens, componentes e regras. Os arquivos `frontend/src/brand/*` que ele cita saíram junto com o front antigo e estão na branch de backup.
 - `frontend/public/brand/` — SVGs (símbolo, logo, favicon, ícones de app), servidos em `/brand/*.svg`.
-
-Não use hex solto em componentes. Cor ou tamanho novo: pergunte antes, depois adicione em `tokens.css` + `BRAND.md` e mapeie em `theme.css`.
 
 ## Comandos
 

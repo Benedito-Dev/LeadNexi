@@ -1,0 +1,35 @@
+export type StageType = 'CONTACT' | 'SENT' | 'RESPONDED' | 'MEETING' | 'PROPOSAL' | 'WON' | 'LOST' | 'CUSTOM'
+
+export type Etapa = {
+  id: string
+  name: string
+  color: string | null
+  stageType: StageType
+  position: number
+}
+
+export type Lead = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+  source: string | null
+  instagramUsername: string | null
+  estimatedValue: string | null
+  stageId: string
+  position: number
+  followUpAt: string | null
+  createdAt: string
+  _count?: { activities: number }
+}
+
+export type EtapaDoQuadro = Etapa & { leads: Lead[] }
+
+export type PipelineResumo = { id: string; name: string; position: number; stages: Etapa[] }
+
+export type Quadro = { id: string; name: string; stages: EtapaDoQuadro[] }
+
+export type Opcao = { value: string; label: string }
+
+/** Estado de cada coluna no quadro: os leads que passaram nos filtros e quantos estão à mostra. */
+export type DadosDaColuna = { results: Lead[]; visiveis: number }

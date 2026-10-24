@@ -10,6 +10,33 @@ services:
       - "5435:5432"
     volumes:
       - leadnexi-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadnexi -d leadnexi"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./backend
+    container_name: leadnexi-backend
+    env_file: ./backend/.env
+    environment:
+      # Dentro da rede do compose o banco é o serviço "postgres", não o localhost
+      DATABASE_URL: postgresql://leadnexi:leadnexi@postgres:5432/leadnexi?schema=public
+      FRONTEND_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: leadnexi-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
 
 volumes:
   leadnexi-pgdata:

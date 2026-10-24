@@ -1,19 +1,15 @@
-const CACHE_NAME = 'leadnexi-shell-v1'
-const APP_SHELL = ['/', '/manifest.webmanifest', '/brand/favicon.svg', '/brand/app-icon-violet.svg']
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))
-  self.skipWaiting()
-})
+// O app antigo registrava um service worker com cache. Este o substitui, apaga os caches e se
+// desinstala, para quem tinha o app instalado passar a ver a versão nova.
+self.addEventListener('install', () => self.skipWaiting())
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+    (async () => {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((key) => caches.delete(key)))
+      await self.registration.unregister()
+      const clients = await self.clients.matchAll({ type: 'window' })
+      clients.forEach((client) => client.navigate(client.url))
+    })(),
   )
-  self.clients.claim()
-})
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/'))))
 })
