@@ -67,7 +67,7 @@ export const KanbanCard = memo(function KanbanCard({ lead, columnId, onClick }: 
         className={cn(
           'relative rounded-lg bg-card border border-border/70 p-3',
           'shadow-card',
-          'hover:border-brand-accent/40 hover:-translate-y-0.5',
+          'hover:border-leadnexi-violet/50 hover:-translate-y-0.5',
           'transition-all duration-200 ease-out',
           'cursor-grab active:cursor-grabbing',
           isDragging && 'opacity-30 scale-[0.97] rotate-[1.5deg] shadow-lg',
