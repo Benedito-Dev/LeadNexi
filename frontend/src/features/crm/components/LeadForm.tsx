@@ -7,7 +7,7 @@ import { formatarDataHora, paraCampoDataHora } from '../datas'
 import type { Lead } from '../types'
 
 const inputClasses =
-  'w-full h-9 px-3 text-sm text-foreground bg-card border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all duration-200'
+  'w-full h-9 px-3 text-sm text-foreground bg-card border border-border rounded-lg focus:border-leadnexi-violet/60 focus:ring-2 focus:ring-leadnexi-violet/20 outline-none transition-all duration-200'
 
 type Campos = {
   name: string
@@ -125,6 +125,7 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
         <div>
           <PhoneInput
             id="lead-telefone"
+            className="h-9 focus-visible:border-leadnexi-violet/60 focus-visible:ring-leadnexi-violet/20"
             value={campos.phone}
             onBlur={() => void salvar('phone')}
             // Número pela metade não substitui o salvo: só número inteiro (ou campo vazio) vale

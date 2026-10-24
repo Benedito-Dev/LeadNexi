@@ -255,7 +255,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
       <MutaseDialog.Footer className="sticky bottom-[-1.5rem] z-10 -mx-6 -mb-6 justify-between gap-2 border-t border-border bg-card px-6 pb-6 pt-3 sm:justify-between sm:space-x-0">
         <Button
           variant="outline"
-          className="text-destructive border-destructive hover:bg-destructive/10"
+          className="border-destructive/50 font-semibold text-destructive hover:bg-destructive/10"
           onClick={() => setConfirmarApagarLead(true)}
         >
           Apagar lead
@@ -274,7 +274,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
               Conversar no WhatsApp
             </Button>
           )}
-          <Button variant="outline" onClick={onFechar}>
+          <Button variant="outline" className="border-border font-semibold text-foreground hover:bg-accent" onClick={onFechar}>
             Fechar
           </Button>
         </div>
