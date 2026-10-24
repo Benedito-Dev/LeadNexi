@@ -3,6 +3,7 @@ import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/ad
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { Kanban, Layers, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router'
+import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { ListPageHeader } from '@/components/list-page/ListPageHeader'
 import { DeleteDialog } from '@/components/modal/DeleteDialog'
 import { Button } from '@/components/ui/button'
@@ -288,22 +289,37 @@ export function PipelinesPage() {
       <div className="space-y-4">
         <ListPageHeader
           icon={Layers}
-          title="Pipelines do CRM"
-          totalItems={pipelines.length || undefined}
+          title="Pipelines"
+          summary={
+            <>
+              <span className="font-bold tabular-nums text-foreground">{pipelines.length}</span>{' '}
+              {pipelines.length === 1 ? 'pipeline' : 'pipelines'}
+              {pipelineSelecionado && (
+                <>
+                  {' · '}
+                  <span className="font-bold tabular-nums text-foreground">{etapas.length}</span>{' '}
+                  {etapas.length === 1 ? 'etapa' : 'etapas'} em{' '}
+                  <span className="font-semibold text-foreground">{pipelineSelecionado.name}</span>
+                </>
+              )}
+            </>
+          }
           actions={
-            <div className="flex items-center gap-2">
+            <>
               <Button
                 variant="outline"
+                size="sm"
+                className={botaoSecundarioDoTopo}
                 onClick={() => navigate(pipelineSelecionado ? `/crm?pipeline=${pipelineSelecionado.id}` : '/crm')}
               >
-                <Kanban className="h-4 w-4 mr-1" />
+                <Kanban className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 Ver o CRM
               </Button>
-              <Button onClick={() => abrirModalPipeline()}>
-                <Plus className="h-4 w-4 mr-1" />
+              <Button size="sm" className={botaoPrincipalDoTopo} onClick={() => abrirModalPipeline()}>
+                <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 Novo pipeline
               </Button>
-            </div>
+            </>
           }
         />
 
