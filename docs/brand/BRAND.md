@@ -26,7 +26,7 @@ Arquivos que acompanham este guia:
 7. **Gradiente violeta→cyan só em linhas finas** (≤ 4px) e barras de progresso. Nunca em fundos, botões ou cards.
 8. **Ângulos de linha: 0°, 90° e 45°.** Nada de curvas orgânicas, ondas ou blobs.
 9. **Sem emoji na interface. Ícones = traço 1.75, cantos arredondados** (estilo seção 7).
-10. **Sombras só em elementos flutuantes** (modal, popover, card sendo arrastado). Cards parados usam borda, não sombra.
+10. **Sombras só em elementos flutuantes** (modal, popover, card sendo arrastado). Cards parados usam borda, não sombra. **Sem brilho:** nada de halo/glow colorido nem `drop-shadow` em anéis, números ou botões; destaque é cor sólida e contraste.
 11. **Copy em português, sentence case**, verbos diretos ("Criar conta", "Novo lead"). Sem CAPS LOCK em títulos.
 
 ---
@@ -448,20 +448,24 @@ Círculo 36 px, fundo `#2A2468`, iniciais 13/800 `#A99FFD`.
 ```
 Área principal: `padding 28 32`, gap 24. Cards de KPI em grade de 4; colunas com fundo `navy-850`, mesma altura até o fim da tela, gap 16. Sidebar com borda direita 1 px `#1E2640`.
 
-### 9.2 Tela "Hoje" (agenda de contatos)
-Página inicial do app (`/hoje`, primeiro item do menu, com contador `cyan-tint` de atrasados + hoje). Coluna única de até 768 px.
-```
-Hoje
-Terça-feira, 29 de setembro · 2 contatos pendentes
-Atrasados 1                                         ← danger
-┌────────────────────────────────────────────────────────────┐
-│ (TA) Teste Atrasado                  Ontem, 10:00  [◎] [✓ Feito] │
-│      Mandar proposta · ● Contato                            │
-└────────────────────────────────────────────────────────────┘
-Hoje 1                                              ← warning
-Amanhã 1 · Próximos dias 1                          ← slate-300
-```
-Linha: superfície `navy-800`, borda `navy-700` (hover `navy-600`), `radius 16`; iniciais + nome 14/700 + o que fazer · etapa; hora 13/700 (atrasado em `danger`); WhatsApp e "Feito" (secundário 36 px). Clicar no lead abre o painel. No celular a hora vai para baixo do nome e "Feito" vira só o ícone. Vazio: caixa tracejada explicando como agendar.
+### 9.2 Tela "Hoje" (placar de jogo)
+Página inicial do app (`/hoje`, primeiro item do menu, com contador `cyan-tint`). Duas colunas no desktop (placar de 320–400 px fixo ao rolar + missões); no celular, placar em cima e missões embaixo.
+
+**Placar** (`navy-800`, borda `navy-700` com **linha de 3 px `violet` no topo**, `radius 24`, `padding 28`):
+- Data 13 `slate-400`, saudação `text-app-title` ("Bom dia, Benedito", sem emoji) e, à direita, a pílula da sequência (`Flame` + "3 dias", `warning` sobre `warning/10`; zero em `slate-400` sobre `slate-tint`).
+- **Anel de progresso** (240 px, traço 16, gradiente `violet` → `cyan`, trilha `slate-tint`): ações feitas hoje / (feitas + pendentes). Número 72/800 `tabular-nums`, total 28 `slate-400`, "ações hoje" 14 `slate-300`. Abaixo, a frase de ritmo 20/800 ("Comece por X. Respondeu!", "Passou da metade. Faltam 3.", "Missões completas. Mandou bem!").
+- Botão primário largo "Começar a fila" (`Play`), que abre o modo prospecção.
+- Semana Seg–Dom: bolinha 36 px; dia com a meta de novos contatos batida = `violet-600` com check `on-accent`; hoje sem meta = tracejado `cyan`; resto `slate-tint`.
+- Três números em caixas `navy-750`: respostas (`cyan` quando > 0), contatos na semana "17/30", fechado no mês (`success` quando > 0). Zero sempre em `slate-400`.
+- "Próxima conquista" (caixa tracejada `navy-600`): `Trophy` `warning` + barra `bg-flow` de 8 px — "Semana de ouro" = meta diária 5 dias seguidos.
+
+**Missões** (título `text-h2` 800 "Missões de hoje"), em grupos com bolinha de 10 px na cor do tipo: Responder primeiro (`cyan`), Follow-ups (`warning`), Novas lojas (`violet-300`), Compromissos (`slate-400`).
+- Card `navy-800`, borda `navy-700` (hover `navy-600`), `radius 16`, `padding 16`. "Responder" ganha borda `cyan/50`.
+- Ícone do tipo em quadrado 48 px `radius 12` (fundo tint do tom); nome 16/800 (abre o painel do lead) + selos; contexto 13/700 no tom (atrasado em `warning`); prévia da mensagem 14 `slate-400` numa linha; "Editar mensagem" e "Adiar" em texto 13/700 `slate-400`.
+- À direita: "Responder" (primário) ou "Abrir no WhatsApp" (cyan, secundário) e o **círculo de concluído** (48 px, borda 2 px `navy-600`; hover `success`; feito = fundo `success` e o card a 45% com o nome riscado).
+- Fila vazia: troféu em círculo `violet-600` + "Missões do dia completas" (ou "Fila zerada").
+
+**Sem brilho:** destaque vem de cor sólida e contraste. Nada de `drop-shadow` colorido, halo atrás de números, mancha de gradiente em fundo ou sombra luminosa em botão.
 
 ### 9.2.2 Página 404
 Qualquer endereço desconhecido do app (rota `*`, abre com ou sem login). Tela cheia com a grade de nós (`bg-dot-grid`), logo no topo (link para o início) e, no centro:

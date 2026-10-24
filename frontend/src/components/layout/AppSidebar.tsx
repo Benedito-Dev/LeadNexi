@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { ChevronDown, LogOut, Users } from 'lucide-react'
+import { CalendarCheck, ChevronDown, LogOut, Users } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/contexto'
 import { Button } from '@/components/ui/button'
@@ -9,11 +9,14 @@ import { cn } from '@/lib/utils'
 type ItemDeMenu = {
   title: string
   icon: ComponentType<{ className?: string }>
-  children: { title: string; to: string }[]
+  /** Item simples (vai direto para a tela) ou grupo com sub-itens. */
+  to?: string
+  children?: { title: string; to: string }[]
 }
 
-// Por enquanto só o CRM. Mesma estrutura do menu do Rizar (grupo com sub-itens).
+// Mesma estrutura do menu do Rizar: itens simples e grupos com sub-itens.
 const MENU: ItemDeMenu[] = [
+  { title: 'Hoje', icon: CalendarCheck, to: '/hoje' },
   {
     title: 'CRM',
     icon: Users,
@@ -37,6 +40,41 @@ function ActiveBar() {
   )
 }
 
+function NavItem({
+  item,
+  currentPath,
+  onNavigate,
+  collapsed,
+}: {
+  item: ItemDeMenu & { to: string }
+  currentPath: string
+  onNavigate: (to: string) => void
+  collapsed: boolean
+}) {
+  const ativo = currentPath === item.to
+  const Icon = item.icon
+  const botao = (
+    <button
+      onClick={() => onNavigate(item.to)}
+      className={cn(
+        'relative flex w-full items-center gap-3 rounded-md border-0 px-3 py-2 text-sm transition-colors',
+        ativo ? ACTIVE_BOX : INACTIVE_BOX,
+      )}
+    >
+      {ativo && <ActiveBar />}
+      <Icon className={cn('h-5 w-5 shrink-0', ativo ? 'text-sidebar-highlight' : 'text-[hsl(var(--sidebar-foreground))]')} />
+      {!collapsed && <span className="truncate">{item.title}</span>}
+    </button>
+  )
+  if (!collapsed) return botao
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{botao}</TooltipTrigger>
+      <TooltipContent side="right">{item.title}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function NavDropdown({
   item,
   currentPath,
@@ -48,14 +86,15 @@ function NavDropdown({
   onNavigate: (to: string) => void
   collapsed: boolean
 }) {
-  const indiceAtivo = item.children.findIndex((c) => c.to === currentPath)
+  const filhos = item.children ?? []
+  const indiceAtivo = filhos.findIndex((c) => c.to === currentPath)
   const hasActive = indiceAtivo !== -1
   const [open, setOpen] = useState(hasActive)
   const Icon = item.icon
 
   const trigger = (
     <button
-      onClick={() => (collapsed ? onNavigate(item.children[0].to) : setOpen(!open))}
+      onClick={() => (collapsed ? onNavigate(filhos[0].to) : setOpen(!open))}
       className={cn(
         'relative flex w-full items-center gap-3 rounded-md border-0 px-3 py-2 text-sm transition-colors',
         hasActive ? ACTIVE_BOX : INACTIVE_BOX,
@@ -84,7 +123,7 @@ function NavDropdown({
       )}
       {open && !collapsed && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-[hsl(var(--sidebar-border))] pl-3">
-          {item.children.map((child, i) => (
+          {filhos.map((child, i) => (
             <button
               key={child.to}
               onClick={() => onNavigate(child.to)}
@@ -121,7 +160,7 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
         <div className="border-b border-[hsl(var(--sidebar-fg)/0.1)] flex justify-center px-4 py-5">
           <button
             type="button"
-            onClick={() => irPara('/crm')}
+            onClick={() => irPara('/hoje')}
             aria-label="Ir para o início"
             className="flex items-center justify-center rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-highlight"
           >
@@ -135,9 +174,13 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
 
         <div className="no-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
           <div className="space-y-0.5">
-            {MENU.map((item) => (
-              <NavDropdown key={item.title} item={item} currentPath={pathname} onNavigate={irPara} collapsed={collapsed} />
-            ))}
+            {MENU.map((item) =>
+              item.to ? (
+                <NavItem key={item.title} item={{ ...item, to: item.to }} currentPath={pathname} onNavigate={irPara} collapsed={collapsed} />
+              ) : (
+                <NavDropdown key={item.title} item={item} currentPath={pathname} onNavigate={irPara} collapsed={collapsed} />
+              ),
+            )}
           </div>
         </div>
 

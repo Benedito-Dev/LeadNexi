@@ -7,6 +7,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { ScheduleFollowUpDto } from './dto/schedule-follow-up.dto.js';
+import { DAY_MS, SENT_TYPES, STREAK_WINDOW_DAYS, scoreboard } from './scoreboard.js';
 
 const stageSummary = {
   select: { id: true, name: true, pipelineId: true, stageType: true },
@@ -56,7 +57,8 @@ export class LeadActivitiesService {
     const active = { archived: false, list: { archived: false } } satisfies Prisma.LeadWhereInput;
     const include = { stage: stageSummary, list: listSummary } satisfies Prisma.LeadInclude;
 
-    const [settings, followUps, responses, newContacts, meetings, contactsMade, responsesThisWeek, meetingsThisWeek, closedThisMonth] =
+    const historyStart = new Date(now.getTime() - STREAK_WINDOW_DAYS * DAY_MS);
+    const [settings, followUps, responses, newContacts, meetings, contactsMade, responsesThisWeek, meetingsThisWeek, closedThisMonth, recentActions] =
       await Promise.all([
         this.prisma.prospectingSettings.findUnique({ where: { id: 1 } }),
         this.prisma.lead.findMany({
@@ -103,11 +105,21 @@ export class LeadActivitiesService {
           _count: { _all: true },
           _sum: { estimatedValue: true },
         }),
+        this.prisma.leadActivity.findMany({
+          where: {
+            createdAt: { gte: historyStart, lte: now },
+            type: { in: [...SENT_TYPES, 'FOLLOW_UP_DONE'] },
+          },
+          select: { type: true, cadenceStep: true, createdAt: true },
+        }),
       ]);
+    const dailyTarget = settings?.dailyTarget ?? 5;
+    const placar = scoreboard(recentActions, dailyTarget, now);
 
     return {
       now,
-      dailyTarget: settings?.dailyTarget ?? 5,
+      dailyTarget,
+      ...placar,
       weeklyTarget: settings?.weeklyTarget ?? 30,
       monthlyGoal: Number(settings?.monthlyRevenueGoal ?? 300),
       followUps,

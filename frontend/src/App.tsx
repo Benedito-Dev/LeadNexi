@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Toaster } from '@/components/ui/sonner'
 import { CrmPage } from '@/features/crm/CrmPage'
 import { PipelinesPage } from '@/features/crm/PipelinesPage'
+import { HojePage } from '@/features/hoje/HojePage'
 import { LoginPage } from '@/pages/LoginPage'
 
 /** Só deixa passar com sessão; enquanto restaura a sessão, mostra o fundo vazio. */
@@ -23,11 +24,13 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<RotaProtegida />}>
             <Route element={<AppLayout />}>
+              <Route path="/hoje" element={<HojePage />} />
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/crm/pipelines" element={<PipelinesPage />} />
             </Route>
           </Route>
-          <Route path="*" element={<Navigate to="/crm" replace />} />
+          {/* A tela inicial é a Hoje: é o que o vendedor abre todo dia */}
+          <Route path="*" element={<Navigate to="/hoje" replace />} />
         </Routes>
       </BrowserRouter>
       <Toaster />
