@@ -212,7 +212,7 @@ export function LeadModal({ lead, origens, onFechar, onLeadAtualizado, onNotasMu
       </MutaseDialog.Body>
 
       {/* Rodapé grudado no fim do modal: as ações ficam à vista sem rolar a ficha */}
-      <MutaseDialog.Footer className="sticky bottom-[-1.5rem] z-10 -mx-6 -mb-6 justify-between gap-2 border-t border-border bg-card px-6 pb-6 pt-3">
+      <MutaseDialog.Footer className="sticky bottom-[-1.5rem] z-10 -mx-6 -mb-6 justify-between gap-2 border-t border-border bg-card px-6 pb-6 pt-3 sm:justify-between sm:space-x-0">
         <Button
           variant="outline"
           className="text-destructive border-destructive hover:bg-destructive/10"
@@ -222,7 +222,7 @@ export function LeadModal({ lead, origens, onFechar, onLeadAtualizado, onNotasMu
         </Button>
         <div className="flex items-center gap-2">
           {telefoneWhatsApp ? (
-            <Button asChild>
+            <Button asChild className="no-underline">
               <a href={`https://wa.me/${telefoneWhatsApp}`} target="_blank" rel="noreferrer">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Conversar no WhatsApp
