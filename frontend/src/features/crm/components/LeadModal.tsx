@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import { WhatsAppIcon } from '@/brand/icons'
 import { useAuth } from '@/auth/contexto'
 import { DeleteDialog } from '@/components/modal/DeleteDialog'
 import { MutaseDialog } from '@/components/modal/MutaseDialog'
@@ -13,6 +14,10 @@ import { adicionarNota, agendarContato, apagarLead, apagarNota, listarAtividades
 import { formatarDataHora } from '../datas'
 import type { Atividade, Lead } from '../types'
 import { LeadForm } from './LeadForm'
+
+// Verde do WhatsApp com texto escuro por cima (contraste ~7,5:1 nos dois temas)
+const botaoWhatsApp =
+  'gap-2 bg-chat-wa-accent font-semibold text-chat-wa-accent-foreground no-underline hover:bg-chat-wa-accent/90'
 
 type LeadModalProps = {
   /** Lead aberto; `null` = ficha fechada. */
@@ -222,15 +227,15 @@ export function LeadModal({ lead, origens, onFechar, onLeadAtualizado, onNotasMu
         </Button>
         <div className="flex items-center gap-2">
           {telefoneWhatsApp ? (
-            <Button asChild className="no-underline">
+            <Button asChild className={botaoWhatsApp}>
               <a href={`https://wa.me/${telefoneWhatsApp}`} target="_blank" rel="noreferrer">
-                <MessageCircle className="h-4 w-4 mr-2" />
+                <WhatsAppIcon size={18} />
                 Conversar no WhatsApp
               </a>
             </Button>
           ) : (
-            <Button disabled title="Este lead não tem telefone cadastrado">
-              <MessageCircle className="h-4 w-4 mr-2" />
+            <Button disabled className={botaoWhatsApp} title="Este lead não tem telefone cadastrado">
+              <WhatsAppIcon size={18} />
               Conversar no WhatsApp
             </Button>
           )}
