@@ -124,7 +124,15 @@ export const KanbanColumn = memo(function KanbanColumn({
                 <p className="text-xs opacity-40 mt-0.5">nesta etapa</p>
               </div>
             ) : (
-              results.map((lead) => <KanbanCard key={lead.id} lead={lead} columnId={column.id} onClick={onCardClick} />)
+              results.map((lead) => (
+                <KanbanCard
+                  key={lead.id}
+                  lead={lead}
+                  columnId={column.id}
+                  etapaFechada={column.stageType === 'WON' || column.stageType === 'LOST'}
+                  onClick={onCardClick}
+                />
+              ))
             )}
 
             {hasMore && (

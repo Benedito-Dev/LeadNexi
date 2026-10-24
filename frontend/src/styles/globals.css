@@ -332,6 +332,11 @@
     --leadnexi-violet-600: 246 79% 61%;
     --leadnexi-cyan:       188 86% 53%;
     --leadnexi-on-accent:  210 40% 98%;
+    /* Cores de estado com tom de texto por tema (BRAND.md 4.3 e 4.6): no claro, o ciano e o
+       vermelho escurecem para continuar legíveis em texto pequeno */
+    --leadnexi-cyan-texto:   192 82% 31%;
+    --leadnexi-violet-texto: 246 79% 61%;
+    --leadnexi-danger:       0 72% 51%;
 
     /* Destaque da sidebar (item ativo, avatar): violeta da marca LeadNexi no lugar do coral */
     --sidebar-highlight:            var(--leadnexi-violet);
@@ -485,6 +490,11 @@
     --sidebar-item-active:   216 45% 18%;
     --sidebar-border-color:  216 40% 20%;
     --sidebar-highlight:            var(--leadnexi-violet);
+
+    /* Cores de estado da marca no escuro: ciano #22D3EE, violeta 300 #A99FFD, erro #F87171 */
+    --leadnexi-cyan-texto:   188 86% 53%;
+    --leadnexi-violet-texto: 247 96% 81%;
+    --leadnexi-danger:       0 91% 71%;
     --sidebar-highlight-foreground: 210 40% 98%;
 
     /* ================================================================

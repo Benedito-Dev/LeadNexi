@@ -7,20 +7,31 @@ import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
 import type { Lead } from '../types'
 import { DropIndicator } from './DropIndicator'
-import { ehHoje } from '../datas'
+import { situacaoDoContato } from '../datas'
 
 type KanbanCardProps = {
   lead: Lead
   columnId: string
+  /** Etapa de fechamento (Fechou/Perdido): o próximo contato não é mais cobrança, a etiqueta some. */
+  etapaFechada: boolean
   onClick: (lead: Lead) => void
 }
 
+// Fundo em tom claro, borda fina e texto na cor cheia: vermelho = atrasou, ciano = é hoje,
+// violeta = amanhã, neutro = mais pra frente
+const TOM_DO_CONTATO = {
+  atrasado: 'border-leadnexi-danger/40 bg-leadnexi-danger/10 text-leadnexi-danger',
+  hoje: 'border-leadnexi-cyan-texto/40 bg-leadnexi-cyan-texto/10 text-leadnexi-cyan-texto',
+  amanha: 'border-leadnexi-violet-texto/40 bg-leadnexi-violet-texto/10 text-leadnexi-violet-texto',
+  futuro: 'border-border bg-transparent text-muted-foreground',
+}
+
 /** Card do lead no quadro: arrastável, com indicador de onde vai cair. */
-export const KanbanCard = memo(function KanbanCard({ lead, columnId, onClick }: KanbanCardProps) {
+export const KanbanCard = memo(function KanbanCard({ lead, columnId, etapaFechada, onClick }: KanbanCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
-  const contatoHoje = ehHoje(lead.followUpAt)
+  const contato = etapaFechada ? null : situacaoDoContato(lead.followUpAt)
 
   useEffect(() => {
     const el = cardRef.current
@@ -91,12 +102,21 @@ export const KanbanCard = memo(function KanbanCard({ lead, columnId, onClick }: 
             <MessageSquare className="h-3 w-3" />
             <span className="text-xs">{lead._count?.activities ?? 0}</span>
           </div>
-          {lead.source && (
-            <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0">
-              {lead.source}
-            </Badge>
-          )}
-          {contatoHoje && <div className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse" />}
+          <div className="ml-auto flex min-w-0 items-center gap-1.5">
+            {lead.source && (
+              <Badge variant="outline" className="truncate text-[10px] px-1.5 py-0">
+                {lead.source}
+              </Badge>
+            )}
+            {contato && (
+              <span
+                className={cn('shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', TOM_DO_CONTATO[contato.tom])}
+                title="Próximo contato"
+              >
+                {contato.texto}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       {closestEdge === 'bottom' && <DropIndicator edge="bottom" />}

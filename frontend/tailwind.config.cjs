@@ -151,6 +151,9 @@ module.exports = {
           "violet-600": "hsl(var(--leadnexi-violet-600) / <alpha-value>)",
           cyan: "hsl(var(--leadnexi-cyan) / <alpha-value>)",
           "on-accent": "hsl(var(--leadnexi-on-accent) / <alpha-value>)",
+          "cyan-texto": "hsl(var(--leadnexi-cyan-texto) / <alpha-value>)",
+          "violet-texto": "hsl(var(--leadnexi-violet-texto) / <alpha-value>)",
+          danger: "hsl(var(--leadnexi-danger) / <alpha-value>)",
         },
 
         // === Paleta Rizar (tons unicos do brandbook — sem escalas geradas) ===
