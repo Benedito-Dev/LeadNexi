@@ -7,7 +7,7 @@ import { formatarDataHora, paraCampoDataHora } from '../datas'
 import type { Lead } from '../types'
 
 const inputClasses =
-  'w-[92%] h-9 px-3 text-sm text-foreground bg-card border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all duration-200'
+  'w-full h-9 px-3 text-sm text-foreground bg-card border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none transition-all duration-200'
 
 type Campos = {
   name: string
@@ -29,10 +29,19 @@ const camposDo = (lead: Lead): Campos => ({
   followUpAt: paraCampoDataHora(lead.followUpAt),
 })
 
-function Linha({ rotulo, htmlFor, children }: { rotulo: string; htmlFor?: string; children: ReactNode }) {
+type CampoProps = {
+  rotulo: string
+  htmlFor?: string
+  /** Ocupa as duas colunas da grade. */
+  largo?: boolean
+  children: ReactNode
+}
+
+/** Rótulo em cima e o campo embaixo, numa grade de duas colunas (uma no celular). */
+function Campo({ rotulo, htmlFor, largo, children }: CampoProps) {
   return (
-    <div className="flex items-center gap-3 mb-2">
-      <label className="w-[20%] shrink-0 text-sm font-semibold text-muted-foreground" htmlFor={htmlFor}>
+    <div className={largo ? 'sm:col-span-2' : undefined}>
+      <label className="mb-1 block text-[13px] font-semibold text-muted-foreground" htmlFor={htmlFor}>
         {rotulo}
       </label>
       {children}
@@ -48,8 +57,7 @@ type LeadFormProps = {
 }
 
 /**
- * Dados do lead na ficha, portado do `ProspectForm` do Rizar: cada campo salva ao sair dele, e só
- * manda o que mudou. O próximo contato usa o agendamento do LeadNexi (fica no histórico do lead).
+ * Dados do lead na ficha, em duas colunas: cada campo salva ao sair dele, e só manda o que mudou. O próximo contato usa o agendamento do LeadNexi (fica no histórico do lead).
  */
 export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
   const [campos, setCampos] = useState<Campos>(() => camposDo(lead))
@@ -91,8 +99,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
   }
 
   return (
-    <div className="mb-3">
-      <Linha rotulo="Nome:" htmlFor="lead-nome">
+    <div className="mb-3 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+      <Campo largo rotulo="Nome" htmlFor="lead-nome">
         <input
           className={inputClasses}
           id="lead-nome"
@@ -101,8 +109,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
           onBlur={() => void salvar('name')}
           onChange={({ target }) => mudar('name', target.value)}
         />
-      </Linha>
-      <Linha rotulo="Email:" htmlFor="lead-email">
+      </Campo>
+      <Campo rotulo="Email" htmlFor="lead-email">
         <input
           className={inputClasses}
           id="lead-email"
@@ -112,9 +120,9 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
           onBlur={() => void salvar('email')}
           onChange={({ target }) => mudar('email', target.value)}
         />
-      </Linha>
-      <Linha rotulo="Telefone:" htmlFor="lead-telefone">
-        <div className="w-[92%]">
+      </Campo>
+      <Campo rotulo="Telefone" htmlFor="lead-telefone">
+        <div>
           <PhoneInput
             id="lead-telefone"
             value={campos.phone}
@@ -123,8 +131,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
             onChange={(canonico, { completo }) => completo && mudar('phone', canonico)}
           />
         </div>
-      </Linha>
-      <Linha rotulo="Instagram:" htmlFor="lead-instagram">
+      </Campo>
+      <Campo rotulo="Instagram" htmlFor="lead-instagram">
         <input
           className={inputClasses}
           id="lead-instagram"
@@ -133,8 +141,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
           onBlur={() => void salvar('instagram')}
           onChange={({ target }) => mudar('instagram', target.value)}
         />
-      </Linha>
-      <Linha rotulo="Valor estimado:" htmlFor="lead-valor">
+      </Campo>
+      <Campo rotulo="Valor estimado" htmlFor="lead-valor">
         <input
           className={inputClasses}
           id="lead-valor"
@@ -147,8 +155,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
           onBlur={() => void salvar('valor')}
           onChange={({ target }) => mudar('valor', target.value)}
         />
-      </Linha>
-      <Linha rotulo="Origem:" htmlFor="lead-origem">
+      </Campo>
+      <Campo rotulo="Origem" htmlFor="lead-origem">
         <input
           className={inputClasses}
           id="lead-origem"
@@ -163,8 +171,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
             <option key={origem} value={origem} />
           ))}
         </datalist>
-      </Linha>
-      <Linha rotulo="Prox. Contato:" htmlFor="lead-contato">
+      </Campo>
+      <Campo rotulo="Próximo contato" htmlFor="lead-contato">
         <input
           className={inputClasses}
           id="lead-contato"
@@ -173,11 +181,8 @@ export function LeadForm({ lead, origens, onLeadAtualizado }: LeadFormProps) {
           onBlur={() => void salvar('followUpAt')}
           onChange={({ target }) => mudar('followUpAt', target.value)}
         />
-      </Linha>
-      <div className="flex items-center gap-3 mb-2">
-        <span className="w-[20%] shrink-0 text-sm font-semibold text-muted-foreground">Cadastrado em:</span>
-        <span className="text-sm text-muted-foreground">{formatarDataHora(lead.createdAt)}</span>
-      </div>
+      </Campo>
+      <p className="text-sm text-muted-foreground sm:col-span-2">Cadastrado em {formatarDataHora(lead.createdAt)}</p>
     </div>
   )
 }
