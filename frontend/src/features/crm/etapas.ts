@@ -2,7 +2,8 @@ import type { ComponentType, CSSProperties } from 'react'
 import { CalendarCheck, CircleX, FileText, Layers, MessageSquareReply, Send, Trophy, UserPlus } from 'lucide-react'
 import type { Etapa, StageType } from './types'
 
-export const COR_PADRAO_ETAPA = '#3B82F6'
+/** Cor de uma etapa nova: o azul da paleta (`CORES_DE_ETAPA`). */
+export const COR_PADRAO_ETAPA = '#5C8AF6'
 
 /** O tipo diz o que a etapa faz no LeadNexi (ex.: "Fechou" cria a ficha de cliente). */
 export const ROTULO_TIPO_ETAPA: Record<StageType, string> = {

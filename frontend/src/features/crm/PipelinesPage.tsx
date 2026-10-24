@@ -464,10 +464,10 @@ export function PipelinesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalPipelineAberto(false)}>
+            <Button variant="outline" className={botaoSecundarioDoTopo} onClick={() => setModalPipelineAberto(false)}>
               Cancelar
             </Button>
-            <Button onClick={salvarPipeline} disabled={salvando}>
+            <Button className={botaoPrincipalDoTopo} onClick={salvarPipeline} disabled={salvando}>
               Salvar
             </Button>
           </DialogFooter>
@@ -484,10 +484,10 @@ export function PipelinesPage() {
             <EtapaForm valor={formEtapa} onChange={setFormEtapa} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalEtapaAberto(false)}>
+            <Button variant="outline" className={botaoSecundarioDoTopo} onClick={() => setModalEtapaAberto(false)}>
               Cancelar
             </Button>
-            <Button onClick={salvarEtapa} disabled={salvando}>
+            <Button className={botaoPrincipalDoTopo} onClick={salvarEtapa} disabled={salvando}>
               Salvar
             </Button>
           </DialogFooter>
