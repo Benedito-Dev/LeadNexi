@@ -4,12 +4,23 @@ import { cn } from '@/lib/utils'
 
 type PhoneInputProps = Omit<ComponentProps<'input'>, 'value' | 'onChange'> & {
   value: string
-  /** Recebe a forma canônica (`55DDDNÚMERO`), ou '' enquanto o número não está completo. */
-  onChange: (canonico: string) => void
+  /**
+   * Recebe a forma canônica (`55DDDNÚMERO`), ou '' enquanto o número não está completo.
+   * `completo` diz se o valor já pode ser gravado (número inteiro, ou campo vazio de propósito).
+   */
+  onChange: (canonico: string, info: { completo: boolean }) => void
 }
 
 /** Telefone com "+55" fixo à esquerda e máscara brasileira, como o `PhoneInput` do Rizar. */
-export function PhoneInput({ value, onChange, disabled, className, placeholder = '(85) 99906-2339', ...props }: PhoneInputProps) {
+export function PhoneInput({
+  value,
+  onChange,
+  onBlur,
+  disabled,
+  className,
+  placeholder = '(85) 99906-2339',
+  ...props
+}: PhoneInputProps) {
   const [rascunho, setRascunho] = useState<string | null>(null)
   const exibido = rascunho ?? (value ? formatPhoneBR(value) : '')
 
@@ -27,10 +38,12 @@ export function PhoneInput({ value, onChange, disabled, className, placeholder =
         onChange={({ target }) => {
           const digitado = mascararTelefone(target.value)
           setRascunho(digitado)
-          onChange(toE164BR(digitado))
+          const canonico = toE164BR(digitado)
+          onChange(canonico, { completo: Boolean(canonico) || !digitado.replace(/\D/g, '') })
         }}
-        onBlur={() => {
+        onBlur={(e) => {
           if (!rascunho || toE164BR(rascunho)) setRascunho(null)
+          onBlur?.(e)
         }}
         className={cn(
           'flex h-10 w-full rounded-r-lg border border-input bg-card px-4 py-2 font-sans text-sm text-foreground ring-offset-background transition-colors duration-150',

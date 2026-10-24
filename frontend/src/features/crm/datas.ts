@@ -35,3 +35,22 @@ export function situacaoDoContato(iso: string | null): SituacaoContato | null {
   const [, mes, d] = dia.split('-')
   return { texto: `${DIAS_CURTOS[data.getDay()]} ${d}/${mes}`, tom: 'futuro' }
 }
+
+/** ISO → valor de `<input type="datetime-local">` ("AAAA-MM-DDTHH:mm", no fuso local). */
+export function paraCampoDataHora(iso: string | null): string {
+  if (!iso) return ''
+  const data = new Date(iso)
+  const hora = `${String(data.getHours()).padStart(2, '0')}:${String(data.getMinutes()).padStart(2, '0')}`
+  return `${diaLocal(data)}T${hora}`
+}
+
+/** "24/10/2026 15:30" */
+export function formatarDataHora(iso: string): string {
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

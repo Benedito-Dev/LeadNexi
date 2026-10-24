@@ -1,5 +1,5 @@
 import { api, corpo } from '@/lib/api'
-import type { Etapa, Lead, PipelineResumo, Quadro, StageType } from './types'
+import type { Atividade, Etapa, Lead, PipelineResumo, Quadro, StageType } from './types'
 
 export const listarPipelines = () => api<PipelineResumo[]>('/pipelines')
 
@@ -42,3 +42,35 @@ export const excluirEtapa = (id: string) => api<void>(`/stages/${id}`, { method:
 /** Grava a ordem nova das etapas; o servidor devolve a lista já na ordem final. */
 export const reordenarEtapas = (pipelineId: string, stageIds: string[]) =>
   api<Etapa[]>(`/pipelines/${pipelineId}/stages/reorder`, { method: 'PATCH', body: corpo({ stageIds }) })
+
+// ============================================
+// Ficha do lead
+// ============================================
+
+export type DadosLead = Partial<{
+  name: string
+  email: string | null
+  phone: string | null
+  instagramUsername: string | null
+  estimatedValue: number | null
+  source: string | null
+}>
+
+export const atualizarLead = (id: string, dados: DadosLead) =>
+  api<Lead>(`/leads/${id}`, { method: 'PATCH', body: corpo(dados) })
+
+export const apagarLead = (id: string) => api<void>(`/leads/${id}`, { method: 'DELETE' })
+
+export const listarAtividades = (id: string) => api<Atividade[]>(`/leads/${id}/activities`)
+
+export const adicionarNota = (id: string, text: string) =>
+  api<Atividade>(`/leads/${id}/notes`, { method: 'POST', body: corpo({ text }) })
+
+export const apagarNota = (id: string, notaId: string) => api<void>(`/leads/${id}/notes/${notaId}`, { method: 'DELETE' })
+
+/** Agenda (ou reagenda) o próximo contato; fica registrado no histórico do lead. */
+export const agendarContato = (id: string, dueAt: string) =>
+  api<Lead>(`/leads/${id}/follow-up`, { method: 'PUT', body: corpo({ dueAt }) })
+
+/** Desmarca o próximo contato. */
+export const desmarcarContato = (id: string) => api<Lead>(`/leads/${id}/follow-up`, { method: 'DELETE' })

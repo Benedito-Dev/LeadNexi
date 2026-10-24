@@ -6,6 +6,7 @@ import { AddCardModal } from './components/AddCardModal'
 import { CrmHeader } from './components/CrmHeader'
 import { CrmFiltros } from './components/CrmFiltros'
 import { KanbanBoard } from './components/KanbanBoard'
+import { LeadModal } from './components/LeadModal'
 import { MotivoPerdaDialog } from './components/MotivoPerdaDialog'
 import { calcularPlacar, criarFiltro, criarOrdenacao, FILTROS_INICIAIS, type Filtros } from './filtros'
 import { escolherPipelineInicial, gravarPipelineLembrado, lerPipelineLembrado } from './pipelineLembrado'
@@ -35,6 +36,8 @@ export function CrmPage() {
   const [visiveis, setVisiveis] = useState<Record<string, number>>({})
   const [colunaNovoLead, setColunaNovoLead] = useState<string | null>(null)
   const [movimentoPendente, setMovimentoPendente] = useState<MovimentoPendente | null>(null)
+  // Ficha aberta: guarda só o id e lê o lead do quadro, para ficha e card nunca divergirem
+  const [leadAbertoId, setLeadAbertoId] = useState<string | null>(null)
 
   const quadroRef = useRef(quadro)
   quadroRef.current = quadro
@@ -206,7 +209,50 @@ export function CrmPage() {
   )
 
   // A ficha do lead (anotações, dados) chega na próxima fase
-  const handleCardClick = useCallback(() => {}, [])
+  const handleCardClick = useCallback((lead: Lead) => setLeadAbertoId(lead.id), [])
+
+  const leadAberto = useMemo(
+    () => (leadAbertoId ? (quadro?.stages.flatMap((e) => e.leads).find((l) => l.id === leadAbertoId) ?? null) : null),
+    [quadro, leadAbertoId],
+  )
+
+  /** Aplica uma mudança a um lead do quadro, onde quer que ele esteja. */
+  const mudarLeadNoQuadro = useCallback((id: string, mudar: (lead: Lead) => Lead | null) => {
+    setQuadro(
+      (prev) =>
+        prev && {
+          ...prev,
+          stages: prev.stages.map((etapa) => ({
+            ...etapa,
+            leads: etapa.leads.flatMap((l) => {
+              if (l.id !== id) return [l]
+              const novo = mudar(l)
+              return novo ? [novo] : []
+            }),
+          })),
+        },
+    )
+  }, [])
+
+  // A resposta do servidor não traz a contagem de anotações: fica a do quadro
+  const handleLeadAtualizado = useCallback(
+    (atualizado: Lead) => mudarLeadNoQuadro(atualizado.id, (l) => ({ ...l, ...atualizado, _count: l._count })),
+    [mudarLeadNoQuadro],
+  )
+
+  const handleNotasMudaram = useCallback(
+    (id: string, delta: number) =>
+      mudarLeadNoQuadro(id, (l) => ({ ...l, _count: { activities: Math.max(0, (l._count?.activities ?? 0) + delta) } })),
+    [mudarLeadNoQuadro],
+  )
+
+  const handleLeadApagado = useCallback(
+    (lead: Lead) => {
+      setLeadAbertoId(null)
+      mudarLeadNoQuadro(lead.id, () => null)
+    },
+    [mudarLeadNoQuadro],
+  )
 
   // Nome e cor da etapa, mudados pelo menu da coluna: aparecem na hora e são gravados. O seletor
   // livre de cor muda a cada movimento, então grava só quando ele para (e volta ao original se falhar).
@@ -304,6 +350,17 @@ export function CrmPage() {
         origens={origens}
         etapas={etapas}
         nomePipeline={pipelineSelecionado?.label}
+      />
+
+      {/* key: cada lead abre a ficha do zero (anotações e formulário de nota limpos) */}
+      <LeadModal
+        key={leadAbertoId ?? 'fechada'}
+        lead={leadAberto}
+        origens={origens.map((o) => o.value)}
+        onFechar={() => setLeadAbertoId(null)}
+        onLeadAtualizado={handleLeadAtualizado}
+        onNotasMudaram={handleNotasMudaram}
+        onLeadApagado={handleLeadApagado}
       />
 
       <MotivoPerdaDialog

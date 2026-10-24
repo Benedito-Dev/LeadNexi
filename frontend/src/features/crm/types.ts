@@ -25,6 +25,15 @@ export type Lead = {
 
 export type EtapaDoQuadro = Etapa & { leads: Lead[] }
 
+/** Item do histórico do lead. A ficha mostra só as anotações (`NOTE`). */
+export type Atividade = {
+  id: string
+  type: string
+  text: string | null
+  dueAt: string | null
+  createdAt: string
+}
+
 export type PipelineResumo = { id: string; name: string; position: number; stages: Etapa[] }
 
 export type Quadro = { id: string; name: string; stages: EtapaDoQuadro[] }
