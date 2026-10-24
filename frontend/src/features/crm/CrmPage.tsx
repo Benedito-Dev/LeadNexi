@@ -1,48 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Kanban, Plus, Settings2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { ListPageHeader } from '@/components/list-page/ListPageHeader'
-import { Button } from '@/components/ui/button'
-import { toE164BR } from '@/lib/phone'
 import { addToast } from '@/lib/toast'
 import { buscarQuadro, listarPipelines, moverLead } from './api'
 import { AddCardModal } from './components/AddCardModal'
-import { CrmActiveFilters } from './components/CrmActiveFilters'
-import { CrmFilters, type DiaContato } from './components/CrmFilters'
+import { CrmHeader } from './components/CrmHeader'
+import { CrmFiltros } from './components/CrmFiltros'
 import { KanbanBoard } from './components/KanbanBoard'
 import { MotivoPerdaDialog } from './components/MotivoPerdaDialog'
-import { diaDaquiA, diaLocal } from './datas'
+import { calcularPlacar, criarFiltro, criarOrdenacao, FILTROS_INICIAIS, type Filtros } from './filtros'
 import { escolherPipelineInicial, gravarPipelineLembrado, lerPipelineLembrado } from './pipelineLembrado'
 import type { DadosDaColuna, Lead, Opcao, Quadro } from './types'
 
-/** "Ordem de chegada" = lead novo no topo, como no Rizar. */
-const ORDENACAO_PADRAO = '-created_at'
-
 /** Quantos cards cada coluna mostra por vez antes de revelar mais ao rolar. */
 const TAMANHO_DA_CARGA = 20
-
-const OPCOES_ORDENACAO: Opcao[] = [
-  { value: '-created_at', label: 'Ordem de chegada (mais novos primeiro)' },
-  { value: 'created_at', label: 'Ordem de chegada (mais antigos primeiro)' },
-  { value: 'name', label: 'Nome (A-Z)' },
-  { value: '-name', label: 'Nome (Z-A)' },
-  { value: 'date_prox_contact', label: 'Próximo contato (mais próximo)' },
-  { value: '-date_prox_contact', label: 'Próximo contato (mais distante)' },
-]
-
-function comparar(ordenacao: string): (a: Lead, b: Lead) => number {
-  const sinal = ordenacao.startsWith('-') ? -1 : 1
-  const campo = ordenacao.replace(/^-/, '')
-  if (campo === 'name') return (a, b) => sinal * a.name.localeCompare(b.name, 'pt-BR')
-  if (campo === 'date_prox_contact') {
-    // Sem próximo contato marcado vai para o fim nos dois sentidos
-    return (a, b) => {
-      if (!a.followUpAt || !b.followUpAt) return Number(!a.followUpAt) - Number(!b.followUpAt)
-      return sinal * a.followUpAt.localeCompare(b.followUpAt)
-    }
-  }
-  return (a, b) => sinal * a.createdAt.localeCompare(b.createdAt)
-}
 
 type MovimentoPendente = { cardId: string; sourceColumnId: string; destColumnId: string; leadNome: string }
 
@@ -59,15 +29,8 @@ export function CrmPage() {
   const [quadro, setQuadro] = useState<Quadro | null>(null)
   const [isLoadingBoard, setIsLoadingBoard] = useState(true)
 
-  const [ordenacao, setOrdenacao] = useState(ORDENACAO_PADRAO)
-  const [originSelected, setOriginSelected] = useState<readonly Opcao[]>([])
-  const [checkboxDay, setCheckboxDay] = useState<DiaContato>(null)
-  const [dataProxDe, setDataProxDe] = useState('')
-  const [dataProxAte, setDataProxAte] = useState('')
-  const [searchName, setSearchName] = useState('')
-  const [searchPhone, setSearchPhone] = useState('')
-  const [debouncedName, setDebouncedName] = useState('')
-  const [debouncedPhone, setDebouncedPhone] = useState('')
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIAIS)
+  const [buscaAplicada, setBuscaAplicada] = useState('')
 
   const [visiveis, setVisiveis] = useState<Record<string, number>>({})
   const [colunaNovoLead, setColunaNovoLead] = useState<string | null>(null)
@@ -77,14 +40,11 @@ export function CrmPage() {
   quadroRef.current = quadro
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedName(searchName), 500)
+    const timer = setTimeout(() => setBuscaAplicada(filtros.busca), 400)
     return () => clearTimeout(timer)
-  }, [searchName])
+  }, [filtros.busca])
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedPhone(searchPhone), 500)
-    return () => clearTimeout(timer)
-  }, [searchPhone])
+  const mudarFiltros = useCallback((mudanca: Partial<Filtros>) => setFiltros((prev) => ({ ...prev, ...mudanca })), [])
 
   /** Seleciona o pipeline, lembra dele e põe no endereço sem poluir o histórico. */
   const selecionarPipeline = useCallback(
@@ -141,7 +101,7 @@ export function CrmPage() {
   // Filtro novo começa cada coluna do topo de novo
   useEffect(() => {
     setVisiveis({})
-  }, [pipelineSelecionado, ordenacao, originSelected, checkboxDay, dataProxDe, dataProxAte, debouncedName, debouncedPhone])
+  }, [pipelineSelecionado, filtros.contato, filtros.periodoDe, filtros.periodoAte, filtros.origens, filtros.ordenacao, buscaAplicada])
 
   const origens = useMemo(() => {
     const nomes = new Set<string>()
@@ -152,49 +112,28 @@ export function CrmPage() {
   const columnsData = useMemo(() => {
     const dados: Record<string, DadosDaColuna> = {}
     if (!quadro) return dados
-
-    const nome = debouncedName.trim().toLowerCase()
-    const telefone = debouncedPhone.replace(/\D/g, '')
-    const origensAtivas = new Set(originSelected.map((o) => o.value))
-    const diaExato = checkboxDay !== null && checkboxDay !== 3 ? diaDaquiA(checkboxDay) : null
-
-    const passa = (lead: Lead) => {
-      if (nome && !lead.name.toLowerCase().includes(nome)) return false
-      if (telefone && !toE164BR(lead.phone).includes(telefone) && !(lead.phone ?? '').includes(telefone)) return false
-      if (origensAtivas.size && !origensAtivas.has(lead.source ?? '')) return false
-      if (checkboxDay !== null) {
-        if (!lead.followUpAt) return false
-        const dia = diaLocal(new Date(lead.followUpAt))
-        if (diaExato && dia !== diaExato) return false
-        if (checkboxDay === 3 && ((dataProxDe && dia < dataProxDe) || (dataProxAte && dia > dataProxAte))) return false
-      }
-      return true
-    }
-
-    const ordem = comparar(ordenacao)
+    const passa = criarFiltro({ ...filtros, busca: buscaAplicada })
+    const ordem = criarOrdenacao(filtros.ordenacao)
     for (const etapa of quadro.stages) {
       dados[etapa.id] = {
-        results: etapa.leads.filter(passa).sort(ordem),
+        results: etapa.leads.filter((lead) => passa(lead, etapa)).sort(ordem),
         visiveis: visiveis[etapa.id] ?? TAMANHO_DA_CARGA,
       }
     }
     return dados
-  }, [quadro, debouncedName, debouncedPhone, originSelected, checkboxDay, dataProxDe, dataProxAte, ordenacao, visiveis])
+  }, [quadro, filtros, buscaAplicada, visiveis])
+
+  const placar = useMemo(() => calcularPlacar(quadro?.stages ?? []), [quadro])
 
   const handleLoadMore = useCallback((columnId: string) => {
     setVisiveis((prev) => ({ ...prev, [columnId]: (prev[columnId] ?? TAMANHO_DA_CARGA) + TAMANHO_DA_CARGA }))
   }, [])
 
-  const handleClearFilters = useCallback(() => {
-    setOriginSelected([])
-    setCheckboxDay(null)
-    setDataProxDe('')
-    setDataProxAte('')
-    setSearchName('')
-    setSearchPhone('')
-    setOrdenacao(ORDENACAO_PADRAO)
-    // Não troca o pipeline: limpar filtros mexe só nos filtros secundários
-  }, [])
+  // Não troca o pipeline nem a ordenação: limpar mexe só no que esconde cards
+  const handleClearFilters = useCallback(
+    () => setFiltros((prev) => ({ ...FILTROS_INICIAIS, ordenacao: prev.ordenacao })),
+    [],
+  )
 
   const handleAddProspect = useCallback(
     (columnId: string | null) => {
@@ -269,70 +208,33 @@ export function CrmPage() {
   // A ficha do lead (anotações, dados) chega na próxima fase
   const handleCardClick = useCallback(() => {}, [])
 
-  const totalLeads = Object.values(columnsData).reduce((acc, col) => acc + col.results.length, 0)
+  const visiveisNoQuadro = Object.values(columnsData).reduce((acc, col) => acc + col.results.length, 0)
   const etapas = quadro?.stages ?? []
+  const irParaPipelines = () =>
+    navigate(pipelineSelecionado ? `/crm/pipelines?pipeline=${pipelineSelecionado.value}` : '/crm/pipelines')
 
   return (
     <div className="space-y-3">
-      <ListPageHeader
-        icon={Kanban}
-        title="CRM Pipeline"
-        totalItems={totalLeads || undefined}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/crm/pipelines')}>
-              <Settings2 className="h-4 w-4 mr-1" />
-              Pipelines
-            </Button>
-            {pipelineSelecionado && (
-              <Button onClick={() => handleAddProspect(etapas[0]?.id ?? null)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Novo Lead
-              </Button>
-            )}
-          </div>
-        }
+      <CrmHeader
+        nomePipeline={pipelineSelecionado?.label}
+        totalLeads={placar.leads}
+        emAberto={placar.emAberto}
+        podeCriarLead={!!pipelineSelecionado}
+        onNovoLead={() => handleAddProspect(etapas[0]?.id ?? null)}
+        onConfigurarPipelines={irParaPipelines}
       />
 
-      <CrmFilters
+      <CrmFiltros
         pipelines={pipelines}
         pipelineSelecionado={pipelineSelecionado}
         onPipelineChange={selecionarPipeline}
+        onConfigurarPipelines={irParaPipelines}
+        filtros={filtros}
+        onChange={mudarFiltros}
+        onLimpar={handleClearFilters}
         origens={origens}
-        originSelected={originSelected}
-        onOriginChange={setOriginSelected}
-        searchName={searchName}
-        onSearchNameChange={setSearchName}
-        searchPhone={searchPhone}
-        onSearchPhoneChange={setSearchPhone}
-        checkboxDay={checkboxDay}
-        onCheckboxDayChange={setCheckboxDay}
-        dataProxDe={dataProxDe}
-        onDataProxDeChange={setDataProxDe}
-        dataProxAte={dataProxAte}
-        onDataProxAteChange={setDataProxAte}
-        ordenacao={ordenacao}
-        opcoesOrdenacao={OPCOES_ORDENACAO}
-        onOrdenacaoChange={setOrdenacao}
-        onClearFilters={handleClearFilters}
-      />
-
-      <CrmActiveFilters
-        originSelected={originSelected}
-        checkboxDay={checkboxDay}
-        dataProxDe={dataProxDe}
-        dataProxAte={dataProxAte}
-        searchName={searchName}
-        searchPhone={searchPhone}
-        onRemoveOrigin={(valor) => setOriginSelected((prev) => prev.filter((o) => o.value !== valor))}
-        onRemoveCheckboxDay={() => {
-          setCheckboxDay(null)
-          setDataProxDe('')
-          setDataProxAte('')
-        }}
-        onRemoveSearchName={() => setSearchName('')}
-        onRemoveSearchPhone={() => setSearchPhone('')}
-        onClearAll={handleClearFilters}
+        visiveis={visiveisNoQuadro}
+        total={placar.leads}
       />
 
       <KanbanBoard
@@ -345,9 +247,7 @@ export function CrmPage() {
         isLoading={isLoadingBoard}
         temPipelines={pipelines.length > 0}
         pipelineSelecionado={!!pipelineSelecionado}
-        onConfigurarPipelines={() =>
-          navigate(pipelineSelecionado ? `/crm/pipelines?pipeline=${pipelineSelecionado.value}` : '/crm/pipelines')
-        }
+        onConfigurarPipelines={irParaPipelines}
       />
 
       <AddCardModal

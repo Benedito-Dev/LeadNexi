@@ -145,6 +145,14 @@ module.exports = {
           border:     "hsl(var(--info-border) / <alpha-value>)",
         },
 
+        // Marca LeadNexi (tokens --leadnexi-* em globals.css)
+        leadnexi: {
+          violet: "hsl(var(--leadnexi-violet) / <alpha-value>)",
+          "violet-600": "hsl(var(--leadnexi-violet-600) / <alpha-value>)",
+          cyan: "hsl(var(--leadnexi-cyan) / <alpha-value>)",
+          "on-accent": "hsl(var(--leadnexi-on-accent) / <alpha-value>)",
+        },
+
         // === Paleta Rizar (tons unicos do brandbook — sem escalas geradas) ===
         // FONTE: frontend/docs/Identidade Visual RIZAR/Rizar_Brand_Book.pdf v1.0 Maio 2026, secoes 6 e 7
         // FONTE: docs/adrs/adr-FE-022-rizar-rebranding-foundation.md
@@ -202,6 +210,8 @@ module.exports = {
         ],
         // `display` removido: Neue Machina nunca foi carregada (memoria 2026-03-05). General Sans serve display tambem.
         mono: ['"IBM Plex Mono"', ...fontFamily.mono],
+        // Fonte da marca LeadNexi (BRAND.md, seção 5)
+        marca: ['Manrope', 'system-ui', 'sans-serif'],
       },
     },
   },
