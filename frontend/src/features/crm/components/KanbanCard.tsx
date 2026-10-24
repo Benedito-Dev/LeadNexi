@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { attachClosestEdge, extractClosestEdge, type Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
-import { Eye, MessageSquare, Phone } from 'lucide-react'
+import { MessageSquare, Phone } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
@@ -97,7 +97,6 @@ export const KanbanCard = memo(function KanbanCard({ lead, columnId, etapaFechad
         )}
 
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/60">
-          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
           <div className="flex items-center gap-1 text-muted-foreground">
             <MessageSquare className="h-3 w-3" />
             <span className="text-xs">{lead._count?.activities ?? 0}</span>
