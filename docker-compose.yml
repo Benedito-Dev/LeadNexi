@@ -17,7 +17,11 @@ services:
       retries: 30
 
   backend:
-    build: ./backend
+    # Os Dockerfiles ficam em docker/: dentro de frontend/ ou backend/ a Vercel os confunde com o
+    # framework do serviço ("Multiple frameworks detected") e o deploy falha.
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
     container_name: leadnexi-backend
     env_file: ./backend/.env
     environment:
@@ -31,7 +35,9 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
     container_name: leadnexi-frontend
     ports:
       - "8080:80"
