@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element'
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { Kanban, Settings2 } from 'lucide-react'
@@ -27,6 +27,10 @@ type KanbanBoardProps = {
 /** Progressão do funil (BRAND.md, seção 8): violeta → azul → ciano; da 4ª etapa em diante, ciano. */
 const CORES_DO_FUNIL = ['#6D5DFB', '#5C8AF6', '#3DB3F1', '#22D3EE']
 
+/** Espaço livre abaixo do quadro (o padding inferior da página) e a altura mínima do quadro. */
+const RESPIRO_INFERIOR = 24
+const ALTURA_MINIMA = 360
+
 /** Colunas lado a lado com rolagem horizontal; um monitor central recebe todos os soltar. */
 export function KanbanBoard({
   columns,
@@ -45,6 +49,28 @@ export function KanbanBoard({
   onConfigurarPipelines,
 }: KanbanBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
+  const [altura, setAltura] = useState<number | null>(null)
+
+  // O quadro desce até o fim da janela: a página fica parada e só as colunas rolam. Remede quando a
+  // janela muda de tamanho e quando o que fica acima do quadro muda de altura.
+  const medir = useCallback(() => {
+    const el = boardRef.current
+    if (!el) return
+    const topoNaPagina = el.getBoundingClientRect().top + window.scrollY
+    setAltura(Math.max(ALTURA_MINIMA, Math.floor(window.innerHeight - topoNaPagina - RESPIRO_INFERIOR)))
+  }, [])
+
+  useLayoutEffect(() => {
+    medir()
+    const observador = new ResizeObserver(medir)
+    const pai = boardRef.current?.parentElement
+    if (pai) observador.observe(pai)
+    window.addEventListener('resize', medir)
+    return () => {
+      observador.disconnect()
+      window.removeEventListener('resize', medir)
+    }
+  }, [medir, columns.length])
 
   useEffect(
     () =>
@@ -99,7 +125,11 @@ export function KanbanBoard({
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div ref={boardRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none min-h-[60vh]">
+    <div
+      ref={boardRef}
+      style={altura ? { height: altura } : undefined}
+      className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none"
+    >
       {columns.map((col, i) => (
         <KanbanColumn
           key={col.id}

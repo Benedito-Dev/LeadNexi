@@ -112,8 +112,7 @@ export const KanbanColumn = memo(function KanbanColumn({
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-2 space-y-2 bg-muted/20 rounded-b-xl"
-        style={{ maxHeight: 'calc(100vh - 340px)' }}
+        className="min-h-0 flex-1 overflow-y-auto p-2 space-y-2 bg-muted/20 rounded-b-xl"
       >
         {isLoading || !columnData ? (
           <KanbanColumnSkeleton />
