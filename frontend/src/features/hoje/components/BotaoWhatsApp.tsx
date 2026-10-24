@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { WhatsAppIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,9 @@ type BotaoWhatsAppProps = {
   lead: LeadDoPainel
   mensagem?: string
   className?: string
+  /** Texto e ícone do botão (padrão: "Abrir no WhatsApp" com o ícone do WhatsApp). */
+  rotulo?: string
+  icone?: ReactNode
   /** O envio foi confirmado e registrado (a cadência do lead andou). */
   onEnviado: () => void
 }
@@ -19,7 +22,7 @@ type BotaoWhatsAppProps = {
  * Abre o WhatsApp com a mensagem pronta (do LeadNexi antigo). O envio é manual no WhatsApp; ao
  * voltar para a aba, a pessoa confirma e o envio é registrado.
  */
-export function BotaoWhatsApp({ lead, mensagem, className, onEnviado }: BotaoWhatsAppProps) {
+export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no WhatsApp', icone, onEnviado }: BotaoWhatsAppProps) {
   const [confirmando, setConfirmando] = useState(false)
   const [abrindo, setAbrindo] = useState(false)
   const [registrando, setRegistrando] = useState(false)
@@ -85,8 +88,8 @@ export function BotaoWhatsApp({ lead, mensagem, className, onEnviado }: BotaoWha
           className,
         )}
       >
-        <WhatsAppIcon aria-hidden size={18} />
-        {abrindo ? 'Abrindo…' : 'Abrir no WhatsApp'}
+        {icone ?? <WhatsAppIcon aria-hidden size={18} />}
+        {abrindo ? 'Abrindo…' : rotulo}
       </button>
 
       {confirmando && (

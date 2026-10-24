@@ -25,7 +25,7 @@ type MissaoEmFocoProps = {
   onProxima: () => void
 } & AcoesDaMissao
 
-/** A próxima missão em destaque (opção "Foco"): tudo para agir sem abrir a ficha. */
+/** A missão em destaque (aberta por "Começar próxima ação"): tudo para agir sem abrir a ficha. */
 export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, onProxima, onAbrir, onMudou }: MissaoEmFocoProps) {
   const { tipo, lead } = missao
   const contexto = contextoDaMissao(lead, tipo)

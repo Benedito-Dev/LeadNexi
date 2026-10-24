@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CircleAlert } from 'lucide-react'
-import { useSearchParams } from 'react-router'
-import { useAuth } from '@/auth/contexto'
 import { botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -9,21 +7,17 @@ import { listarPipelines } from '../crm/api'
 import { LeadModal } from '../crm/components/LeadModal'
 import { corDaEtapa } from '../crm/etapas'
 import { buscarPainel } from './api'
-import { FocoDoDia } from './components/FocoDoDia'
-import { Esqueleto, ModoFila } from './components/pecas'
-import { montarFila, TIPOS_DE_ACAO } from './missoes'
+import { RotinaDoDia } from './components/Rotina'
+import { Esqueleto } from './components/pecas'
+import { montarFila } from './missoes'
 import type { LeadDoPainel, PainelDeHoje } from './tipos'
 
 /** Tela Hoje: a meta do dia e as missões (responder, follow-ups, novas lojas, compromissos). */
 export function HojePage() {
-  const { user } = useAuth()
   const [painel, setPainel] = useState<PainelDeHoje | null>(null)
   const [erro, setErro] = useState(false)
   const [coresDasEtapas, setCoresDasEtapas] = useState<Record<string, string>>({})
   const [leadAberto, setLeadAberto] = useState<LeadDoPainel | null>(null)
-  // "Começar" a partir do funil (/hoje?prospectar=1) abre já no modo fila, com os novos contatos
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [modoFila, setModoFila] = useState<'all' | 'new' | null>(() => (searchParams.has('prospectar') ? 'new' : null))
 
   const carregar = useCallback(async () => {
     try {
@@ -48,14 +42,7 @@ export function HojePage() {
       .catch(() => undefined)
   }, [])
 
-  useEffect(() => {
-    if (searchParams.has('prospectar')) setSearchParams({}, { replace: true })
-  }, [searchParams, setSearchParams])
-
   const fila = useMemo(() => (painel ? montarFila(painel) : []), [painel])
-  const acoes = fila.filter((m) => TIPOS_DE_ACAO.includes(m.tipo))
-  const novas = fila.filter((m) => m.tipo === 'new')
-  const itensDaFila = modoFila === 'new' && novas.length > 0 ? novas : acoes
 
   return (
     <div className="flex w-full flex-col gap-5 font-marca">
@@ -74,12 +61,10 @@ export function HojePage() {
           </Button>
         </div>
       ) : (
-        <FocoDoDia
+        <RotinaDoDia
           painel={painel}
           fila={fila}
-          nome={user?.name?.split(' ')[0] ?? ''}
           coresDasEtapas={coresDasEtapas}
-          onComecar={() => setModoFila('all')}
           onAbrir={setLeadAberto}
           onMudou={carregar}
         />
@@ -110,9 +95,6 @@ export function HojePage() {
           void carregar()
         }}
       />
-      {modoFila && itensDaFila.length > 0 && (
-        <ModoFila itens={itensDaFila} onFechar={() => setModoFila(null)} onAbrir={setLeadAberto} onMudou={carregar} />
-      )}
     </div>
   )
 }
