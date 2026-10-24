@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, Plus, Trash2 } from 'lucide-react'
 import { WhatsAppIcon } from '@/brand/icons'
-import { useAuth } from '@/auth/contexto'
 import { DeleteDialog } from '@/components/modal/DeleteDialog'
 import { MutaseDialog } from '@/components/modal/MutaseDialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toE164BR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
@@ -22,6 +19,8 @@ import { iconeDaOrigem } from '../origens'
 // Verde do WhatsApp com texto escuro por cima (contraste ~7,5:1 nos dois temas)
 const botaoWhatsApp =
   'gap-2 bg-chat-wa-accent font-semibold text-chat-wa-accent-foreground no-underline hover:bg-chat-wa-accent/90'
+
+const NOTA_VAZIA = { texto: '', contato: '' }
 
 type LeadModalProps = {
   /** Lead aberto; `null` = ficha fechada. */
@@ -42,9 +41,8 @@ type LeadModalProps = {
  * anotações e, no rodapé fixo, apagar, conversar no WhatsApp e fechar.
  */
 export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, onNotasMudaram, onLeadApagado }: LeadModalProps) {
-  const { user } = useAuth()
   const [notas, setNotas] = useState<Atividade[]>([])
-  const [novaNota, setNovaNota] = useState<{ texto: string; contato: string } | null>(null)
+  const [novaNota, setNovaNota] = useState(NOTA_VAZIA)
   const [salvandoNota, setSalvandoNota] = useState(false)
   const [notaParaApagar, setNotaParaApagar] = useState<string | null>(null)
   const [apagandoLead, setApagandoLead] = useState(false)
@@ -65,7 +63,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
   if (!lead) return null
 
   const salvarNota = async () => {
-    if (!novaNota?.texto.trim()) {
+    if (!novaNota.texto.trim()) {
       addToast('error', 'Preencha o campo da anotação.')
       return
     }
@@ -79,7 +77,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
         onLeadAtualizado(await agendarContato(lead.id, new Date(novaNota.contato).toISOString()))
       }
       addToast('success', 'Sucesso', 'Anotação criada com sucesso')
-      setNovaNota(null)
+      setNovaNota(NOTA_VAZIA)
     } catch (erro) {
       addToast('error', 'Erro', (erro as Error).message)
     } finally {
@@ -165,69 +163,74 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
             <h4 className="font-marca text-base font-bold text-foreground">
               Anotações <span className="text-sm font-semibold text-muted-foreground">({notas.length})</span>
             </h4>
-            <button
-              onClick={() => setNovaNota((atual) => (atual ? null : { texto: '', contato: '' }))}
-              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-leadnexi-violet-600 text-leadnexi-on-accent transition-colors hover:bg-leadnexi-violet-600/90"
-              aria-label="Adicionar anotação"
-              title="Adicionar anotação"
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.75} />
-            </button>
           </div>
-          <div className="space-y-3">
-            {novaNota && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="nota-contato">Data do próximo contato (opcional):</Label>
-                  <Input
-                    id="nota-contato"
-                    type="datetime-local"
-                    value={novaNota.contato}
-                    onChange={({ target }) => setNovaNota({ ...novaNota, contato: target.value })}
-                  />
-                </div>
+          <div className="space-y-4">
+              {/* Campo sempre aberto: escreve e adiciona, sem o passo de abrir */}
+              <div className="rounded-lg border border-input bg-background p-3 transition-colors focus-within:border-leadnexi-violet/60">
                 <Textarea
-                  autoFocus
-                  rows={5}
+                  rows={3}
                   maxLength={5000}
-                  placeholder="O que vocês conversaram?"
+                  placeholder="Escreva o que vocês conversaram..."
+                  aria-label="Nova anotação"
                   value={novaNota.texto}
                   onChange={({ target }) => setNovaNota({ ...novaNota, texto: target.value })}
+                  className="min-h-[72px] resize-none border-0 bg-transparent p-0 shadow-none hover:border-0 focus:shadow-none focus-visible:ring-0"
                 />
-                <div className="text-right">
-                  <Button variant="outline" onClick={salvarNota} disabled={salvandoNota}>
-                    {salvandoNota ? 'Salvando...' : 'Adicionar anotação'}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <CalendarClock className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                    Próximo contato (opcional)
+                    <input
+                      type="datetime-local"
+                      value={novaNota.contato}
+                      onChange={({ target }) => setNovaNota({ ...novaNota, contato: target.value })}
+                      className="!min-h-0 h-8 rounded-md border border-input bg-card px-2 text-xs text-foreground"
+                    />
+                  </label>
+                  <Button
+                    size="sm"
+                    onClick={salvarNota}
+                    disabled={salvandoNota || !novaNota.texto.trim()}
+                    className="gap-1.5 bg-leadnexi-violet-600 font-semibold text-leadnexi-on-accent hover:bg-leadnexi-violet-600/90"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={1.75} />
+                    {salvandoNota ? 'Salvando...' : 'Adicionar'}
                   </Button>
                 </div>
               </div>
-            )}
 
-            {notas.length === 0 && !novaNota && (
-              <p className="text-sm text-muted-foreground">Nenhuma anotação ainda. Use o + para registrar a conversa.</p>
-            )}
-
-            {notas.map((nota) => (
-              <div
-                key={nota.id}
-                className="border border-border/70 rounded-lg p-3 bg-card shadow-sm hover:border-primary/30 hover:shadow-md transition-all duration-200"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <strong className="text-sm">{user?.name}</strong>
-                    <button
-                      className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                      onClick={() => setNotaParaApagar(nota.id)}
-                      aria-label="Apagar anotação"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{formatarDataHora(nota.createdAt)}</span>
-                </div>
-                <div className="p-1 rounded-sm text-sm bg-background whitespace-pre-wrap break-words">{nota.text}</div>
-              </div>
-            ))}
-          </div>
+              {notas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma anotação ainda.</p>
+              ) : (
+                // Linha do tempo: ponto violeta por anotação, ligados por uma linha fina
+                <ol>
+                  {notas.map((nota, i) => (
+                    <li key={nota.id} className="group relative flex gap-3 pb-4 last:pb-0">
+                      <div className="relative flex w-2.5 shrink-0 justify-center">
+                        <span className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-leadnexi-violet ring-4 ring-card" />
+                        {i < notas.length - 1 && <span className="absolute bottom-0 top-3 w-px bg-border" aria-hidden="true" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                            {formatarDataHora(nota.createdAt)}
+                          </span>
+                          <button
+                            className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                            onClick={() => setNotaParaApagar(nota.id)}
+                            aria-label="Apagar anotação"
+                            title="Apagar anotação"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-foreground">{nota.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
         </section>
 
         <DeleteDialog
