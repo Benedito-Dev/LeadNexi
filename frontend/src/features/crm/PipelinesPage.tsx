@@ -326,22 +326,22 @@ export function PipelinesPage() {
         />
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Seus pipelines</CardTitle>
-            <p className="text-sm text-muted-foreground">
+          <CardHeader className="gap-1 pb-4">
+            <CardTitle className="m-0 text-base">Seus pipelines</CardTitle>
+            <p className="m-0 text-sm text-muted-foreground">
               Cada pipeline é um funil independente. As etapas viram as colunas do Kanban em CRM.
             </p>
           </CardHeader>
           <CardContent>
             {loadingPipelines && pipelines.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Carregando...</p>
+              <p className="m-0 text-sm text-muted-foreground">Carregando...</p>
             ) : pipelines.length === 0 ? (
               <div className="flex flex-col items-center py-10 text-center">
                 <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-3">
                   <Layers className="h-7 w-7 text-muted-foreground opacity-40" />
                 </div>
-                <h3 className="text-base font-semibold text-foreground mb-1">Nenhum pipeline criado</h3>
-                <p className="text-sm text-muted-foreground max-w-sm mb-4">
+                <h3 className="mt-0 mb-1 text-base font-semibold text-foreground">Nenhum pipeline criado</h3>
+                <p className="mt-0 mb-4 max-w-sm text-sm text-muted-foreground">
                   Crie o primeiro pipeline pra organizar seus leads. Sem pipeline, o CRM não tem colunas.
                 </p>
                 <Button onClick={() => abrirModalPipeline()}>
@@ -373,9 +373,9 @@ export function PipelinesPage() {
 
         {pipelineSelecionado && (
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 py-4">
               <div className="min-w-0">
-                <CardTitle className="text-base">{pipelineSelecionado.name}</CardTitle>
+                <CardTitle className="m-0 text-base">{pipelineSelecionado.name}</CardTitle>
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button variant="outline" size="sm" className={botaoSecundarioDoTopo} onClick={() => abrirModalPipeline(pipelineSelecionado)}>
@@ -396,8 +396,8 @@ export function PipelinesPage() {
             <CardContent className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Etapas</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="m-0 text-sm font-semibold text-foreground">Etapas</h3>
+                  <p className="m-0 text-sm text-muted-foreground">
                     {etapas.length} {etapas.length === 1 ? 'etapa' : 'etapas'} — viram as colunas do Kanban, na ordem
                     abaixo.
                   </p>
@@ -410,7 +410,7 @@ export function PipelinesPage() {
 
               {etapas.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">
+                  <p className="mt-0 mb-3 text-sm text-muted-foreground">
                     Este pipeline ainda não tem etapas — o CRM aparece vazio enquanto isso.
                   </p>
                   <Button variant="outline" onClick={criarEstruturaSugerida} disabled={salvando}>
@@ -421,7 +421,7 @@ export function PipelinesPage() {
               ) : (
                 <>
                   {etapas.length > 1 && (
-                    <p className="mb-2 text-xs text-muted-foreground">
+                    <p className="mt-0 mb-2 text-xs text-muted-foreground">
                       Arraste pela alça à esquerda para mudar a ordem das etapas no quadro. A ordem salva sozinha.
                     </p>
                   )}
