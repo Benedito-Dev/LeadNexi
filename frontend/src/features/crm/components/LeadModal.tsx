@@ -9,11 +9,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toE164BR } from '@/lib/phone'
+import { cn } from '@/lib/utils'
 import { addToast } from '@/lib/toast'
 import { adicionarNota, agendarContato, apagarLead, apagarNota, listarAtividades } from '../api'
-import { formatarDataHora } from '../datas'
-import type { Atividade, Lead } from '../types'
+import { formatarDataHora, situacaoDoContato } from '../datas'
+import { ICONE_DA_ETAPA } from '../etapas'
+import type { Atividade, Lead, StageType } from '../types'
+import { EtiquetaContato } from './EtiquetaContato'
 import { LeadForm } from './LeadForm'
+import { iconeDaOrigem } from '../origens'
 
 // Verde do WhatsApp com texto escuro por cima (contraste ~7,5:1 nos dois temas)
 const botaoWhatsApp =
@@ -22,6 +26,8 @@ const botaoWhatsApp =
 type LeadModalProps = {
   /** Lead aberto; `null` = ficha fechada. */
   lead: Lead | null
+  /** Etapa onde o lead está (nome, tipo e cor da coluna); `fechada` = Fechou/Perdido. */
+  etapa: { nome: string; tipo: StageType; cor: string; fechada: boolean } | null
   origens: string[]
   onFechar: () => void
   /** Resposta do servidor depois de editar: o quadro mescla no card (a contagem de anotações fica a do quadro). */
@@ -35,7 +41,7 @@ type LeadModalProps = {
  * Ficha do lead, portada do `EventModal` do Rizar: dados do lead (salvam ao sair do campo),
  * anotações e, no rodapé fixo, apagar, conversar no WhatsApp e fechar.
  */
-export function LeadModal({ lead, origens, onFechar, onLeadAtualizado, onNotasMudaram, onLeadApagado }: LeadModalProps) {
+export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, onNotasMudaram, onLeadApagado }: LeadModalProps) {
   const { user } = useAuth()
   const [notas, setNotas] = useState<Atividade[]>([])
   const [novaNota, setNovaNota] = useState<{ texto: string; contato: string } | null>(null)
@@ -110,9 +116,40 @@ export function LeadModal({ lead, origens, onFechar, onLeadAtualizado, onNotasMu
   }
 
   const telefoneWhatsApp = toE164BR(lead.phone)
+  const contato = etapa?.fechada ? null : situacaoDoContato(lead.followUpAt)
+  const origem = lead.source ? { nome: lead.source, ...iconeDaOrigem(lead.source) } : null
+  const IconeEtapa = etapa ? ICONE_DA_ETAPA[etapa.tipo] : null
+
+  // Abaixo do nome: onde o lead está, de onde veio e quando é o próximo contato
+  // Os três no mesmo formato (altura, cantos, fonte); cada um com a sua cor
+  const etiqueta = 'inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 py-0 text-xs font-semibold'
+  const resumo = (
+    <span className="mt-2 flex flex-wrap items-center gap-2 font-marca">
+      {etapa && IconeEtapa && (
+        <span
+          className={cn(etiqueta, 'text-foreground')}
+          style={{
+            backgroundColor: `color-mix(in srgb, ${etapa.cor} 15%, transparent)`,
+            borderColor: `color-mix(in srgb, ${etapa.cor} 45%, transparent)`,
+          }}
+          title="Etapa"
+        >
+          <IconeEtapa className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: etapa.cor }} aria-hidden />
+          {etapa.nome}
+        </span>
+      )}
+      {origem && (
+        <span className={cn(etiqueta, 'border-border bg-muted/50 text-foreground')} title="Origem">
+          <origem.Icone aria-hidden strokeWidth={1.75} className={cn('h-4 w-4 shrink-0', origem.cor)} />
+          {origem.nome}
+        </span>
+      )}
+      {contato && <EtiquetaContato contato={contato} comIcone className={etiqueta} />}
+    </span>
+  )
 
   return (
-    <MutaseDialog open onOpenChange={onFechar} title={lead.name} description="Gerenciar anotações do lead" size="lg" className="bg-card">
+    <MutaseDialog open onOpenChange={onFechar} title={lead.name} description={resumo} size="lg" className="bg-card [&_h2]:font-marca [&_h2]:text-xl [&_h2]:font-extrabold">
       <MutaseDialog.Body className="space-y-4">
         <div className="rounded-lg border border-border shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-primary/5 border-b border-border">

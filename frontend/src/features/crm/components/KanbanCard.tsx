@@ -6,6 +6,7 @@ import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
 import type { Lead } from '../types'
 import { DropIndicator } from './DropIndicator'
+import { EtiquetaContato } from './EtiquetaContato'
 import { OrigemIcone } from './OrigemIcone'
 import { situacaoDoContato } from '../datas'
 
@@ -18,15 +19,6 @@ type KanbanCardProps = {
   origensFiltradas: string[]
   onFiltrarOrigem: (origem: string) => void
   onClick: (lead: Lead) => void
-}
-
-// Fundo em tom claro, borda fina e texto na cor cheia: vermelho = atrasou, ciano = é hoje,
-// violeta = amanhã, neutro = mais pra frente
-const TOM_DO_CONTATO = {
-  atrasado: 'border-leadnexi-danger/40 bg-leadnexi-danger/10 text-leadnexi-danger',
-  hoje: 'border-leadnexi-cyan-texto/40 bg-leadnexi-cyan-texto/10 text-leadnexi-cyan-texto',
-  amanha: 'border-leadnexi-violet-texto/40 bg-leadnexi-violet-texto/10 text-leadnexi-violet-texto',
-  futuro: 'border-border bg-transparent text-muted-foreground',
 }
 
 /** Card do lead no quadro: arrastável, com indicador de onde vai cair. */
@@ -120,12 +112,7 @@ export const KanbanCard = memo(function KanbanCard({
               />
             )}
             {contato && (
-              <span
-                className={cn('shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums', TOM_DO_CONTATO[contato.tom])}
-                title="Próximo contato"
-              >
-                {contato.texto}
-              </span>
+              <EtiquetaContato contato={contato} className="text-[10px]" />
             )}
           </div>
         </div>

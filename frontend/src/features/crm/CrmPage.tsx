@@ -9,6 +9,7 @@ import { KanbanBoard } from './components/KanbanBoard'
 import { LeadModal } from './components/LeadModal'
 import { MotivoPerdaDialog } from './components/MotivoPerdaDialog'
 import { calcularPlacar, criarFiltro, criarOrdenacao, FILTROS_INICIAIS, type Filtros } from './filtros'
+import { corDaEtapa } from './etapas'
 import { escolherPipelineInicial, gravarPipelineLembrado, lerPipelineLembrado } from './pipelineLembrado'
 import type { DadosDaColuna, Lead, Opcao, Quadro } from './types'
 
@@ -216,6 +217,14 @@ export function CrmPage() {
     [quadro, leadAbertoId],
   )
 
+  const etapaDoLeadAberto = useMemo(() => {
+    const indice = quadro?.stages.findIndex((e) => e.leads.some((l) => l.id === leadAbertoId)) ?? -1
+    const etapa = indice >= 0 ? quadro!.stages[indice] : null
+    return etapa
+      ? { nome: etapa.name, tipo: etapa.stageType, cor: corDaEtapa(etapa, indice), fechada: etapa.stageType === 'WON' || etapa.stageType === 'LOST' }
+      : null
+  }, [quadro, leadAbertoId])
+
   /** Aplica uma mudança a um lead do quadro, onde quer que ele esteja. */
   const mudarLeadNoQuadro = useCallback((id: string, mudar: (lead: Lead) => Lead | null) => {
     setQuadro(
@@ -356,6 +365,7 @@ export function CrmPage() {
       <LeadModal
         key={leadAbertoId ?? 'fechada'}
         lead={leadAberto}
+        etapa={etapaDoLeadAberto}
         origens={origens.map((o) => o.value)}
         onFechar={() => setLeadAbertoId(null)}
         onLeadAtualizado={handleLeadAtualizado}

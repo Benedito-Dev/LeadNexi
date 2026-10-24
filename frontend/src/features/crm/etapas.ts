@@ -1,4 +1,6 @@
-import type { StageType } from './types'
+import type { ComponentType, CSSProperties } from 'react'
+import { CalendarCheck, CircleX, FileText, Layers, MessageSquareReply, Send, Trophy, UserPlus } from 'lucide-react'
+import type { Etapa, StageType } from './types'
 
 export const COR_PADRAO_ETAPA = '#3B82F6'
 
@@ -30,3 +32,24 @@ export const CORES_DE_ETAPA = [
   { cor: '#F87171', nome: 'Vermelho' },
   { cor: '#64748B', nome: 'Cinza' },
 ]
+
+/** Progressão do funil (BRAND.md, seção 8): violeta → azul → ciano; da 4ª etapa em diante, ciano. */
+const CORES_DO_FUNIL = ['#6D5DFB', '#5C8AF6', '#3DB3F1', '#22D3EE']
+
+/** Cor da etapa: a cadastrada, ou a da progressão do funil pela posição dela no quadro. */
+export const corDaEtapa = (etapa: Pick<Etapa, 'color'>, indice: number) =>
+  etapa.color || CORES_DO_FUNIL[Math.min(indice, CORES_DO_FUNIL.length - 1)]
+
+type IconeDeEtapa = ComponentType<{ className?: string; strokeWidth?: number; style?: CSSProperties; 'aria-hidden'?: boolean }>
+
+/** Ícone de cada tipo de etapa (o que acontece com o lead ali). */
+export const ICONE_DA_ETAPA: Record<StageType, IconeDeEtapa> = {
+  CONTACT: UserPlus,
+  SENT: Send,
+  RESPONDED: MessageSquareReply,
+  MEETING: CalendarCheck,
+  PROPOSAL: FileText,
+  WON: Trophy,
+  LOST: CircleX,
+  CUSTOM: Layers,
+}

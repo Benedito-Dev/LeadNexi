@@ -1,21 +1,6 @@
-import type { ComponentType } from 'react'
-import { FileSpreadsheet, Globe, MapPin, Tag, Users } from 'lucide-react'
-import { InstagramIcon, WhatsAppIcon } from '@/brand/icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-
-type Icone = ComponentType<{ className?: string; strokeWidth?: number; 'aria-hidden'?: boolean }>
-
-// Ícone por canal (do LeadNexi antigo). Cor só nos canais com marca própria: Instagram em
-// violeta e WhatsApp no verde do WhatsApp; o resto neutro. Origem livre cai em "Tag".
-const ICONES: Record<string, { Icone: Icone; cor: string }> = {
-  instagram: { Icone: InstagramIcon, cor: 'text-leadnexi-violet-texto' },
-  whatsapp: { Icone: WhatsAppIcon, cor: 'text-chat-wa-accent' },
-  site: { Icone: Globe, cor: 'text-muted-foreground' },
-  'google maps': { Icone: MapPin, cor: 'text-muted-foreground' },
-  indicação: { Icone: Users, cor: 'text-muted-foreground' },
-  planilha: { Icone: FileSpreadsheet, cor: 'text-muted-foreground' },
-}
+import { iconeDaOrigem } from '../origens'
 
 type OrigemIconeProps = {
   origem: string
@@ -30,7 +15,7 @@ type OrigemIconeProps = {
  * origem; clicar de novo tira o filtro.
  */
 export function OrigemIcone({ origem, filtrando, onFiltrar }: OrigemIconeProps) {
-  const { Icone, cor } = ICONES[origem.trim().toLowerCase()] ?? { Icone: Tag, cor: 'text-muted-foreground' }
+  const { Icone, cor } = iconeDaOrigem(origem)
   const acao = filtrando ? 'clique para mostrar todas' : `clique para ver só ${origem}`
   return (
     <Tooltip>

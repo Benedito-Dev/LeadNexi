@@ -5,6 +5,7 @@ import { Kanban, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { DadosDaColuna, Etapa, Lead } from '../types'
+import { corDaEtapa } from '../etapas'
 import { KanbanColumn } from './KanbanColumn'
 
 type KanbanBoardProps = {
@@ -23,9 +24,6 @@ type KanbanBoardProps = {
   pipelineSelecionado: boolean
   onConfigurarPipelines: () => void
 }
-
-/** Progressão do funil (BRAND.md, seção 8): violeta → azul → ciano; da 4ª etapa em diante, ciano. */
-const CORES_DO_FUNIL = ['#6D5DFB', '#5C8AF6', '#3DB3F1', '#22D3EE']
 
 /** Espaço livre abaixo do quadro (o padding inferior da página) e a altura mínima do quadro. */
 const RESPIRO_INFERIOR = 24
@@ -134,7 +132,7 @@ export function KanbanBoard({
         <KanbanColumn
           key={col.id}
           column={col}
-          cor={col.color || CORES_DO_FUNIL[Math.min(i, CORES_DO_FUNIL.length - 1)]}
+          cor={corDaEtapa(col, i)}
           columnData={columnsData[col.id]}
           onLoadMore={onLoadMore}
           onCardClick={onCardClick}

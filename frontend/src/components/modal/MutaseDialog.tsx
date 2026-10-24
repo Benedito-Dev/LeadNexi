@@ -14,7 +14,8 @@ type MutaseDialogProps = {
   open: boolean
   onOpenChange: (aberto: boolean) => void
   title?: string
-  description?: string
+  /** Texto (ou conteúdo, como etiquetas) logo abaixo do título. */
+  description?: ReactNode
   size?: keyof typeof SIZE_CLASSES
   className?: string
   children: ReactNode
