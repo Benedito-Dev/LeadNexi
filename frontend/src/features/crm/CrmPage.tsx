@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { addToast } from '@/lib/toast'
-import { buscarQuadro, listarPipelines, moverLead } from './api'
+import { atualizarEtapa, buscarQuadro, listarPipelines, moverLead } from './api'
 import { AddCardModal } from './components/AddCardModal'
 import { CrmHeader } from './components/CrmHeader'
 import { CrmFiltros } from './components/CrmFiltros'
@@ -208,6 +208,40 @@ export function CrmPage() {
   // A ficha do lead (anotações, dados) chega na próxima fase
   const handleCardClick = useCallback(() => {}, [])
 
+  // Nome e cor da etapa, mudados pelo menu da coluna: aparecem na hora e são gravados. O seletor
+  // livre de cor muda a cada movimento, então grava só quando ele para (e volta ao original se falhar).
+  const temporizadoresDaEtapa = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const originaisDaEtapa = useRef<Record<string, { name: string; color: string | null }>>({})
+
+  const alterarEtapa = useCallback((id: string, mudanca: { name?: string; color?: string }, adiar = false) => {
+    const atual = quadroRef.current?.stages.find((e) => e.id === id)
+    if (!atual) return
+    originaisDaEtapa.current[id] ??= { name: atual.name, color: atual.color }
+    const aplicar = (campos: { name?: string; color?: string | null }) =>
+      setQuadro((prev) => prev && { ...prev, stages: prev.stages.map((e) => (e.id === id ? { ...e, ...campos } : e)) })
+    aplicar(mudanca)
+
+    const gravar = async () => {
+      try {
+        await atualizarEtapa(id, mudanca)
+      } catch (erro) {
+        aplicar(originaisDaEtapa.current[id])
+        addToast('error', 'Erro', (erro as Error).message || 'Não foi possível alterar a etapa.')
+      } finally {
+        delete originaisDaEtapa.current[id]
+      }
+    }
+    clearTimeout(temporizadoresDaEtapa.current[id])
+    if (adiar) temporizadoresDaEtapa.current[id] = setTimeout(gravar, 400)
+    else void gravar()
+  }, [])
+
+  const handleRenomearEtapa = useCallback((id: string, nome: string) => alterarEtapa(id, { name: nome }), [alterarEtapa])
+  const handleTrocarCorEtapa = useCallback(
+    (id: string, cor: string, adiar?: boolean) => alterarEtapa(id, { color: cor }, adiar),
+    [alterarEtapa],
+  )
+
   const visiveisNoQuadro = Object.values(columnsData).reduce((acc, col) => acc + col.results.length, 0)
   const etapas = quadro?.stages ?? []
   const irParaPipelines = () =>
@@ -244,6 +278,8 @@ export function CrmPage() {
         onCardClick={handleCardClick}
         onMoveCard={handleMoveCard}
         onAddProspect={handleAddProspect}
+        onRenomearEtapa={handleRenomearEtapa}
+        onTrocarCorEtapa={handleTrocarCorEtapa}
         isLoading={isLoadingBoard}
         temPipelines={pipelines.length > 0}
         pipelineSelecionado={!!pipelineSelecionado}

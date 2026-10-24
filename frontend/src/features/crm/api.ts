@@ -34,7 +34,7 @@ export type DadosEtapa = { name: string; color: string; stageType: StageType }
 export const criarEtapa = (pipelineId: string, dados: DadosEtapa) =>
   api<Etapa>(`/pipelines/${pipelineId}/stages`, { method: 'POST', body: corpo(dados) })
 
-export const atualizarEtapa = (id: string, dados: DadosEtapa) =>
+export const atualizarEtapa = (id: string, dados: Partial<DadosEtapa>) =>
   api<Etapa>(`/stages/${id}`, { method: 'PATCH', body: corpo(dados) })
 
 export const excluirEtapa = (id: string) => api<void>(`/stages/${id}`, { method: 'DELETE' })

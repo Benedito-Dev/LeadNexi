@@ -13,11 +13,16 @@ type KanbanBoardProps = {
   onCardClick: (lead: Lead) => void
   onMoveCard: (cardId: string, sourceColumnId: string, destColumnId: string) => void
   onAddProspect: (columnId: string) => void
+  onRenomearEtapa: (columnId: string, nome: string) => void
+  onTrocarCorEtapa: (columnId: string, cor: string, adiar?: boolean) => void
   isLoading: boolean
   temPipelines: boolean
   pipelineSelecionado: boolean
   onConfigurarPipelines: () => void
 }
+
+/** Progressão do funil (BRAND.md, seção 8): violeta → azul → ciano; da 4ª etapa em diante, ciano. */
+const CORES_DO_FUNIL = ['#6D5DFB', '#5C8AF6', '#3DB3F1', '#22D3EE']
 
 /** Colunas lado a lado com rolagem horizontal; um monitor central recebe todos os soltar. */
 export function KanbanBoard({
@@ -27,6 +32,8 @@ export function KanbanBoard({
   onCardClick,
   onMoveCard,
   onAddProspect,
+  onRenomearEtapa,
+  onTrocarCorEtapa,
   isLoading,
   temPipelines,
   pipelineSelecionado,
@@ -87,14 +94,17 @@ export function KanbanBoard({
 
   return (
     <div ref={boardRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none min-h-[60vh]">
-      {columns.map((col) => (
+      {columns.map((col, i) => (
         <KanbanColumn
           key={col.id}
           column={col}
+          cor={col.color || CORES_DO_FUNIL[Math.min(i, CORES_DO_FUNIL.length - 1)]}
           columnData={columnsData[col.id]}
           onLoadMore={onLoadMore}
           onCardClick={onCardClick}
           onAddProspect={onAddProspect}
+          onRenomearEtapa={onRenomearEtapa}
+          onTrocarCorEtapa={onTrocarCorEtapa}
           isLoading={isLoading}
         />
       ))}

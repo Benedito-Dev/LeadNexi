@@ -10,10 +10,14 @@ import { KanbanColumnSkeleton } from './KanbanColumnSkeleton'
 
 type KanbanColumnProps = {
   column: Etapa
+  /** Cor da etapa (a cadastrada, ou a da progressão do funil). */
+  cor: string
   columnData: DadosDaColuna | undefined
   onLoadMore: (columnId: string) => void
   onCardClick: (lead: Lead) => void
   onAddProspect: (columnId: string) => void
+  onRenomearEtapa: (columnId: string, nome: string) => void
+  onTrocarCorEtapa: (columnId: string, cor: string, adiar?: boolean) => void
   isLoading: boolean
 }
 
@@ -23,10 +27,13 @@ type KanbanColumnProps = {
  */
 export const KanbanColumn = memo(function KanbanColumn({
   column,
+  cor,
   columnData,
   onLoadMore,
   onCardClick,
   onAddProspect,
+  onRenomearEtapa,
+  onTrocarCorEtapa,
   isLoading,
 }: KanbanColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null)
@@ -73,6 +80,11 @@ export const KanbanColumn = memo(function KanbanColumn({
   }, [])
 
   const handleAddProspect = useCallback(() => onAddProspect(column.id), [column.id, onAddProspect])
+  const handleRenomear = useCallback((nome: string) => onRenomearEtapa(column.id, nome), [column.id, onRenomearEtapa])
+  const handleTrocarCor = useCallback(
+    (cor: string, adiar?: boolean) => onTrocarCorEtapa(column.id, cor, adiar),
+    [column.id, onTrocarCorEtapa],
+  )
 
   return (
     <div
@@ -85,7 +97,14 @@ export const KanbanColumn = memo(function KanbanColumn({
         isOver && ['border-primary/40 ring-2 ring-primary/15', 'animate-column-drop-glow'],
       )}
     >
-      <KanbanColumnHeader title={column.name} count={todos.length} onAddProspect={handleAddProspect} />
+      <KanbanColumnHeader
+        title={column.name}
+        count={todos.length}
+        cor={cor}
+        onAddProspect={handleAddProspect}
+        onRenomear={handleRenomear}
+        onTrocarCor={handleTrocarCor}
+      />
 
       <div
         ref={scrollRef}

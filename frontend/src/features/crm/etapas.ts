@@ -18,3 +18,15 @@ export const OPCOES_TIPO_ETAPA = (Object.keys(ROTULO_TIPO_ETAPA) as StageType[])
   value: valor,
   label: ROTULO_TIPO_ETAPA[valor],
 }))
+
+/** Cores oferecidas para a etapa: a progressão do funil e os estados da marca (BRAND.md, seção 4). */
+export const CORES_DE_ETAPA = [
+  { cor: '#6D5DFB', nome: 'Violeta' },
+  { cor: '#5C8AF6', nome: 'Azul' },
+  { cor: '#3DB3F1', nome: 'Céu' },
+  { cor: '#22D3EE', nome: 'Ciano' },
+  { cor: '#34D399', nome: 'Verde' },
+  { cor: '#FBBF24', nome: 'Amarelo' },
+  { cor: '#F87171', nome: 'Vermelho' },
+  { cor: '#64748B', nome: 'Cinza' },
+]
