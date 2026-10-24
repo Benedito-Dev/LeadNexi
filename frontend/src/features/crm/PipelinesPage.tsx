@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { barraDeSegmentos, segmento } from '@/components/ui/segmentos'
+import { cn } from '@/lib/utils'
 import { addToast } from '@/lib/toast'
 import {
   atualizarEtapa,
@@ -348,7 +350,8 @@ export function PipelinesPage() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2" role="tablist">
+              <div className={cn(barraDeSegmentos, 'gap-1 p-1 font-marca')} role="tablist" aria-label="Pipelines">
+                {/* Mais respiro que no quadro: aqui as opções são nomes de pipeline, não atalhos curtos */}
                 {pipelines.map((pipeline) => {
                   const selecionado = pipelineSelecionado?.id === pipeline.id
                   return (
@@ -357,11 +360,7 @@ export function PipelinesPage() {
                       role="tab"
                       aria-selected={selecionado}
                       onClick={() => selecionarPipeline(pipeline)}
-                      className={`px-4 py-2 text-sm rounded-lg border transition-all ${
-                        selecionado
-                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                          : 'bg-background text-muted-foreground border-border hover:bg-accent hover:text-foreground'
-                      }`}
+                      className={cn(segmento(selecionado), 'h-9 px-4')}
                     >
                       {pipeline.name}
                     </button>

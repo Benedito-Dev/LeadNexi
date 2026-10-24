@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { barraDeSegmentos, segmento } from '@/components/ui/segmentos'
 import { cn } from '@/lib/utils'
 import { OPCOES_ORDENACAO, temFiltroAtivo, type FiltroContato, type Filtros } from '../filtros'
 import type { Opcao } from '../types'
@@ -39,12 +40,6 @@ const ATALHOS: { valor: FiltroContato; rotulo: string }[] = [
 /** Os quatro campos da primeira linha têm o mesmo formato, para a linha ler como uma coisa só. */
 const campo =
   'flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3.5 text-left text-sm font-semibold text-foreground transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan/60 data-[state=open]:border-foreground/25'
-
-const segmento = (ativo: boolean) =>
-  cn(
-    'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan/60',
-    ativo ? 'bg-leadnexi-violet-600 text-leadnexi-on-accent shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-  )
 
 const formatarDia = (d: string) => {
   const [, mes, dia] = d.split('-')
@@ -220,7 +215,7 @@ export function CrmFiltros({
           <div
             role="group"
             aria-label="Próximo contato"
-            className="inline-flex flex-wrap items-center gap-0.5 rounded-lg border border-input bg-background p-0.5"
+            className={barraDeSegmentos}
           >
             {ATALHOS.map(({ valor, rotulo }) => (
               <button
