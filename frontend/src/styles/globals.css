@@ -326,6 +326,9 @@
     --sidebar-item-hover:    212 57% 24%;
     --sidebar-item-active:   212 57% 28%;
     --sidebar-border-color:  212 40% 22%;
+    /* Destaque da sidebar (item ativo, avatar): violeta da marca LeadNexi #6D5DFB no lugar do coral */
+    --sidebar-highlight:            246 95% 67%;
+    --sidebar-highlight-foreground: 210 40% 98%;
 
     /* ================================================================
        ALIASES — Compatibilidade shadcn/ui + 110+ views existentes.
@@ -474,6 +477,8 @@
     --sidebar-item-hover:    216 45% 14%;
     --sidebar-item-active:   216 45% 18%;
     --sidebar-border-color:  216 40% 20%;
+    --sidebar-highlight:            246 95% 67%;
+    --sidebar-highlight-foreground: 210 40% 98%;
 
     /* ================================================================
        ALIASES DUPLICADOS no .dark — CRITICO.

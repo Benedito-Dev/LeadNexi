@@ -59,6 +59,8 @@ module.exports = {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
           border: "hsl(var(--sidebar-border) / <alpha-value>)",
           ring: "hsl(var(--sidebar-ring) / <alpha-value>)",
+          highlight: "hsl(var(--sidebar-highlight) / <alpha-value>)",
+          "highlight-foreground": "hsl(var(--sidebar-highlight-foreground) / <alpha-value>)",
         },
         chart: {
           1: "hsl(var(--chart-1) / <alpha-value>)",

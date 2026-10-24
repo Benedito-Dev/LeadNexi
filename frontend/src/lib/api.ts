@@ -18,7 +18,7 @@ export class ErroDeApi extends Error {
 
 let accessToken: string | null = null
 let aoPerderSessao: (() => void) | null = null
-let renovando: Promise<boolean> | null = null
+let renovando: Promise<Sessao | null> | null = null
 
 export function definirAccessToken(token: string | null) {
   accessToken = token
@@ -33,16 +33,20 @@ export type Sessao = { accessToken: string; user: { id: string; email: string; n
 
 /** Troca o cookie de refresh por um access token novo. Chamadas simultâneas dividem a mesma troca. */
 export function renovarSessao(): Promise<Sessao | null> {
-  const troca = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' }).then(async (res) => {
-    if (!res.ok) return null
-    const sessao = (await res.json()) as Sessao
-    accessToken = sessao.accessToken
-    return sessao
-  })
-  renovando = troca.then(Boolean)
-  return troca.finally(() => {
-    renovando = null
-  })
+  // Duas trocas ao mesmo tempo mandariam o mesmo refresh duas vezes, e o servidor trata refresh
+  // reapresentado como roubo (encerra a sessão). Ex.: o StrictMode roda o efeito de início duas vezes.
+  if (renovando) return renovando
+  renovando = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+    .then(async (res) => {
+      if (!res.ok) return null
+      const sessao = (await res.json()) as Sessao
+      accessToken = sessao.accessToken
+      return sessao
+    })
+    .finally(() => {
+      renovando = null
+    })
+  return renovando
 }
 
 async function mensagemDoErro(res: Response) {
@@ -69,8 +73,8 @@ async function chamar(caminho: string, init: RequestInit, jaRenovou = false): Pr
   }
 
   if (res.status === 401 && !jaRenovou) {
-    const ok = await (renovando ?? renovarSessao().then(Boolean))
-    if (ok) return chamar(caminho, init, true)
+    const sessao = await renovarSessao().catch(() => null)
+    if (sessao) return chamar(caminho, init, true)
     accessToken = null
     aoPerderSessao?.()
   }

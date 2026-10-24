@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { ChevronDown, Kanban, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, Users } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/contexto'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ type ItemDeMenu = {
 const MENU: ItemDeMenu[] = [
   {
     title: 'CRM',
-    icon: Kanban,
+    icon: Users,
     children: [
       { title: 'Leads', to: '/crm' },
       { title: 'Pipelines', to: '/crm/pipelines' },
@@ -32,7 +32,7 @@ function ActiveBar() {
   return (
     <span
       aria-hidden="true"
-      className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand-accent"
+      className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-sidebar-highlight"
     />
   )
 }
@@ -62,7 +62,7 @@ function NavDropdown({
       )}
     >
       {hasActive && <ActiveBar />}
-      <Icon className={cn('h-5 w-5 shrink-0', hasActive ? 'text-brand-accent' : 'text-[hsl(var(--sidebar-foreground))]')} />
+      <Icon className={cn('h-5 w-5 shrink-0', hasActive ? 'text-sidebar-highlight' : 'text-[hsl(var(--sidebar-foreground))]')} />
       {!collapsed && (
         <>
           <span className="flex-1 text-left truncate">{item.title}</span>
@@ -123,7 +123,7 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
             type="button"
             onClick={() => irPara('/crm')}
             aria-label="Ir para o início"
-            className="flex items-center justify-center rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+            className="flex items-center justify-center rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-highlight"
           >
             {collapsed ? (
               <img src="/brand/symbol-on-dark.svg" alt="LeadNexi" className="h-8 w-8" />
@@ -143,7 +143,7 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
 
         <div className="border-t border-[hsl(var(--sidebar-border))] px-3 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-accent text-xs font-semibold text-brand-accent-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-highlight text-xs font-semibold text-sidebar-highlight-foreground">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             {!collapsed && (
