@@ -151,35 +151,30 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
   return (
     <MutaseDialog open onOpenChange={onFechar} title={lead.name} description={resumo} size="lg" className="bg-card [&_h2]:font-marca [&_h2]:text-xl [&_h2]:font-extrabold">
       <MutaseDialog.Body className="space-y-4">
-        <div className="rounded-lg border border-border shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-primary/5 border-b border-border">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Dados do lead
-            </h4>
+        {/* Blocos sem caixa: título simples com uma linha fina embaixo, no lugar da faixa cinza */}
+        <section>
+          <div className="mb-3 border-b border-border pb-2">
+            <h4 className="font-marca text-base font-bold text-foreground">Dados do lead</h4>
           </div>
-          <div className="p-4">
-            {/* key: a ficha de outro lead começa com os campos dele, não com os do anterior */}
-            <LeadForm key={lead.id} lead={lead} origens={origens} onLeadAtualizado={onLeadAtualizado} />
-          </div>
-        </div>
+          {/* key: a ficha de outro lead começa com os campos dele, não com os do anterior */}
+          <LeadForm key={lead.id} lead={lead} origens={origens} onLeadAtualizado={onLeadAtualizado} />
+        </section>
 
-        <div className="rounded-lg border border-border shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-primary/5 border-b border-border flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Anotações
-              <span className="text-xs font-normal text-muted-foreground">({notas.length})</span>
+        <section>
+          <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+            <h4 className="font-marca text-base font-bold text-foreground">
+              Anotações <span className="text-sm font-semibold text-muted-foreground">({notas.length})</span>
             </h4>
             <button
               onClick={() => setNovaNota((atual) => (atual ? null : { texto: '', contato: '' }))}
-              className="h-6 w-6 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-colors"
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-leadnexi-violet-600 text-leadnexi-on-accent transition-colors hover:bg-leadnexi-violet-600/90"
               aria-label="Adicionar anotação"
+              title="Adicionar anotação"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
             </button>
           </div>
-          <div className="p-4 space-y-3">
+          <div className="space-y-3">
             {novaNota && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
@@ -233,7 +228,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
         <DeleteDialog
           open={!!notaParaApagar}
