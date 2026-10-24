@@ -80,7 +80,8 @@ export function BotaoWhatsApp({ lead, mensagem, className, onEnviado }: BotaoWha
         aria-label={`Abrir WhatsApp para ${lead.name}`}
         title="Abrir no WhatsApp com mensagem pronta"
         className={cn(
-          'inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-chat-wa-accent px-4 text-sm font-semibold text-chat-wa-accent-foreground transition-colors hover:bg-chat-wa-accent/90 disabled:cursor-wait disabled:opacity-60',
+          'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-chat-wa-accent text-sm font-semibold text-chat-wa-accent-foreground transition-colors hover:bg-chat-wa-accent/90 disabled:cursor-wait disabled:opacity-60',
+          'h-11 px-4',
           className,
         )}
       >
