@@ -126,7 +126,7 @@ export function KanbanBoard({
     <div
       ref={boardRef}
       style={altura ? { height: altura } : undefined}
-      className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none"
+      className="no-scrollbar flex gap-4 overflow-x-auto pb-1 snap-x snap-mandatory md:snap-none"
     >
       {columns.map((col, i) => (
         <KanbanColumn
