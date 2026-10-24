@@ -24,7 +24,7 @@ import { CreateLeadDto } from './dto/create-lead.dto.js';
 import { ImportLeadsDto } from './dto/import-leads.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
-import { RecordWhatsAppDto, RecordWhatsAppResponseDto } from './dto/record-whatsapp.dto.js';
+import { RecordConversationDto, RecordWhatsAppDto, RecordWhatsAppResponseDto } from './dto/record-whatsapp.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import {
   LeadWithStageEntity,
@@ -134,6 +134,17 @@ export class LeadsController {
     @Body() dto: RecordWhatsAppResponseDto,
   ) {
     return this.leadsService.recordWhatsAppResponse(id, dto);
+  }
+
+  @Post(':id/whatsapp/conversation')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Registra a sua resposta numa conversa e o que ficou combinado' })
+  @ApiOkResponse({ type: LeadWithStageEntity })
+  recordConversation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordConversationDto,
+  ) {
+    return this.leadsService.recordConversation(id, dto);
   }
 
   @Delete(':id')

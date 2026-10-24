@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { WhatsAppIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
@@ -6,14 +6,14 @@ import { cn } from '@/lib/utils'
 import { registrarWhatsAppEnviado } from '../api'
 import { linkDoWhatsApp, mensagemPadrao } from '../textos'
 import type { LeadDoPainel } from '../tipos'
+import { useAbrirWhatsApp } from '../useAbrirWhatsApp'
 
 type BotaoWhatsAppProps = {
   lead: LeadDoPainel
   mensagem?: string
   className?: string
-  /** Texto e ícone do botão (padrão: "Abrir no WhatsApp" com o ícone do WhatsApp). */
+  /** Texto do botão (padrão: "Abrir no WhatsApp"). */
   rotulo?: string
-  icone?: ReactNode
   /** O envio foi confirmado e registrado (a cadência do lead andou). */
   onEnviado: () => void
 }
@@ -22,25 +22,11 @@ type BotaoWhatsAppProps = {
  * Abre o WhatsApp com a mensagem pronta (do LeadNexi antigo). O envio é manual no WhatsApp; ao
  * voltar para a aba, a pessoa confirma e o envio é registrado.
  */
-export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no WhatsApp', icone, onEnviado }: BotaoWhatsAppProps) {
-  const [confirmando, setConfirmando] = useState(false)
-  const [abrindo, setAbrindo] = useState(false)
+export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no WhatsApp', onEnviado }: BotaoWhatsAppProps) {
+  const { abrindo, voltou: confirmando, setVoltou: setConfirmando, abrir: abrirLink } = useAbrirWhatsApp()
   const [registrando, setRegistrando] = useState(false)
   const [erro, setErro] = useState(false)
   const [enviada, setEnviada] = useState('')
-  const abertoEm = useRef<number | null>(null)
-
-  // Voltou para a aba depois de abrir o WhatsApp: pergunta se enviou
-  useEffect(() => {
-    const aoVoltar = () => {
-      if (abertoEm.current === null || Date.now() - abertoEm.current < 500) return
-      abertoEm.current = null
-      setAbrindo(false)
-      setConfirmando(true)
-    }
-    window.addEventListener('focus', aoVoltar)
-    return () => window.removeEventListener('focus', aoVoltar)
-  }, [])
 
   const texto = mensagem ?? mensagemPadrao(lead.name)
   const link = lead.phone ? linkDoWhatsApp(lead.phone, texto) : null
@@ -48,13 +34,7 @@ export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no Wh
 
   const abrir = () => {
     setEnviada(texto)
-    abertoEm.current = Date.now()
-    setAbrindo(true)
-    if (!window.open(link, '_blank', 'noopener,noreferrer')) {
-      abertoEm.current = null
-      setAbrindo(false)
-      setConfirmando(true)
-    }
+    abrirLink(link)
   }
 
   const confirmar = async () => {
@@ -88,7 +68,7 @@ export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no Wh
           className,
         )}
       >
-        {icone ?? <WhatsAppIcon aria-hidden size={18} />}
+        <WhatsAppIcon aria-hidden size={18} />
         {abrindo ? 'Abrindo…' : rotulo}
       </button>
 

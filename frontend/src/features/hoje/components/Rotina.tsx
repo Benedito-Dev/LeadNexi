@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CalendarDays, Clock3, Flame, MessageCircle, Play, RefreshCw, Send, Target, Zap } from 'lucide-react'
+import { Clock3, Flame, Play, Target, Video, Zap } from 'lucide-react'
+import { WhatsAppIcon } from '@/brand/icons'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { iconeDaOrigem } from '../../crm/origens'
@@ -8,22 +9,29 @@ import { formatarDecorrido, formatarDiaEHora } from '../textos'
 import type { LeadDoPainel, PainelDeHoje } from '../tipos'
 import { useConcluirMissao } from '../useConcluirMissao'
 import { useFilaEmFoco } from '../useFilaEmFoco'
+import { BotaoConversa } from './BotaoConversa'
 import { BotaoWhatsApp } from './BotaoWhatsApp'
 import { MissaoEmFoco } from './MissaoEmFoco'
-import { CirculoConcluir, FilaVazia, type AcoesDaMissao } from './pecas'
+import { CirculoConcluir, EtiquetaDaEtapa, FilaVazia, type AcoesDaMissao } from './pecas'
 
 /** Minutos estimados por tipo de ação (para o "cerca de X min" e cada linha). */
 const MINUTOS: Record<TipoMissao, number> = { response: 3, 'follow-up': 5, new: 5, meeting: 0 }
+
+/** Abre uma reunião nova no Google Meet (o lead ainda não guarda o link da reunião). */
+const MEET_NOVA = 'https://meet.google.com/new'
 
 /** Quantas ações a lista mostra antes do "ver mais". */
 const NA_LISTA = 5
 
 const botaoDeAcao =
-  'inline-flex h-10 w-[188px] shrink-0 items-center justify-center gap-2 rounded-full border border-leadnexi-violet/60 bg-transparent px-4 text-sm font-bold text-leadnexi-violet-texto transition-colors hover:bg-leadnexi-violet/10'
+  'inline-flex h-10 w-[148px] shrink-0 items-center justify-center gap-2 rounded-full border border-leadnexi-violet/60 bg-transparent px-4 text-sm font-bold text-leadnexi-violet-texto transition-colors hover:bg-leadnexi-violet/10'
 
 /** O que fazer com o lead e o detalhe que ajuda a decidir, por tipo de missão. */
 function descreverMissao(lead: LeadDoPainel, tipo: TipoMissao) {
-  if (tipo === 'response') return { acao: 'Responder ao lead', detalhe: `Respondeu há ${formatarDecorrido(lead.updatedAt)}` }
+  if (tipo === 'response')
+    return lead.followUpAt
+      ? { acao: 'Retomar conversa', detalhe: `Retorno combinado · último contato há ${formatarDecorrido(lead.updatedAt)}` }
+      : { acao: 'Respondeu você', detalhe: `Respondeu há ${formatarDecorrido(lead.updatedAt)}` }
   if (tipo === 'follow-up')
     return {
       acao: lead.cadenceStep === 2 ? 'Último follow-up' : 'Fazer follow-up',
@@ -121,7 +129,14 @@ export function RotinaDoDia({ painel, fila, coresDasEtapas, onAbrir, onMudou }: 
           </div>
           <ol className="m-0 flex flex-col gap-2 p-0">
             {lista.map((missao, i) => (
-              <LinhaDaRotina key={`${missao.tipo}-${missao.lead.id}`} numero={i + 1} missao={missao} onAbrir={onAbrir} onMudou={onMudou} />
+              <LinhaDaRotina
+                key={`${missao.tipo}-${missao.lead.id}`}
+                numero={i + 1}
+                missao={missao}
+                corDaEtapa={coresDasEtapas[missao.lead.stage.id] ?? '#5C8AF6'}
+                onAbrir={onAbrir}
+                onMudou={onMudou}
+              />
             ))}
           </ol>
           {f.todas.length > NA_LISTA && (
@@ -177,7 +192,7 @@ export function RotinaDoDia({ painel, fila, coresDasEtapas, onAbrir, onMudou }: 
   )
 }
 
-function LinhaDaRotina({ numero, missao, onAbrir, onMudou }: { numero: number; missao: Missao } & AcoesDaMissao) {
+function LinhaDaRotina({ numero, missao, corDaEtapa, onAbrir, onMudou }: { numero: number; missao: Missao; corDaEtapa: string } & AcoesDaMissao) {
   const { tipo, lead } = missao
   const { acao, detalhe } = descreverMissao(lead, tipo)
   const mensagem = mensagemSugerida(lead, tipo)
@@ -208,32 +223,19 @@ function LinhaDaRotina({ numero, missao, onAbrir, onMudou }: { numero: number; m
         )}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-3">
-        {tipo === 'new' || tipo === 'follow-up' ? (
-          <BotaoWhatsApp
-            lead={lead}
-            mensagem={mensagem}
-            rotulo={tipo === 'new' ? 'Enviar mensagem' : 'Fazer follow-up'}
-            icone={
-              tipo === 'new' ? (
-                <Send aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-              ) : (
-                <RefreshCw aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-              )
-            }
-            className={botaoDeAcao}
-            onEnviado={marcarFeita}
-          />
+        <EtiquetaDaEtapa lead={lead} cor={corDaEtapa} className="w-40 justify-center" />
+        {/* Só dois caminhos: reunião (tarefa ou coluna) vai para o Meet; o resto, para o WhatsApp */}
+        {tipo === 'meeting' || lead.stage.stageType === 'MEETING' ? (
+          <a href={MEET_NOVA} target="_blank" rel="noopener noreferrer" className={botaoDeAcao}>
+            <Video aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+            Meet
+          </a>
+        ) : tipo === 'response' ? (
+          <BotaoConversa lead={lead} rotulo="WhatsApp" icone={<WhatsAppIcon aria-hidden size={16} />} className={botaoDeAcao} onRegistrada={marcarFeita} />
         ) : (
-          <button type="button" onClick={() => onAbrir(lead)} className={botaoDeAcao}>
-            {tipo === 'response' ? (
-              <MessageCircle aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-            ) : (
-              <CalendarDays aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-            )}
-            {tipo === 'response' ? 'Responder' : 'Abrir'}
-          </button>
+          <BotaoWhatsApp lead={lead} mensagem={mensagem} rotulo="WhatsApp" className={botaoDeAcao} onEnviado={marcarFeita} />
         )}
-        {/* Responder e reunião não se marcam aqui: a vaga fica, para os círculos alinharem */}
+        {/* Conversa e reunião não se marcam pelo círculo: a vaga fica, para os círculos alinharem */}
         <span className="flex w-12 justify-center">
           {podeMarcar && <CirculoConcluir lead={lead} tipo={tipo} feita={feita} ocupado={ocupado} onConcluir={() => void concluir(mensagem)} />}
         </span>

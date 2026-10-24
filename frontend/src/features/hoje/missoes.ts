@@ -6,7 +6,7 @@ export type Missao = { tipo: TipoMissao; lead: LeadDoPainel }
 
 // Cada tipo de missão tem um tom; destaque por cor sólida, sem brilho.
 export const TIPOS: Record<TipoMissao, { titulo: string; ponto: string; faixa: string }> = {
-  response: { titulo: 'Responder primeiro', ponto: 'bg-leadnexi-cyan', faixa: 'border-t-leadnexi-cyan' },
+  response: { titulo: 'Sua vez', ponto: 'bg-leadnexi-cyan', faixa: 'border-t-leadnexi-cyan' },
   'follow-up': { titulo: 'Follow-ups', ponto: 'bg-warn-foreground', faixa: 'border-t-warn-foreground' },
   new: { titulo: 'Novas lojas', ponto: 'bg-leadnexi-violet', faixa: 'border-t-leadnexi-violet' },
   meeting: { titulo: 'Compromissos', ponto: 'bg-muted-foreground', faixa: 'border-t-muted-foreground' },
@@ -61,7 +61,9 @@ export function contextoDaMissao(lead: LeadDoPainel, tipo: TipoMissao): { texto:
   const atrasado = tipo === 'follow-up' && lead.followUpAt !== null && new Date(lead.followUpAt) < inicioDeHoje()
   const texto =
     tipo === 'response'
-      ? `Respondeu há ${formatarDecorrido(lead.updatedAt)}`
+      ? lead.followUpAt
+        ? 'Retomar conversa · retorno combinado'
+        : `Respondeu há ${formatarDecorrido(lead.updatedAt)}`
       : tipo === 'follow-up'
         ? `${lead.cadenceStep === 2 ? 'Follow-up final' : 'Follow-up 1'} · ${atrasado && lead.followUpAt ? `venceu há ${formatarDecorrido(lead.followUpAt)}` : 'hoje'}`
         : tipo === 'meeting'

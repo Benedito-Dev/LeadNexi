@@ -68,7 +68,12 @@ export class LeadActivitiesService {
           take: FOLLOW_UPS_LIMIT,
         }),
         this.prisma.lead.findMany({
-          where: { ...active, stage: { stageType: 'RESPONDED' } },
+          // Sua vez: o lead respondeu e você ainda não, ou o retorno combinado chegou
+          where: {
+            ...active,
+            stage: { stageType: 'RESPONDED' },
+            OR: [{ followUpAt: null }, { followUpAt: { lte: endToday } }],
+          },
           include,
           orderBy: { updatedAt: 'asc' },
           take: 50,

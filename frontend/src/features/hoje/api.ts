@@ -9,3 +9,10 @@ export const concluirContato = (id: string) => api<LeadDoPainel>(`/leads/${id}/f
 /** Registra a mensagem enviada pelo WhatsApp: avança a cadência do lead. */
 export const registrarWhatsAppEnviado = (id: string, message: string) =>
   api<LeadDoPainel>(`/leads/${id}/whatsapp/sent`, { method: 'POST', body: corpo({ message }) })
+
+/** Como ficou a conversa depois da sua resposta. */
+export type ComoFicou = 'waiting' | 'later' | 'meeting' | 'won' | 'lost'
+
+/** Registra a sua resposta numa conversa e o combinado (retorno, reunião, fechou, sem interesse). */
+export const registrarConversa = (id: string, outcome: ComoFicou, at?: string) =>
+  api<LeadDoPainel>(`/leads/${id}/whatsapp/conversation`, { method: 'POST', body: corpo({ outcome, at }) })

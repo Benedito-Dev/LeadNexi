@@ -4,9 +4,31 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from '@/lib/utils'
 import { addToast } from '@/lib/toast'
 import { agendarContato } from '../../crm/api'
+import { ICONE_DA_ETAPA } from '../../crm/etapas'
 import { type TipoMissao } from '../missoes'
 import { formatarDiaEHora } from '../textos'
 import type { LeadDoPainel } from '../tipos'
+
+// Mesmo formato das etiquetas do topo da ficha do lead
+export const etiqueta = 'inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold'
+
+/** Etapa do lead (a coluna do quadro), com a cor e o ícone da coluna. */
+export function EtiquetaDaEtapa({ lead, cor, className }: { lead: LeadDoPainel; cor: string; className?: string }) {
+  const Icone = ICONE_DA_ETAPA[lead.stage.stageType]
+  return (
+    <span
+      className={cn(etiqueta, 'text-foreground', className)}
+      style={{
+        backgroundColor: `color-mix(in srgb, ${cor} 15%, transparent)`,
+        borderColor: `color-mix(in srgb, ${cor} 45%, transparent)`,
+      }}
+      title="Etapa"
+    >
+      <Icone className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: cor }} aria-hidden />
+      <span className="truncate">{lead.stage.name}</span>
+    </span>
+  )
+}
 
 export type AcoesDaMissao = { onAbrir: (lead: LeadDoPainel) => void; onMudou: () => void }
 

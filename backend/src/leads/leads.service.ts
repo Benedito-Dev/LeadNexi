@@ -13,7 +13,12 @@ import { StorageService } from '../storage/storage.service.js';
 import { CreateLeadDto } from './dto/create-lead.dto.js';
 import { MoveLeadDto } from './dto/move-lead.dto.js';
 import { QueryLeadsDto } from './dto/query-leads.dto.js';
-import { RecordWhatsAppDto, RecordWhatsAppResponseDto } from './dto/record-whatsapp.dto.js';
+import {
+  ConversationOutcome,
+  RecordConversationDto,
+  RecordWhatsAppDto,
+  RecordWhatsAppResponseDto,
+} from './dto/record-whatsapp.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import { avatarKey } from './lead-avatar.js';
 
@@ -26,6 +31,15 @@ const listSummary = {
 } satisfies Prisma.LeadListDefaultArgs;
 
 type Tx = Prisma.TransactionClient;
+
+/** Como a conversa ficou, no histórico e no próximo contato. */
+const CONVERSATION_NOTES: Record<ConversationOutcome, string> = {
+  waiting: 'Respondeu a conversa. Aguardando o lead',
+  later: 'Respondeu a conversa. Retorno combinado',
+  meeting: 'Respondeu a conversa. Reunião marcada',
+  won: 'Respondeu a conversa. Fechou',
+  lost: 'Respondeu a conversa. Sem interesse',
+};
 
 /** Soma dias corridos, sem contar domingos, preservando o horário do envio. */
 export function addCadenceDays(from: Date, days: number): Date {
@@ -373,6 +387,52 @@ export class LeadsService {
     });
 
     return this.findOne(id);
+  }
+
+  /**
+   * Registra a sua resposta numa conversa (lead em "Respondeu") e o que ficou combinado:
+   * aguardando o lead (retoma em 2 dias), retorno numa data, reunião, fechou ou sem interesse.
+   * Conta como ação do dia; o passo 0 mantém a resposta fora da contagem de 1ºs contatos.
+   */
+  async recordConversation(id: string, { outcome, at }: RecordConversationDto) {
+    const lead = await this.findOne(id);
+    if (lead.stage.stageType !== 'RESPONDED') {
+      throw new BadRequestException('Este lead não está em uma conversa aberta.');
+    }
+
+    const now = new Date();
+    const followUpAt = outcome === 'waiting' ? addCadenceDays(now, 2) : outcome === 'later' ? new Date(at!) : null;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.leadActivity.create({
+        data: {
+          leadId: id,
+          type: 'WHATSAPP_MESSAGE_SENT',
+          text: CONVERSATION_NOTES[outcome],
+          channel: 'whatsapp',
+          cadenceStep: 0,
+          templateId: 'conversa',
+        },
+      });
+      await tx.lead.update({
+        where: { id },
+        data: {
+          followUpAt,
+          followUpNote: followUpAt ? CONVERSATION_NOTES[outcome] : null,
+          ...(outcome === 'meeting' ? { meetingAt: new Date(at!) } : {}),
+        },
+      });
+    });
+
+    const stageType = outcome === 'meeting' ? 'MEETING' : outcome === 'won' ? 'WON' : outcome === 'lost' ? 'LOST' : null;
+    if (!stageType) return this.findOne(id);
+    const target = await this.prisma.stage.findFirst({
+      where: { pipelineId: lead.stage.pipelineId, stageType },
+      orderBy: { position: 'asc' },
+    });
+    if (!target) {
+      throw new BadRequestException('A etapa de destino não está configurada neste funil.');
+    }
+    return this.move(id, { stageId: target.id, position: 0, lostReason: outcome === 'lost' ? 'Sem interesse' : undefined });
   }
 
   async remove(id: string) {

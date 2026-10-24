@@ -13,10 +13,10 @@ export function useConcluirMissao(lead: LeadDoPainel, tipo: TipoMissao, onMudou:
   const [ocupado, setOcupado] = useState(false)
   const podeMarcar = tipo === 'follow-up' || (tipo === 'new' && Boolean(lead.phone))
 
-  // Vale para o círculo de concluído e para o "Sim, enviei" depois do WhatsApp
+  // Vale para o círculo de concluído, o "Sim, enviei" depois do WhatsApp e o "Como ficou?" da conversa
   const marcarFeita = () => {
     setFeita(true)
-    addToast('success', `Feito: ${lead.name}`, tipo === 'follow-up' ? 'Contato marcado como feito.' : 'Mensagem registrada.')
+    addToast('success', `Feito: ${lead.name}`, tipo === 'follow-up' ? 'Contato marcado como feito.' : tipo === 'response' ? 'Conversa registrada.' : 'Mensagem registrada.')
     setTimeout(onMudou, 700)
   }
 

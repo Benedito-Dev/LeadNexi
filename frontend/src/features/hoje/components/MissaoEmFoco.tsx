@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, MessageCircle, Phone, SkipForward } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Phone, SkipForward } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
-import { ICONE_DA_ETAPA } from '../../crm/etapas'
 import { iconeDaOrigem } from '../../crm/origens'
 import { contextoDaMissao, mensagemSugerida, TIPOS, type Missao } from '../missoes'
 import { useConcluirMissao } from '../useConcluirMissao'
+import { BotaoConversa } from './BotaoConversa'
 import { BotaoWhatsApp } from './BotaoWhatsApp'
 import { ModelosDeMensagem } from './ModelosDeMensagem'
-import { CirculoConcluir, EtiquetasDoLead, MenuAdiar, type AcoesDaMissao } from './pecas'
-
-// Mesmo formato das etiquetas do topo da ficha do lead
-const etiqueta = 'inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold'
+import { CirculoConcluir, etiqueta, EtiquetaDaEtapa, EtiquetasDoLead, MenuAdiar, type AcoesDaMissao } from './pecas'
 
 type MissaoEmFocoProps = {
   missao: Missao
@@ -32,7 +29,6 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
   const [mensagem, setMensagem] = useState(() => mensagemSugerida(lead, tipo))
   const { feita, ocupado, podeMarcar, concluir, marcarFeita } = useConcluirMissao(lead, tipo, onMudou)
   const temMensagem = tipo === 'new' || tipo === 'follow-up'
-  const IconeEtapa = ICONE_DA_ETAPA[lead.stage.stageType]
   const origem = lead.source ? { nome: lead.source, ...iconeDaOrigem(lead.source) } : null
 
   // Atalhos: ← → navega, F marca como feito, Enter abre a ficha. Não disparam enquanto se digita
@@ -100,17 +96,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
           <EtiquetasDoLead lead={lead} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(etiqueta, 'text-foreground')}
-            style={{
-              backgroundColor: `color-mix(in srgb, ${corDaEtapa} 15%, transparent)`,
-              borderColor: `color-mix(in srgb, ${corDaEtapa} 45%, transparent)`,
-            }}
-            title="Etapa"
-          >
-            <IconeEtapa className="h-4 w-4" strokeWidth={1.75} style={{ color: corDaEtapa }} aria-hidden />
-            {lead.stage.name}
-          </span>
+          <EtiquetaDaEtapa lead={lead} cor={corDaEtapa} />
           {origem && (
             <span className={cn(etiqueta, 'border-border bg-muted/50 text-foreground')} title="Origem">
               <origem.Icone aria-hidden strokeWidth={1.75} className={cn('h-4 w-4', origem.cor)} />
@@ -149,10 +135,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
       <div className="flex flex-wrap items-center gap-2.5 border-t border-border pt-4">
         {temMensagem && <BotaoWhatsApp lead={lead} mensagem={mensagem} onEnviado={marcarFeita} />}
         {tipo === 'response' && (
-          <Button className={cn(botaoPrincipalDoTopo, 'h-11')} onClick={() => onAbrir(lead)}>
-            <MessageCircle aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            Responder
-          </Button>
+          <BotaoConversa lead={lead} className={cn(botaoPrincipalDoTopo, 'h-11 rounded-lg px-4 text-sm font-semibold')} onRegistrada={marcarFeita} />
         )}
         {tipo === 'meeting' && (
           <Button variant="outline" className={cn(botaoSecundarioDoTopo, 'h-11')} onClick={() => onAbrir(lead)}>
