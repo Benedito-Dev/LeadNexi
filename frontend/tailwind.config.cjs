@@ -145,6 +145,15 @@ module.exports = {
           border:     "hsl(var(--info-border) / <alpha-value>)",
         },
 
+        // Botões de canal com as cores oficiais (tokens em globals.css)
+        whatsapp: {
+          DEFAULT:    "hsl(var(--whatsapp) / <alpha-value>)",
+          foreground: "hsl(var(--whatsapp-fg) / <alpha-value>)",
+        },
+        meet: {
+          DEFAULT:    "hsl(var(--meet) / <alpha-value>)",
+          foreground: "hsl(var(--meet-fg) / <alpha-value>)",
+        },
         // Marca LeadNexi (tokens --leadnexi-* em globals.css)
         leadnexi: {
           violet: "hsl(var(--leadnexi-violet) / <alpha-value>)",

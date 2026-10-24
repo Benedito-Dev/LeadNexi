@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { WhatsAppIcon } from '@/brand/icons'
+import { WhatsAppLogo } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -63,12 +63,12 @@ export function BotaoWhatsApp({ lead, mensagem, className, rotulo = 'Abrir no Wh
         aria-label={`Abrir WhatsApp para ${lead.name}`}
         title="Abrir no WhatsApp com mensagem pronta"
         className={cn(
-          'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-chat-wa-accent text-sm font-semibold text-chat-wa-accent-foreground transition-colors hover:bg-chat-wa-accent/90 disabled:cursor-wait disabled:opacity-60',
+          'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-whatsapp text-sm font-bold text-whatsapp-foreground transition-colors hover:bg-whatsapp/90 disabled:cursor-wait disabled:opacity-60',
           'h-11 px-4',
           className,
         )}
       >
-        <WhatsAppIcon aria-hidden size={18} />
+        <WhatsAppLogo aria-hidden size={18} />
         {abrindo ? 'Abrindo…' : rotulo}
       </button>
 

@@ -338,6 +338,12 @@
     --leadnexi-violet-texto: 246 79% 61%;
     --leadnexi-danger:       0 72% 51%;
 
+    /* Botões de canal com as cores oficiais (iguais nos dois temas) */
+    --whatsapp:    142 70% 49%;   /* verde oficial do WhatsApp (#25D366) */
+    --whatsapp-fg: 0 0% 100%;
+    --meet:        0 0% 100%;     /* Meet: fundo branco com o logo colorido, como o Google usa */
+    --meet-fg:     206 6% 25%;    /* cinza do texto do Google (#3C4043) */
+
     /* Destaque da sidebar (item ativo, avatar): violeta da marca LeadNexi no lugar do coral */
     --sidebar-highlight:            var(--leadnexi-violet);
     --sidebar-highlight-foreground: 210 40% 98%;

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Clock3, Flame, Play, Target, Video, Zap } from 'lucide-react'
-import { WhatsAppIcon } from '@/brand/icons'
+import { Clock3, Flame, Play, Target, Zap } from 'lucide-react'
+import { GoogleMeetLogo, WhatsAppLogo } from '@/brand/icons'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { iconeDaOrigem } from '../../crm/origens'
@@ -23,8 +23,10 @@ const MEET_NOVA = 'https://meet.google.com/new'
 /** Quantas ações a lista mostra antes do "ver mais". */
 const NA_LISTA = 5
 
-const botaoDeAcao =
-  'inline-flex h-10 w-[148px] shrink-0 items-center justify-center gap-2 rounded-full border border-leadnexi-violet/60 bg-transparent px-4 text-sm font-bold text-leadnexi-violet-texto transition-colors hover:bg-leadnexi-violet/10'
+// Botões de canal com as cores e os logos oficiais
+const botaoDeCanal = 'inline-flex h-10 w-[148px] shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-colors'
+const botaoWhatsApp = cn(botaoDeCanal, 'bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90')
+const botaoMeet = cn(botaoDeCanal, 'border border-border bg-meet text-meet-foreground hover:bg-meet/90')
 
 /** O que fazer com o lead e o detalhe que ajuda a decidir, por tipo de missão. */
 function descreverMissao(lead: LeadDoPainel, tipo: TipoMissao) {
@@ -226,14 +228,14 @@ function LinhaDaRotina({ numero, missao, corDaEtapa, onAbrir, onMudou }: { numer
         <EtiquetaDaEtapa lead={lead} cor={corDaEtapa} className="w-40 justify-center" />
         {/* Só dois caminhos: reunião (tarefa ou coluna) vai para o Meet; o resto, para o WhatsApp */}
         {tipo === 'meeting' || lead.stage.stageType === 'MEETING' ? (
-          <a href={MEET_NOVA} target="_blank" rel="noopener noreferrer" className={botaoDeAcao}>
-            <Video aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+          <a href={MEET_NOVA} target="_blank" rel="noopener noreferrer" className={botaoMeet}>
+            <GoogleMeetLogo aria-hidden size={20} />
             Meet
           </a>
         ) : tipo === 'response' ? (
-          <BotaoConversa lead={lead} rotulo="WhatsApp" icone={<WhatsAppIcon aria-hidden size={16} />} className={botaoDeAcao} onRegistrada={marcarFeita} />
+          <BotaoConversa lead={lead} rotulo="WhatsApp" icone={<WhatsAppLogo aria-hidden size={18} />} className={botaoWhatsApp} onRegistrada={marcarFeita} />
         ) : (
-          <BotaoWhatsApp lead={lead} mensagem={mensagem} rotulo="WhatsApp" className={botaoDeAcao} onEnviado={marcarFeita} />
+          <BotaoWhatsApp lead={lead} mensagem={mensagem} rotulo="WhatsApp" className={botaoWhatsApp} onEnviado={marcarFeita} />
         )}
         {/* Conversa e reunião não se marcam pelo círculo: a vaga fica, para os círculos alinharem */}
         <span className="flex w-12 justify-center">
