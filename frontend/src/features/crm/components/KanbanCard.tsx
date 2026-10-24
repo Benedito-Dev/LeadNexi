@@ -2,11 +2,11 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { attachClosestEdge, extractClosestEdge, type Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { MessageSquare, Phone } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
 import type { Lead } from '../types'
 import { DropIndicator } from './DropIndicator'
+import { OrigemIcone } from './OrigemIcone'
 import { situacaoDoContato } from '../datas'
 
 type KanbanCardProps = {
@@ -14,6 +14,9 @@ type KanbanCardProps = {
   columnId: string
   /** Etapa de fechamento (Fechou/Perdido): o próximo contato não é mais cobrança, a etiqueta some. */
   etapaFechada: boolean
+  /** Origens filtradas agora (para o ícone mostrar se está filtrando). */
+  origensFiltradas: string[]
+  onFiltrarOrigem: (origem: string) => void
   onClick: (lead: Lead) => void
 }
 
@@ -27,7 +30,14 @@ const TOM_DO_CONTATO = {
 }
 
 /** Card do lead no quadro: arrastável, com indicador de onde vai cair. */
-export const KanbanCard = memo(function KanbanCard({ lead, columnId, etapaFechada, onClick }: KanbanCardProps) {
+export const KanbanCard = memo(function KanbanCard({
+  lead,
+  columnId,
+  etapaFechada,
+  origensFiltradas,
+  onFiltrarOrigem,
+  onClick,
+}: KanbanCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null)
@@ -103,9 +113,11 @@ export const KanbanCard = memo(function KanbanCard({ lead, columnId, etapaFechad
           </div>
           <div className="ml-auto flex min-w-0 items-center gap-1.5">
             {lead.source && (
-              <Badge variant="outline" className="truncate text-[10px] px-1.5 py-0">
-                {lead.source}
-              </Badge>
+              <OrigemIcone
+                origem={lead.source}
+                filtrando={origensFiltradas.length === 1 && origensFiltradas[0] === lead.source}
+                onFiltrar={onFiltrarOrigem}
+              />
             )}
             {contato && (
               <span

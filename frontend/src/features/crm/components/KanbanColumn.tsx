@@ -16,6 +16,8 @@ type KanbanColumnProps = {
   onLoadMore: (columnId: string) => void
   onCardClick: (lead: Lead) => void
   onAddProspect: (columnId: string) => void
+  origensFiltradas: string[]
+  onFiltrarOrigem: (origem: string) => void
   onRenomearEtapa: (columnId: string, nome: string) => void
   onTrocarCorEtapa: (columnId: string, cor: string, adiar?: boolean) => void
   isLoading: boolean
@@ -32,6 +34,8 @@ export const KanbanColumn = memo(function KanbanColumn({
   onLoadMore,
   onCardClick,
   onAddProspect,
+  origensFiltradas,
+  onFiltrarOrigem,
   onRenomearEtapa,
   onTrocarCorEtapa,
   isLoading,
@@ -130,6 +134,8 @@ export const KanbanColumn = memo(function KanbanColumn({
                   lead={lead}
                   columnId={column.id}
                   etapaFechada={column.stageType === 'WON' || column.stageType === 'LOST'}
+                  origensFiltradas={origensFiltradas}
+                  onFiltrarOrigem={onFiltrarOrigem}
                   onClick={onCardClick}
                 />
               ))

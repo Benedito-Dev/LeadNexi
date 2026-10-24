@@ -3,6 +3,7 @@ import { autoScrollForElements } from '@atlaskit/pragmatic-drag-and-drop-auto-sc
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { Kanban, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import type { DadosDaColuna, Etapa, Lead } from '../types'
 import { KanbanColumn } from './KanbanColumn'
 
@@ -13,6 +14,8 @@ type KanbanBoardProps = {
   onCardClick: (lead: Lead) => void
   onMoveCard: (cardId: string, sourceColumnId: string, destColumnId: string) => void
   onAddProspect: (columnId: string) => void
+  origensFiltradas: string[]
+  onFiltrarOrigem: (origem: string) => void
   onRenomearEtapa: (columnId: string, nome: string) => void
   onTrocarCorEtapa: (columnId: string, cor: string, adiar?: boolean) => void
   isLoading: boolean
@@ -32,6 +35,8 @@ export function KanbanBoard({
   onCardClick,
   onMoveCard,
   onAddProspect,
+  origensFiltradas,
+  onFiltrarOrigem,
   onRenomearEtapa,
   onTrocarCorEtapa,
   isLoading,
@@ -93,6 +98,7 @@ export function KanbanBoard({
   }
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div ref={boardRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory md:snap-none min-h-[60vh]">
       {columns.map((col, i) => (
         <KanbanColumn
@@ -103,11 +109,14 @@ export function KanbanBoard({
           onLoadMore={onLoadMore}
           onCardClick={onCardClick}
           onAddProspect={onAddProspect}
+          origensFiltradas={origensFiltradas}
+          onFiltrarOrigem={onFiltrarOrigem}
           onRenomearEtapa={onRenomearEtapa}
           onTrocarCorEtapa={onTrocarCorEtapa}
           isLoading={isLoading}
         />
       ))}
     </div>
+    </TooltipProvider>
   )
 }

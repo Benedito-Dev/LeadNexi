@@ -236,6 +236,14 @@ export function CrmPage() {
     else void gravar()
   }, [])
 
+  // Ícone de origem no card: mostra só aquela origem; clicar de novo (já filtrando só ela) tira o filtro
+  const handleFiltrarOrigem = useCallback((origem: string) => {
+    setFiltros((prev) => ({
+      ...prev,
+      origens: prev.origens.length === 1 && prev.origens[0] === origem ? [] : [origem],
+    }))
+  }, [])
+
   const handleRenomearEtapa = useCallback((id: string, nome: string) => alterarEtapa(id, { name: nome }), [alterarEtapa])
   const handleTrocarCorEtapa = useCallback(
     (id: string, cor: string, adiar?: boolean) => alterarEtapa(id, { color: cor }, adiar),
@@ -278,6 +286,8 @@ export function CrmPage() {
         onCardClick={handleCardClick}
         onMoveCard={handleMoveCard}
         onAddProspect={handleAddProspect}
+        origensFiltradas={filtros.origens}
+        onFiltrarOrigem={handleFiltrarOrigem}
         onRenomearEtapa={handleRenomearEtapa}
         onTrocarCorEtapa={handleTrocarCorEtapa}
         isLoading={isLoadingBoard}
