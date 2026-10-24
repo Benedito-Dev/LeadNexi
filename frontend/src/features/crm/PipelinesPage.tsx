@@ -378,17 +378,17 @@ export function PipelinesPage() {
                 <CardTitle className="text-base">{pipelineSelecionado.name}</CardTitle>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => abrirModalPipeline(pipelineSelecionado)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                <Button variant="outline" size="sm" className={botaoSecundarioDoTopo} onClick={() => abrirModalPipeline(pipelineSelecionado)}>
+                  <Pencil className="h-4 w-4" strokeWidth={1.75} />
                   Editar
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  className="gap-2 border-destructive/50 font-semibold text-destructive hover:bg-destructive/10"
                   onClick={() => setPipelineParaExcluir(pipelineSelecionado)}
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                  <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                   Excluir
                 </Button>
               </div>
@@ -402,8 +402,8 @@ export function PipelinesPage() {
                     abaixo.
                   </p>
                 </div>
-                <Button size="sm" onClick={() => abrirModalEtapa()}>
-                  <Plus className="h-4 w-4 mr-1" />
+                <Button size="sm" className={botaoPrincipalDoTopo} onClick={() => abrirModalEtapa()}>
+                  <Plus className="h-4 w-4" strokeWidth={1.75} />
                   Nova etapa
                 </Button>
               </div>
