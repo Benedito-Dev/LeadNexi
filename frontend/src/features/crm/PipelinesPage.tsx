@@ -27,7 +27,7 @@ import {
 } from './api'
 import { EtapaArrastavel } from './components/EtapaArrastavel'
 import { EtapaForm } from './components/EtapaForm'
-import { COR_PADRAO_ETAPA } from './etapas'
+import { COR_PADRAO_ETAPA, corDaEtapa } from './etapas'
 import type { Etapa, PipelineResumo } from './types'
 
 /**
@@ -426,10 +426,11 @@ export function PipelinesPage() {
                     </p>
                   )}
                   <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-                    {etapas.map((etapa) => (
+                    {etapas.map((etapa, i) => (
                       <EtapaArrastavel
                         key={etapa.id}
                         etapa={etapa}
+                        cor={corDaEtapa(etapa, i)}
                         onEditar={abrirModalEtapa}
                         onExcluir={setEtapaParaExcluir}
                         salvando={salvandoOrdem}

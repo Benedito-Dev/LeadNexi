@@ -2,10 +2,8 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { attachClosestEdge, extractClosestEdge, type Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
 import { GripVertical, Pencil, Trash2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { COR_PADRAO_ETAPA, ROTULO_TIPO_ETAPA } from '../etapas'
+import { ICONE_DA_ETAPA, ROTULO_TIPO_ETAPA } from '../etapas'
 import type { Etapa } from '../types'
 
 type EtapaArrastavelProps = {
@@ -14,10 +12,19 @@ type EtapaArrastavelProps = {
   onExcluir: (etapa: Etapa) => void
   /** A ordem está sendo gravada: o arrasto fica travado para não mandar duas ordens seguidas. */
   salvando: boolean
+  /** Cor da etapa (a cadastrada, ou a da progressão do funil pela posição). */
+  cor: string
 }
 
+const botaoDaLinha =
+  'grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan/60'
+
 /** Linha da lista de etapas, arrastável pela alça à esquerda. */
-export const EtapaArrastavel = memo(function EtapaArrastavel({ etapa, onEditar, onExcluir, salvando }: EtapaArrastavelProps) {
+export const EtapaArrastavel = memo(function EtapaArrastavel({ etapa, onEditar, onExcluir, salvando, cor }: EtapaArrastavelProps) {
+  const Icone = ICONE_DA_ETAPA[etapa.stageType]
+  const mostrarTipo =
+    etapa.stageType !== 'CUSTOM' &&
+    etapa.name.trim().toLowerCase() !== ROTULO_TIPO_ETAPA[etapa.stageType].toLowerCase()
   const linhaRef = useRef<HTMLLIElement>(null)
   const alcaRef = useRef<HTMLButtonElement>(null)
   const [arrastando, setArrastando] = useState(false)
@@ -54,7 +61,7 @@ export const EtapaArrastavel = memo(function EtapaArrastavel({ etapa, onEditar, 
   return (
     <li
       ref={linhaRef}
-      className={cn('relative flex items-center gap-3 px-4 py-3 bg-card transition-opacity', arrastando && 'opacity-40')}
+      className={cn('group relative flex items-center gap-3 px-4 py-3 bg-card transition-opacity font-marca', arrastando && 'opacity-40')}
     >
       {borda && (
         <span
@@ -78,32 +85,26 @@ export const EtapaArrastavel = memo(function EtapaArrastavel({ etapa, onEditar, 
         <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
 
-      <span
-        className="h-4 w-4 rounded-full shrink-0 border border-border"
-        style={{ backgroundColor: etapa.color || COR_PADRAO_ETAPA }}
-        aria-hidden="true"
-      />
-      <span className="text-sm font-medium text-foreground truncate">{etapa.name}</span>
-      {/* No lugar do selo "Inativa" do Rizar: o tipo, que no LeadNexi muda o que a etapa faz */}
-      {etapa.stageType !== 'CUSTOM' && (
-        <Badge variant="secondary" className="shrink-0">
-          {ROTULO_TIPO_ETAPA[etapa.stageType]}
-        </Badge>
-      )}
+      {/* Ícone do tipo na cor da etapa, como na ficha do lead */}
+      <Icone className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} style={{ color: cor }} aria-hidden />
+      <span className="truncate text-sm font-semibold text-foreground">{etapa.name}</span>
+      {/* O tipo só aparece quando o nome não diz (ex.: "Call agendada", do tipo Reunião marcada) */}
+      {mostrarTipo && <span className="shrink-0 text-xs font-medium text-muted-foreground">{ROTULO_TIPO_ETAPA[etapa.stageType]}</span>}
 
-      <div className="ml-auto flex gap-2 shrink-0">
-        <Button variant="outline" size="sm" onClick={() => onEditar(etapa)} title="Editar etapa">
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-destructive border-destructive hover:bg-destructive/10"
+      {/* Ações discretas: aparecem ao passar o mouse na linha (no toque, sempre) */}
+      <div className="ml-auto flex shrink-0 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+        <button type="button" onClick={() => onEditar(etapa)} className={botaoDaLinha} aria-label={`Editar ${etapa.name}`} title="Editar etapa">
+          <Pencil className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
           onClick={() => onExcluir(etapa)}
+          className={cn(botaoDaLinha, 'hover:bg-destructive/10 hover:text-destructive')}
+          aria-label={`Excluir ${etapa.name}`}
           title="Excluir etapa"
         >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+        </button>
       </div>
     </li>
   )
