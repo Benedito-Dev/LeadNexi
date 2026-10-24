@@ -5,6 +5,7 @@ import { atualizarEtapa, buscarQuadro, listarPipelines, moverLead } from './api'
 import { AddCardModal } from './components/AddCardModal'
 import { CrmHeader } from './components/CrmHeader'
 import { CrmFiltros } from './components/CrmFiltros'
+import { ImportarLeadsModal } from './components/ImportarLeadsModal'
 import { KanbanBoard } from './components/KanbanBoard'
 import { LeadModal } from './components/LeadModal'
 import { MotivoPerdaDialog } from './components/MotivoPerdaDialog'
@@ -39,6 +40,7 @@ export function CrmPage() {
   const [movimentoPendente, setMovimentoPendente] = useState<MovimentoPendente | null>(null)
   // Ficha aberta: guarda só o id e lê o lead do quadro, para ficha e card nunca divergirem
   const [leadAbertoId, setLeadAbertoId] = useState<string | null>(null)
+  const [importarAberto, setImportarAberto] = useState(false)
 
   const quadroRef = useRef(quadro)
   quadroRef.current = quadro
@@ -319,6 +321,7 @@ export function CrmPage() {
         podeCriarLead={!!pipelineSelecionado}
         onNovoLead={() => handleAddProspect(etapas[0]?.id ?? null)}
         onConfigurarPipelines={irParaPipelines}
+        onImportar={() => setImportarAberto(true)}
       />
 
       <CrmFiltros
@@ -371,6 +374,14 @@ export function CrmPage() {
         onLeadAtualizado={handleLeadAtualizado}
         onNotasMudaram={handleNotasMudaram}
         onLeadApagado={handleLeadApagado}
+      />
+
+      <ImportarLeadsModal
+        aberto={importarAberto}
+        aoFechar={() => setImportarAberto(false)}
+        pipelineAtual={pipelineSelecionado?.value}
+        // Terminou: recarrega o quadro para os leads novos aparecerem sem F5
+        aoConcluir={() => pipelineSelecionado && void carregarQuadro(pipelineSelecionado.value)}
       />
 
       <MotivoPerdaDialog

@@ -1,4 +1,4 @@
-import { Kanban, Plus, Settings2 } from 'lucide-react'
+import { Kanban, Plus, Settings2, Upload } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { ListPageHeader } from '@/components/list-page/ListPageHeader'
 import { Button } from '@/components/ui/button'
@@ -11,10 +11,19 @@ type CrmHeaderProps = {
   podeCriarLead: boolean
   onNovoLead: () => void
   onConfigurarPipelines: () => void
+  onImportar: () => void
 }
 
 /** Topo do quadro: título, resumo do pipeline aberto e as ações. */
-export function CrmHeader({ nomePipeline, totalLeads, emAberto, podeCriarLead, onNovoLead, onConfigurarPipelines }: CrmHeaderProps) {
+export function CrmHeader({
+  nomePipeline,
+  totalLeads,
+  emAberto,
+  podeCriarLead,
+  onNovoLead,
+  onConfigurarPipelines,
+  onImportar,
+}: CrmHeaderProps) {
   return (
     <ListPageHeader
       icon={Kanban}
@@ -41,6 +50,10 @@ export function CrmHeader({ nomePipeline, totalLeads, emAberto, podeCriarLead, o
           <Button variant="outline" size="sm" className={botaoSecundarioDoTopo} onClick={onConfigurarPipelines}>
             <Settings2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
             Pipelines
+          </Button>
+          <Button variant="outline" size="sm" className={botaoSecundarioDoTopo} onClick={onImportar}>
+            <Upload className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            Importar
           </Button>
           <Button size="sm" className={botaoPrincipalDoTopo} onClick={onNovoLead} disabled={!podeCriarLead}>
             <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />

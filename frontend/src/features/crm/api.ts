@@ -74,3 +74,33 @@ export const agendarContato = (id: string, dueAt: string) =>
 
 /** Desmarca o próximo contato. */
 export const desmarcarContato = (id: string) => api<Lead>(`/leads/${id}/follow-up`, { method: 'DELETE' })
+
+// ============================================
+// Importação por planilha
+// ============================================
+
+export type LinhaImportacao = {
+  name: string
+  stageId: string
+  phone?: string
+  email?: string
+  instagramUsername?: string
+  estimatedValue?: number
+  followUpAt?: string
+  notes?: string
+  neighborhood?: string
+  address?: string
+}
+
+/** O que fazer com quem já está no CRM (mesmo @, telefone ou nome). */
+export type ModoDuplicado = 'skip' | 'update' | 'duplicate'
+
+export type ResultadoImportacao = {
+  accepted: number
+  skipped: number
+  rows: { index: number; status: 'ready' | 'created' | 'updated' | 'duplicate' | 'invalid'; reason?: string }[]
+}
+
+/** Importa até 1.000 linhas por chamada; os importados ganham a origem "Planilha". */
+export const importarLeads = (leads: LinhaImportacao[], duplicateMode: ModoDuplicado) =>
+  api<ResultadoImportacao>('/leads/import', { method: 'POST', body: corpo({ leads, duplicateMode }) })
