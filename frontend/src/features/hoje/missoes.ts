@@ -21,6 +21,7 @@ const inicioDeHoje = () => {
   return data
 }
 
+/** A fila do dia: respostas, follow-ups vencidos, novas lojas e compromissos. */
 export function montarFila(painel: PainelDeHoje): Missao[] {
   const fimDeHoje = new Date()
   fimDeHoje.setHours(23, 59, 59, 999)
@@ -30,7 +31,9 @@ export function montarFila(painel: PainelDeHoje): Missao[] {
     .map((lead) => ({ tipo: 'follow-up' as const, lead }))
   const novas = painel.newContacts.map((lead) => ({ tipo: 'new' as const, lead }))
   const compromissos = painel.meetings.map((lead) => ({ tipo: 'meeting' as const, lead }))
-  return [...respostas, ...followUps, ...novas, ...compromissos]
+  // Cada lead aparece uma vez só, na missão mais urgente (a ordem acima é a prioridade)
+  const vistos = new Set<string>()
+  return [...respostas, ...followUps, ...novas, ...compromissos].filter(({ lead }) => !vistos.has(lead.id) && Boolean(vistos.add(lead.id)))
 }
 
 /** Os três textos da cadência, para trocar com um clique (1ª mensagem, retomada e a última). */

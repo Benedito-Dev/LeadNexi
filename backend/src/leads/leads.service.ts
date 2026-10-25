@@ -265,8 +265,24 @@ export class LeadsService {
     const lead = await this.findOne(id);
     const text = message.trim();
     if (!text) throw new BadRequestException('A mensagem não pode ficar vazia.');
+    // Fora da prospecção (proposta, reunião, cliente…): registra a mensagem e dá o contato agendado
+    // como feito, sem mexer na etapa nem na cadência. O passo 0 fica fora da contagem de 1ºs contatos.
     if (lead.stage.stageType !== 'CONTACT' && lead.stage.stageType !== 'SENT') {
-      throw new BadRequestException('Este lead não está em uma etapa de prospecção ativa.');
+      await this.prisma.$transaction([
+        this.prisma.leadActivity.create({
+          data: {
+            leadId: id,
+            type: 'WHATSAPP_MESSAGE_SENT',
+            text,
+            channel: 'whatsapp',
+            cadenceStep: 0,
+            templateId: templateId?.trim() || 'fora-da-cadencia',
+            variation: variation?.trim() || 'padrao',
+          },
+        }),
+        this.prisma.lead.update({ where: { id }, data: { followUpAt: null, followUpNote: null } }),
+      ]);
+      return this.findOne(id);
     }
 
     const nextStep = (lead.cadenceStep ?? 0) + 1;
