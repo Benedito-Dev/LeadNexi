@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { BarChart3, Bot, Handshake, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
+import { Bot, Handshake, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -55,17 +55,6 @@ export const TELAS_PLANEJADAS = {
       'Calendário de posts: arrastar para remarcar, lista e grade',
       'Novo post: foto ou carrossel, legenda, hashtags salvas, agendar ou publicar agora',
       'Banco de provas: resultados reais que a IA cita e o follow-up anexa',
-    ],
-  },
-  resultados: {
-    icone: BarChart3,
-    titulo: 'Resultados',
-    resumo: 'Placar e metas',
-    etapa: 4,
-    itens: [
-      'Placar da semana e do mês: contatos, respostas, reuniões, fechados e faturamento',
-      'Taxa de resposta por mensagem e por lista',
-      'Sequência de dias batendo a meta',
     ],
   },
   perfil: {

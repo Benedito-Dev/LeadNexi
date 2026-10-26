@@ -3,9 +3,9 @@ import { CalendarRange, Clock3, LoaderCircle, Repeat2, Target, Wallet, type Luci
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Selo, type TomDoSelo } from '@/components/ui/selo'
 import { ErroDeApi } from '@/lib/api'
 import { addToast } from '@/lib/toast'
-import { cn } from '@/lib/utils'
 import { MensagemDeErro } from '../instagram/components/CartaoAppDaMeta'
 import { buscarMetas, salvarMetas, type Metas } from './api'
 
@@ -154,22 +154,6 @@ function Formulario({ salvas, onSalvas }: { salvas: Metas; onSalvas: (metas: Met
 
 const numeroPequeno = 'h-11 w-20 text-center text-lg font-extrabold tabular-nums'
 
-/** Cor de cada sinal: violeta (ação), ciano (ritmo), verde (dinheiro), âmbar (alerta). */
-const TONS = {
-  violeta: 'bg-leadnexi-violet/15 text-leadnexi-violet-texto',
-  ciano: 'bg-leadnexi-cyan/15 text-leadnexi-cyan-texto',
-  verde: 'bg-success text-success-foreground',
-  ambar: 'bg-warn-foreground/15 text-warn-foreground',
-}
-
-function Selo({ Icone, tom }: { Icone: LucideIcon; tom: keyof typeof TONS }) {
-  return (
-    <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl', TONS[tom])}>
-      <Icone aria-hidden className="h-5 w-5" strokeWidth={1.75} />
-    </span>
-  )
-}
-
 function Titulo({ id, titulo, texto }: { id: string; titulo: string; texto: string }) {
   return (
     <div>
@@ -192,7 +176,7 @@ function CartaoDeMeta({
   ...input
 }: {
   Icone: LucideIcon
-  tom: keyof typeof TONS
+  tom: TomDoSelo
   rotulo: string
   unidade?: string
   prefixo?: string

@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { CrmPage } from '@/features/crm/CrmPage'
 import { PipelinesPage } from '@/features/crm/PipelinesPage'
 import { HojePage } from '@/features/hoje/HojePage'
+import { ResultadosPage } from '@/features/resultados/ResultadosPage'
 import { CanaisPage } from '@/features/configuracoes/CanaisPage'
 import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayout'
 import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
@@ -42,7 +43,7 @@ export function App() {
               <Route path="/crm/listas" element={<TelaEmBreve tela={T.listas} />} />
               <Route path="/clientes" element={<TelaEmBreve tela={T.clientes} />} />
               <Route path="/conteudo" element={<TelaEmBreve tela={T.conteudo} />} />
-              <Route path="/resultados" element={<TelaEmBreve tela={T.resultados} />} />
+              <Route path="/resultados" element={<ResultadosPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
                 <Route index element={<Navigate to="canais" replace />} />
                 <Route path="perfil" element={<CartaoEmBreve tela={T.perfil} />} />

@@ -24,6 +24,8 @@ export type PainelDeHoje = {
   actionsDoneToday: number
   /** 1ªs mensagens por dia, de segunda a domingo da semana atual. */
   week: { date: string; firstContacts: number }[]
+  /** 1ªs mensagens por dia, do dia 1 do mês até hoje. */
+  month: { date: string; firstContacts: number }[]
   /** Dias seguidos batendo a meta diária. */
   streakDays: number
   followUps: LeadDoPainel[]

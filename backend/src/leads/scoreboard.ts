@@ -43,6 +43,7 @@ function isFirstContact(row: ActionRow) {
  * Números do placar da tela Hoje, a partir do histórico real:
  * - `actionsDoneToday`: mensagens enviadas e contatos marcados como feitos hoje;
  * - `week`: 1ªs mensagens por dia, de segunda a domingo da semana atual;
+ * - `month`: 1ªs mensagens por dia, do dia 1 do mês até hoje;
  * - `streakDays`: dias seguidos batendo a meta diária (hoje entra quando já bateu).
  */
 export function scoreboard(rows: ActionRow[], dailyTarget: number, now: Date) {
@@ -61,6 +62,12 @@ export function scoreboard(rows: ActionRow[], dailyTarget: number, now: Date) {
     return { date, firstContacts: firstContacts.get(date) ?? 0 };
   });
 
+  const firstOfMonth = `${today.slice(0, 8)}01`
+  const month = Array.from({ length: Number(today.slice(8)) }, (_, index) => {
+    const date = shiftDay(firstOfMonth, index);
+    return { date, firstContacts: firstContacts.get(date) ?? 0 };
+  });
+
   const hit = (key: string) => (firstContacts.get(key) ?? 0) >= dailyTarget;
   let cursor = hit(today) ? today : shiftDay(today, -1);
   let streakDays = 0;
@@ -69,5 +76,5 @@ export function scoreboard(rows: ActionRow[], dailyTarget: number, now: Date) {
     cursor = shiftDay(cursor, -1);
   }
 
-  return { actionsDoneToday, week, streakDays };
+  return { actionsDoneToday, week, month, streakDays };
 }

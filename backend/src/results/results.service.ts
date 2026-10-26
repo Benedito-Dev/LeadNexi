@@ -78,7 +78,7 @@ export class ResultsService {
     const responses = activities.filter((row) => isResponse(row));
     const weekly = funnel(periods.week, activities, firstSent, responses, leads);
     const monthly = funnel(periods.month, activities, firstSent, responses, leads);
-    const messagePerformance = performance(periods.month, firstSent, responses);
+    const messagePerformance = { week: performance(periods.week, firstSent, responses), month: performance(periods.month, firstSent, responses) };
     const firstResponseHours = averageFirstResponseHours(firstSent, responses);
 
     return {
@@ -139,16 +139,19 @@ function firstByLead(rows: ActivityRow[], predicate: (row: ActivityRow) => boole
   return result;
 }
 
-function funnel(periodValue: Period, activities: ActivityRow[], firstSent: Map<string, ActivityRow>, responses: ActivityRow[], leads: { id: string; wonAt: Date | null; meetingAt: Date | null }[]) {
+function funnel(periodValue: Period, activities: ActivityRow[], firstSent: Map<string, ActivityRow>, responses: ActivityRow[], leads: { id: string; wonAt: Date | null; meetingAt: Date | null; estimatedValue: Prisma.Decimal | null }[]) {
   const inPeriod = (date: Date) => date >= periodValue.start && date <= periodValue.end;
   const contacted = new Set([...firstSent].filter(([, row]) => inPeriod(row.createdAt)).map(([leadId]) => leadId));
   const responded = new Set(responses.filter((row) => inPeriod(row.createdAt)).map((row) => row.leadId));
   const meetings = new Set(activities.filter((row) => inPeriod(row.createdAt) && normalize(row.toStage).includes('reuniao')).map((row) => row.leadId));
   const proposals = new Set(activities.filter((row) => inPeriod(row.createdAt) && normalize(row.toStage).includes('proposta')).map((row) => row.leadId));
-  const won = new Set(leads.filter((lead) => lead.wonAt && inPeriod(lead.wonAt)).map((lead) => lead.id));
+  const wonLeads = leads.filter((lead) => lead.wonAt && inPeriod(lead.wonAt));
+  const won = new Set(wonLeads.map((lead) => lead.id));
+  // Faturamento: todos os fechados no período (venham ou não da prospecção do período)
+  const revenue = wonLeads.reduce((sum, lead) => sum + Number(lead.estimatedValue ?? 0), 0);
   const total = contacted.size;
   const step = (count: number) => ({ count, rate: total > 0 ? count / total : null });
-  return { contacted: step(total), responded: step(intersectionCount(contacted, responded)), meeting: step(intersectionCount(contacted, meetings)), proposal: step(intersectionCount(contacted, proposals)), won: step(intersectionCount(contacted, won)) };
+  return { contacted: step(total), responded: step(intersectionCount(contacted, responded)), meeting: step(intersectionCount(contacted, meetings)), proposal: step(intersectionCount(contacted, proposals)), won: step(intersectionCount(contacted, won)), revenue };
 }
 
 function performance(periodValue: Period, firstSent: Map<string, ActivityRow>, responses: ActivityRow[]) {
