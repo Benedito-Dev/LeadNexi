@@ -19,6 +19,7 @@ Antes de criar ou alterar tela, componente, estilo, ícone ou texto de interface
 
 ## Onde está cada coisa
 
+- `docs/produto/MAPA.md` — mapa de todas as telas (menu, rotas, peças compartilhadas, ordem de construção). Tela nova entra no lugar que ele define; se o plano mudar, atualize o mapa antes do código.
 - `docs/brand/BRAND.md` — valores dos tokens, componentes e regras. Os arquivos `frontend/src/brand/*` que ele cita saíram junto com o front antigo e estão na branch de backup.
 - `frontend/public/brand/` — SVGs (símbolo, logo, favicon, ícones de app), servidos em `/brand/*.svg`.
 

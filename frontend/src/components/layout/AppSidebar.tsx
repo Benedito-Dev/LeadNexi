@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { CalendarCheck, ChevronDown, LogOut, Users } from 'lucide-react'
+import { BarChart3, CalendarCheck, ChevronDown, Handshake, Images, LogOut, MessagesSquare, Settings, Users } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/contexto'
 import { Button } from '@/components/ui/button'
@@ -14,17 +14,23 @@ type ItemDeMenu = {
   children?: { title: string; to: string }[]
 }
 
-// Mesma estrutura do menu do Rizar: itens simples e grupos com sub-itens.
+// O menu do mapa (docs/produto/MAPA.md): por tarefa, não por canal. Itens simples e grupos com sub-itens.
 const MENU: ItemDeMenu[] = [
   { title: 'Hoje', icon: CalendarCheck, to: '/hoje' },
+  { title: 'Conversas', icon: MessagesSquare, to: '/conversas' },
   {
     title: 'CRM',
     icon: Users,
     children: [
       { title: 'Leads', to: '/crm' },
+      { title: 'Listas', to: '/crm/listas' },
       { title: 'Pipelines', to: '/crm/pipelines' },
     ],
   },
+  { title: 'Clientes', icon: Handshake, to: '/clientes' },
+  { title: 'Conteúdo', icon: Images, to: '/conteudo' },
+  { title: 'Resultados', icon: BarChart3, to: '/resultados' },
+  { title: 'Configurações', icon: Settings, to: '/configuracoes' },
 ]
 
 const ACTIVE_BOX = 'bg-[hsl(var(--sidebar-accent))] shadow-sm text-[hsl(var(--sidebar-foreground))] font-semibold'
@@ -51,7 +57,8 @@ function NavItem({
   onNavigate: (to: string) => void
   collapsed: boolean
 }) {
-  const ativo = currentPath === item.to
+  // Item com sub-abas na própria tela (Configurações) fica aceso em qualquer uma delas
+  const ativo = currentPath === item.to || currentPath.startsWith(`${item.to}/`)
   const Icon = item.icon
   const botao = (
     <button
