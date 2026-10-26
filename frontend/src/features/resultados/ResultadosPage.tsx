@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, CalendarRange, CircleAlert, Flame, MessageCircleReply, Timer, Wallet, type LucideIcon } from 'lucide-react'
+import { BarChart3, CalendarRange, CircleAlert, Flame, MessageCircleReply, Timer, Wallet } from 'lucide-react'
 import { Link } from 'react-router'
 import { ListPageHeader } from '@/components/list-page/ListPageHeader'
 import { barraDeSegmentos, segmento } from '@/components/ui/segmentos'
-import { Selo, type TomDoSelo } from '@/components/ui/selo'
+import { CartaoDeNumero } from '@/components/ui/cartao-de-numero'
+import { Selo } from '@/components/ui/selo'
 import { cn } from '@/lib/utils'
 import { formatarReais } from '../crm/filtros'
 import { buscarPainel } from '../hoje/api'
@@ -165,43 +166,6 @@ function AvisoDeTroca({ alerta }: { alerta: NonNullable<Placar['decisionAlert']>
       <Link to="/configuracoes/prospeccao" className="text-[13px] font-bold text-leadnexi-cyan-texto no-underline hover:underline">
         Ajustar a regra
       </Link>
-    </div>
-  )
-}
-
-/** Número do placar: selo, rótulo, o valor grande e, com meta, a barra de progresso. */
-function CartaoDeNumero({
-  Icone,
-  tom,
-  rotulo,
-  valor,
-  detalhe,
-  meta,
-  atual,
-}: {
-  Icone: LucideIcon
-  tom: TomDoSelo
-  rotulo: string
-  valor: string
-  detalhe: string
-  meta?: number
-  /** Valor numérico para a barra (quando `valor` vem formatado). */
-  atual?: number
-}) {
-  const progresso = meta ? Math.min(((atual ?? Number(valor)) / meta) * 100, 100) : null
-  return (
-    <div className={cn(cartao, 'flex flex-col gap-3')}>
-      <div className="flex items-center gap-3">
-        <Selo Icone={Icone} tom={tom} />
-        <span className="text-sm font-bold text-foreground">{rotulo}</span>
-      </div>
-      <span className="text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-foreground">{valor}</span>
-      {progresso !== null && (
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted" title={`${Math.round(progresso)}% da meta`}>
-          <span className="block h-full rounded-full bg-gradient-to-r from-leadnexi-violet to-leadnexi-cyan" style={{ width: `${progresso}%` }} />
-        </div>
-      )}
-      <span className="text-xs font-medium leading-5 text-muted-foreground">{detalhe}</span>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bot, Handshake, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
+import { Bot, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -33,17 +33,6 @@ export const TELAS_PLANEJADAS = {
       'Quantos leads em cada lista, quantos contatados e quantos responderam',
       'Aviso da regra: 30 contatados e menos de 2 respostas, troque o nicho ou a mensagem',
       'Importar planilha e, no futuro, gerar lista pelo Google Maps',
-    ],
-  },
-  clientes: {
-    icone: Handshake,
-    titulo: 'Clientes',
-    resumo: 'Quem já fechou',
-    etapa: 4,
-    itens: [
-      'Clientes ativos com mensalidade, dia de cobrança e situação do pagamento',
-      'Ficha do cliente: plano, verba, checklist de entrada, relatórios semanais e pagamentos',
-      '"Gerar resumo para o cliente" a partir do relatório da semana',
     ],
   },
   conteudo: {
