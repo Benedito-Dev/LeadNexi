@@ -30,8 +30,10 @@ const MENU: ItemDeMenu[] = [
   { title: 'Clientes', icon: Handshake, to: '/clientes' },
   { title: 'Conteúdo', icon: Images, to: '/conteudo' },
   { title: 'Resultados', icon: BarChart3, to: '/resultados' },
-  { title: 'Configurações', icon: Settings, to: '/configuracoes' },
 ]
+
+// Ajustes ficam no pé do menu, junto da conta: em cima o trabalho do dia, embaixo o que se mexe de vez em quando
+const CONFIGURACOES = { title: 'Configurações', icon: Settings, to: '/configuracoes' }
 
 const ACTIVE_BOX = 'bg-[hsl(var(--sidebar-accent))] shadow-sm text-[hsl(var(--sidebar-foreground))] font-semibold'
 const INACTIVE_BOX =
@@ -189,6 +191,10 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
               ),
             )}
           </div>
+        </div>
+
+        <div className="px-3 pb-2">
+          <NavItem item={CONFIGURACOES} currentPath={pathname} onNavigate={irPara} collapsed={collapsed} />
         </div>
 
         <div className="border-t border-[hsl(var(--sidebar-border))] px-3 py-3">
