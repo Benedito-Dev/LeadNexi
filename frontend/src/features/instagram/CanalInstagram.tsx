@@ -103,7 +103,7 @@ function Aviso({ ok, texto, onFechar }: { ok: boolean; texto: string; onFechar: 
       role="status"
       className={cn(
         'flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm font-semibold',
-        ok ? 'border-success/40 text-success' : 'border-leadnexi-danger/40 text-leadnexi-danger',
+        ok ? 'border-success-border text-success-foreground' : 'border-leadnexi-danger/40 text-leadnexi-danger',
       )}
     >
       <Icone aria-hidden className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />

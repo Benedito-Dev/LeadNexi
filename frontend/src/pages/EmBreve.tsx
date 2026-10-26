@@ -5,7 +5,7 @@ import type { TelaPlanejada } from './telasPlanejadas'
 /** Cartão "em construção" com o que a tela vai ter, tirado do mapa. */
 export function CartaoEmBreve({ tela }: { tela: TelaPlanejada }) {
   return (
-    <section className="max-w-3xl rounded-xl border border-dashed border-border bg-card p-6">
+    <section className="rounded-xl border border-dashed border-border bg-card p-6">
       <p className="m-0 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-leadnexi-violet-texto">
         <Construction aria-hidden className="h-4 w-4" strokeWidth={1.75} />
         Em construção · etapa {tela.etapa} do mapa

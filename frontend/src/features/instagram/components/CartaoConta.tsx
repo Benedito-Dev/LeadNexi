@@ -43,7 +43,7 @@ export function CartaoConta({ conta, onDesconectado }: { conta: ContaDoInstagram
         <div className="min-w-0 flex-1">
           <p className="m-0 truncate text-[15px] font-bold text-foreground">@{conta.username}</p>
           <p className="m-0 mt-0.5 flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-            <span aria-hidden className={cn('h-2 w-2 shrink-0 rounded-full', conta.needsReconnect ? 'bg-warn-foreground' : 'bg-success')} />
+            <span aria-hidden className={cn('h-2 w-2 shrink-0 rounded-full', conta.needsReconnect ? 'bg-warn-foreground' : 'bg-success-foreground')} />
             <span className="truncate">
               {conta.needsReconnect ? 'Conexão expirada' : 'Conectado'}
               {conta.name && <span className="hidden sm:inline"> · {conta.name}</span>}

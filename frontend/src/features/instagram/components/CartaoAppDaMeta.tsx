@@ -3,7 +3,7 @@ import { Check, CircleAlert, Copy, KeyRound, LoaderCircle, Pencil } from 'lucide
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Campo } from '@/components/ui/campo'
 import { ErroDeApi } from '@/lib/api'
 import { salvarAppDaMeta } from '../api'
 import type { AppDaMeta } from '../tipos'
@@ -134,18 +134,6 @@ function Formulario({ app, onSalvo, onCancelar }: { app: AppDaMeta; onSalvo: (ap
   )
 }
 
-function Campo({ id, rotulo, dica, children }: { id: string; rotulo: string; dica?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-[13px] font-semibold text-foreground">
-        {rotulo}
-      </Label>
-      {children}
-      {dica && <p className="m-0 text-xs font-medium text-muted-foreground">{dica}</p>}
-    </div>
-  )
-}
-
 /** Campo só de leitura com "Copiar": valores que vão no painel da Meta. */
 function CampoCopiar({ id, rotulo, valor, dica }: { id: string; rotulo: string; valor: string; dica: string }) {
   const [copiado, setCopiado] = useState(false)
@@ -172,7 +160,7 @@ function CampoCopiar({ id, rotulo, valor, dica }: { id: string; rotulo: string; 
           title={copiado ? 'Copiado' : 'Copiar'}
           className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          {copiado ? <Check aria-hidden className="h-4 w-4 text-success" strokeWidth={1.75} /> : <Copy aria-hidden className="h-4 w-4" strokeWidth={1.75} />}
+          {copiado ? <Check aria-hidden className="h-4 w-4 text-success-foreground" strokeWidth={1.75} /> : <Copy aria-hidden className="h-4 w-4" strokeWidth={1.75} />}
         </button>
       </div>
     </Campo>

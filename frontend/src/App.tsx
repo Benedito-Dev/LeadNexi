@@ -8,6 +8,7 @@ import { PipelinesPage } from '@/features/crm/PipelinesPage'
 import { HojePage } from '@/features/hoje/HojePage'
 import { CanaisPage } from '@/features/configuracoes/CanaisPage'
 import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayout'
+import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
 import { CartaoEmBreve, TelaEmBreve } from '@/pages/EmBreve'
 import { TELAS_PLANEJADAS as T } from '@/pages/telasPlanejadas'
 import { LoginPage } from '@/pages/LoginPage'
@@ -46,7 +47,7 @@ export function App() {
                 <Route index element={<Navigate to="canais" replace />} />
                 <Route path="perfil" element={<CartaoEmBreve tela={T.perfil} />} />
                 <Route path="canais" element={<CanaisPage />} />
-                <Route path="prospeccao" element={<CartaoEmBreve tela={T.prospeccao} />} />
+                <Route path="prospeccao" element={<ProspeccaoPage />} />
                 <Route path="ia" element={<CartaoEmBreve tela={T.ia} />} />
               </Route>
               {/* A volta do login do Instagram (servidor) ainda aponta para /instagram?conectado=1 ou ?erro=... */}

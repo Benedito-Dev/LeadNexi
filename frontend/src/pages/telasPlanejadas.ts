@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { BarChart3, Bot, Handshake, Images, ListChecks, MessagesSquare, SlidersHorizontal, UserRound } from 'lucide-react'
+import { BarChart3, Bot, Handshake, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -74,13 +74,6 @@ export const TELAS_PLANEJADAS = {
     resumo: 'Seus dados de acesso',
     etapa: 1,
     itens: ['Nome e e-mail', 'Trocar senha', 'Tema claro ou escuro'],
-  },
-  prospeccao: {
-    icone: SlidersHorizontal,
-    titulo: 'Prospecção',
-    resumo: 'Como você prospecta',
-    etapa: 1,
-    itens: ['Meta diária e semanal de contatos, meta de faturamento', 'Dias da cadência de follow-up', 'Modelos de mensagem (1ª mensagem, retomada, última)'],
   },
   ia: {
     icone: Bot,
