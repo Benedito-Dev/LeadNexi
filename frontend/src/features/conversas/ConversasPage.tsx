@@ -184,6 +184,9 @@ export function ConversasPage() {
               fichaVisivel={fichaVisivel}
               onAlternarFicha={alternarFicha}
               onNotaSalva={carregarLead}
+              onReagiu={(id, reaction) =>
+                setHistorico((h) => (h && h.leadId === abertaId ? { ...h, dados: { ...h.dados, messages: h.dados.messages.map((m) => (m.id === id ? { ...m, reaction } : m)) } } : h))
+              }
             />
             {/* A ficha desliza da direita: a coluna abre a largura e o conteúdo entra com um esmaecimento */}
             {aberta && (

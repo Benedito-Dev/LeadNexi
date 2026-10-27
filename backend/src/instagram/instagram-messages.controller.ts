@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
+  Put,
   Post,
 } from '@nestjs/common';
 import {
@@ -61,6 +63,45 @@ export class InstagramMessagesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendInstagramMessageDto,
   ) {
-    return this.messages.send(id, dto.text);
+    return this.messages.send(id, dto.text, dto.replyToId);
+  }
+
+  @Put('messages/:messageId/reaction')
+  @ApiOperation({
+    summary:
+      'Coração numa mensagem do direct (a única reação que o Instagram aceita pela API)',
+  })
+  @ApiOkResponse({ description: '{ id, reaction }' })
+  @ApiNotFoundResponse({ description: 'Lead ou mensagem não encontrados' })
+  @ApiConflictResponse({
+    description:
+      'Mensagem sem registro do Instagram, janela de 24 h fechada ou conexão expirada',
+  })
+  @ApiBadGatewayResponse({
+    description: 'O Instagram recusou ou não respondeu',
+  })
+  react(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+  ) {
+    return this.messages.react(id, messageId, true);
+  }
+
+  @Delete('messages/:messageId/reaction')
+  @ApiOperation({ summary: 'Tira o coração de uma mensagem do direct' })
+  @ApiOkResponse({ description: '{ id, reaction: null }' })
+  @ApiNotFoundResponse({ description: 'Lead ou mensagem não encontrados' })
+  @ApiConflictResponse({
+    description:
+      'Mensagem sem registro do Instagram, janela de 24 h fechada ou conexão expirada',
+  })
+  @ApiBadGatewayResponse({
+    description: 'O Instagram recusou ou não respondeu',
+  })
+  unreact(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+  ) {
+    return this.messages.react(id, messageId, false);
   }
 }

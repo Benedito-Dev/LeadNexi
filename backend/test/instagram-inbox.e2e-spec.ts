@@ -247,6 +247,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 1,
         messages: 1,
         sent: 0,
+        reactions: 0,
         ignored: 0,
       });
       expect(meta.getMessagingProfile).toHaveBeenCalledWith(
@@ -294,6 +295,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 0,
         messages: 1,
         sent: 0,
+        reactions: 0,
         ignored: 0,
       });
       const repeated = await deliver(
@@ -303,6 +305,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 0,
         messages: 0,
         sent: 0,
+        reactions: 0,
         ignored: 1,
       });
 
@@ -330,6 +333,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 1,
         messages: 2,
         sent: 0,
+        reactions: 0,
         ignored: 0,
       });
     });
@@ -369,6 +373,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 0,
         messages: 0,
         sent: 0,
+        reactions: 0,
         ignored: 5,
       });
       expect(
@@ -405,6 +410,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 0,
         messages: 0,
         sent: 1,
+        reactions: 0,
         ignored: 0,
       });
       const again = await deliver(echo('e1', 'Temos sim!', repliedAt)).expect(
@@ -425,6 +431,21 @@ describe('Direct do Instagram (e2e)', () => {
       expect(messages[1].createdAt.getTime()).toBe(repliedAt);
       // A resposta não mexe na janela de 24 h: ela conta da mensagem do lead
       expect(lead.instagramLastMessageAt?.getTime()).toBe(receivedAt);
+    });
+
+    it('resposta do lead citando uma mensagem guarda qual foi citada', async () => {
+      await deliver(dm({ mid: 'm1', text: 'Tem tamanho M?' })).expect(200);
+      await deliver(
+        dm({ mid: 'm2', text: 'E o G?', reply_to: { mid: 'm1' } }),
+      ).expect(200);
+      const first = await prisma.leadActivity.findUniqueOrThrow({
+        where: { externalId: 'm1' },
+      });
+      const reply = await prisma.leadActivity.findUniqueOrThrow({
+        where: { externalId: 'm2' },
+      });
+      expect(reply.replyToId).toBe(first.id);
+      expect(first.replyToId).toBeNull();
     });
 
     it('janela de 24 h: conta da mensagem mais recente do lead, mesmo com aviso atrasado', async () => {
@@ -516,6 +537,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 1,
         messages: 1,
         sent: 0,
+        reactions: 0,
         ignored: 0,
       });
     });
@@ -527,6 +549,7 @@ describe('Direct do Instagram (e2e)', () => {
         created: 0,
         messages: 0,
         sent: 0,
+        reactions: 0,
         ignored: 1,
       });
     });

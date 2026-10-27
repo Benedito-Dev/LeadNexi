@@ -48,7 +48,12 @@ export const MESSAGE_ERRORS = {
   unavailable:
     'Essa pessoa não pode receber mensagens agora (a conta pode ter sido desativada ou bloqueado a sua).',
   transient: 'O Instagram não respondeu a tempo. Tente de novo em instantes.',
+  noMetaId:
+    'Essa mensagem não tem o registro do Instagram, então não dá para reagir nem responder a ela.',
 };
+
+/** A única reação que o Instagram aceita pela API ("love") */
+export const HEART = '❤️';
 
 /**
  * Direct pelo LeadNexi: manda um texto para o lead no Instagram e registra no histórico dele,
@@ -89,7 +94,9 @@ export class InstagramMessagesService {
         instagramLastMessageAt: true,
         stage: { select: { name: true } },
         activities: {
-          where: { type: { in: ['INSTAGRAM_MESSAGE', 'INSTAGRAM_MESSAGE_SENT'] } },
+          where: {
+            type: { in: ['INSTAGRAM_MESSAGE', 'INSTAGRAM_MESSAGE_SENT'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
           select: { type: true, text: true, createdAt: true },
@@ -132,12 +139,41 @@ export class InstagramMessagesService {
         },
         orderBy: { createdAt: 'desc' },
         take: CONVERSATION_LIMIT,
-        select: { id: true, type: true, text: true, createdAt: true },
+        select: {
+          id: true,
+          type: true,
+          text: true,
+          reaction: true,
+          leadReaction: true,
+          replyToId: true,
+          createdAt: true,
+        },
       }),
       this.prisma.instagramAccount.count({
         where: { tokenInvalidAt: null, tokenExpiresAt: { gt: now } },
       }),
     ]);
+
+    // Mensagens citadas nas respostas (podem ser mais antigas que as 200 mostradas)
+    const quotedIds = [
+      ...new Set(recent.flatMap((m) => (m.replyToId ? [m.replyToId] : []))),
+    ];
+    const quoted = new Map(
+      (quotedIds.length
+        ? await this.prisma.leadActivity.findMany({
+            where: { id: { in: quotedIds }, leadId },
+            select: { id: true, type: true, text: true },
+          })
+        : []
+      ).map((m) => [
+        m.id,
+        {
+          id: m.id,
+          direction: directionOf(m.type),
+          text: m.text ?? '',
+        },
+      ]),
+    );
 
     const open = isWindowOpen(lead.instagramLastMessageAt, now);
     const blocked: ReplyBlock | null = !lead.instagramUserId
@@ -157,23 +193,128 @@ export class InstagramMessagesService {
           : null,
       messages: recent.reverse().map((message) => ({
         id: message.id,
-        direction:
-          message.type === 'INSTAGRAM_MESSAGE_SENT'
-            ? ('sent' as const)
-            : ('received' as const),
+        direction: directionOf(message.type),
         text: message.text ?? '',
+        reaction: message.reaction,
+        leadReaction: message.leadReaction,
+        replyTo: message.replyToId
+          ? (quoted.get(message.replyToId) ?? null)
+          : null,
         createdAt: message.createdAt,
       })),
     };
   }
 
-  async send(leadId: string, rawText: string, now = new Date()) {
+  async send(
+    leadId: string,
+    rawText: string,
+    replyToId?: string,
+    now = new Date(),
+  ) {
     const text = rawText.trim();
     if (!text) throw new BadRequestException(MESSAGE_ERRORS.empty);
     if (Buffer.byteLength(text, 'utf8') > MAX_MESSAGE_BYTES) {
       throw new BadRequestException(MESSAGE_ERRORS.tooLong);
     }
+    const replyToMid = replyToId
+      ? await this.metaIdOf(leadId, replyToId)
+      : undefined;
 
+    const { recipientId, token, accountId } = await this.replyContext(
+      leadId,
+      now,
+    );
+
+    let messageId: string;
+    try {
+      messageId = await this.api.sendTextMessage(
+        token,
+        recipientId,
+        text,
+        replyToMid,
+      );
+    } catch (error) {
+      throw await this.toHttpError(error, accountId, now);
+    }
+
+    try {
+      return await this.prisma.leadActivity.create({
+        data: {
+          leadId,
+          type: 'INSTAGRAM_MESSAGE_SENT',
+          text,
+          externalId: messageId,
+          replyToId: replyToId ?? null,
+          createdAt: now,
+        },
+      });
+    } catch (error) {
+      // O eco da Meta chegou antes e já registrou esta mensagem
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return this.prisma.leadActivity.update({
+          where: { externalId: messageId },
+          data: { replyToId: replyToId ?? null },
+        });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Coração numa mensagem do direct (ou tira o coração), no Instagram e no histórico. Mesmas regras
+   * do texto: só com direct do lead e dentro das 24 h.
+   */
+  async react(
+    leadId: string,
+    activityId: string,
+    react: boolean,
+    now = new Date(),
+  ) {
+    const mid = await this.metaIdOf(leadId, activityId);
+    const { recipientId, token, accountId } = await this.replyContext(
+      leadId,
+      now,
+    );
+    try {
+      await this.api.sendReaction(token, recipientId, mid, react);
+    } catch (error) {
+      throw await this.toHttpError(error, accountId, now);
+    }
+    await this.prisma.leadActivity.update({
+      where: { id: activityId },
+      data: { reaction: react ? HEART : null },
+    });
+    return { id: activityId, reaction: react ? HEART : null };
+  }
+
+  /**
+   * ID na Meta de uma mensagem do direct deste lead (para reagir ou responder citando). Sem ele
+   * (ex.: mensagem de antes da integração), o Instagram não tem onde aplicar.
+   */
+  private async metaIdOf(leadId: string, activityId: string) {
+    const message = await this.prisma.leadActivity.findFirst({
+      where: {
+        id: activityId,
+        leadId,
+        type: { in: ['INSTAGRAM_MESSAGE', 'INSTAGRAM_MESSAGE_SENT'] },
+      },
+      select: { externalId: true },
+    });
+    if (!message) throw new NotFoundException('Mensagem não encontrada');
+    if (!message.externalId) {
+      throw new ConflictException(MESSAGE_ERRORS.noMetaId);
+    }
+    return message.externalId;
+  }
+
+  /**
+   * Para quem e com qual token mandar algo no direct do lead, ou por que não dá (sem direct,
+   * janela de 24 h fechada, conexão expirada).
+   */
+  private async replyContext(leadId: string, now: Date) {
     const lead = await this.prisma.lead.findUnique({
       where: { id: leadId },
       select: { instagramUserId: true, instagramLastMessageAt: true },
@@ -192,48 +333,20 @@ export class InstagramMessagesService {
     });
     if (!account) throw new ConflictException(MESSAGE_ERRORS.reconnect);
 
-    const key = this.settings.requireKey();
-    let token: string;
     try {
-      token = decryptSecret(account.accessToken, key);
+      const token = decryptSecret(
+        account.accessToken,
+        this.settings.requireKey(),
+      );
+      return {
+        recipientId: lead.instagramUserId,
+        token,
+        accountId: account.id,
+      };
     } catch {
       // Token guardado que não abre (chave trocada): só conectando de novo
       await this.markTokenInvalid(account.id, now);
       throw new ConflictException(MESSAGE_ERRORS.reconnect);
-    }
-
-    let messageId: string;
-    try {
-      messageId = await this.api.sendTextMessage(
-        token,
-        lead.instagramUserId,
-        text,
-      );
-    } catch (error) {
-      throw await this.toHttpError(error, account.id, now);
-    }
-
-    try {
-      return await this.prisma.leadActivity.create({
-        data: {
-          leadId,
-          type: 'INSTAGRAM_MESSAGE_SENT',
-          text,
-          externalId: messageId,
-          createdAt: now,
-        },
-      });
-    } catch (error) {
-      // O eco da Meta chegou antes e já registrou esta mensagem
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        return this.prisma.leadActivity.findUniqueOrThrow({
-          where: { externalId: messageId },
-        });
-      }
-      throw error;
     }
   }
 
@@ -284,4 +397,11 @@ export function isWindowOpen(lastMessageAt: Date | null, now = new Date()) {
     lastMessageAt !== null &&
     now.getTime() - lastMessageAt.getTime() < REPLY_WINDOW_MS
   );
+}
+
+/** Quem mandou: a conta (enviada) ou o lead (recebida) */
+function directionOf(type: string) {
+  return type === 'INSTAGRAM_MESSAGE_SENT'
+    ? ('sent' as const)
+    : ('received' as const);
 }

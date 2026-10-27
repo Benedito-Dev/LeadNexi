@@ -1,4 +1,4 @@
-import { IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class SendInstagramMessageDto {
   /**
@@ -8,4 +8,9 @@ export class SendInstagramMessageDto {
   @IsString()
   @MaxLength(1000)
   text: string;
+
+  /** Mensagem da conversa que esta responde (aparece citada no Instagram) */
+  @IsOptional()
+  @IsUUID()
+  replyToId?: string;
 }

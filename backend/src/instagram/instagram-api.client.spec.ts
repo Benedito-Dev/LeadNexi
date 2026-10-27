@@ -232,7 +232,7 @@ describe('InstagramApiClient', () => {
       );
       expect(init?.method).toBe('POST');
       expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
-        subscribed_fields: 'messages',
+        subscribed_fields: 'messages,message_reactions',
         access_token: 'tok',
       });
     });
@@ -371,19 +371,50 @@ describe('InstagramApiClient', () => {
     });
     reply(200, {
       data: [
-        { id: '1', media_type: 'CAROUSEL_ALBUM', media_url: 'https://cdn/1.jpg', permalink: 'https://ig/p/1', timestamp: '2026-10-20T12:00:00+0000' },
-        { id: '2', media_type: 'VIDEO', media_url: 'https://cdn/2.mp4', thumbnail_url: 'https://cdn/2.jpg' },
+        {
+          id: '1',
+          media_type: 'CAROUSEL_ALBUM',
+          media_url: 'https://cdn/1.jpg',
+          permalink: 'https://ig/p/1',
+          timestamp: '2026-10-20T12:00:00+0000',
+        },
+        {
+          id: '2',
+          media_type: 'VIDEO',
+          media_url: 'https://cdn/2.mp4',
+          thumbnail_url: 'https://cdn/2.jpg',
+        },
       ],
     });
 
     const perfil = await client.getProfileOverview('tok', 12);
 
-    expect(perfil).toMatchObject({ username: 'alvodigital.ce', followers: 5, following: 7, posts: 8, biography: 'Gestão de anúncios' });
+    expect(perfil).toMatchObject({
+      username: 'alvodigital.ce',
+      followers: 5,
+      following: 7,
+      posts: 8,
+      biography: 'Gestão de anúncios',
+    });
     expect(perfil.media).toEqual([
-      { id: '1', type: 'CAROUSEL_ALBUM', imageUrl: 'https://cdn/1.jpg', permalink: 'https://ig/p/1', timestamp: '2026-10-20T12:00:00+0000' },
-      { id: '2', type: 'VIDEO', imageUrl: 'https://cdn/2.jpg', permalink: null, timestamp: null },
+      {
+        id: '1',
+        type: 'CAROUSEL_ALBUM',
+        imageUrl: 'https://cdn/1.jpg',
+        permalink: 'https://ig/p/1',
+        timestamp: '2026-10-20T12:00:00+0000',
+      },
+      {
+        id: '2',
+        type: 'VIDEO',
+        imageUrl: 'https://cdn/2.jpg',
+        permalink: null,
+        timestamp: null,
+      },
     ]);
-    const [perfilUrl, postsUrl] = fetchMock.mock.calls.map(([input]) => new URL(input.toString()));
+    const [perfilUrl, postsUrl] = fetchMock.mock.calls.map(
+      ([input]) => new URL(input.toString()),
+    );
     expect(perfilUrl.pathname).toBe(`/${GRAPH_VERSION}/me`);
     expect(perfilUrl.searchParams.get('fields')).toContain('followers_count');
     expect(postsUrl.pathname).toBe(`/${GRAPH_VERSION}/me/media`);

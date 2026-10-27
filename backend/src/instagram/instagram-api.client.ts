@@ -164,20 +164,30 @@ export class InstagramApiClient {
   }
 
   /** O perfil como aparece no app, na hora: números, bio, link e os últimos `limit` posts. */
-  async getProfileOverview(token: string, limit = 30): Promise<ProfileOverview> {
+  async getProfileOverview(
+    token: string,
+    limit = 30,
+  ): Promise<ProfileOverview> {
     const perfil = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
     perfil.search = new URLSearchParams({
-      fields: 'username,name,biography,website,profile_picture_url,followers_count,follows_count,media_count',
+      fields:
+        'username,name,biography,website,profile_picture_url,followers_count,follows_count,media_count',
       access_token: token,
     }).toString();
-    const posts = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me/media`);
+    const posts = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/media`,
+    );
     posts.search = new URLSearchParams({
       fields: 'id,media_type,media_url,thumbnail_url,permalink,timestamp',
       limit: String(limit),
       access_token: token,
     }).toString();
-    const [dados, lista] = await Promise.all([this.request(perfil), this.request(posts)]);
-    const numero = (valor: unknown) => (typeof valor === 'number' ? valor : null);
+    const [dados, lista] = await Promise.all([
+      this.request(perfil),
+      this.request(posts),
+    ]);
+    const numero = (valor: unknown) =>
+      typeof valor === 'number' ? valor : null;
     const itens = Array.isArray(lista.data) ? (lista.data as Json[]) : [];
     return {
       username: requireString(dados.username, 'username'),
@@ -196,7 +206,10 @@ export class InstagramApiClient {
           {
             id,
             type,
-            imageUrl: type === 'VIDEO' ? optionalString(item.thumbnail_url) : optionalString(item.media_url),
+            imageUrl:
+              type === 'VIDEO'
+                ? optionalString(item.thumbnail_url)
+                : optionalString(item.media_url),
             permalink: optionalString(item.permalink),
             timestamp: optionalString(item.timestamp),
           },
@@ -215,7 +228,7 @@ export class InstagramApiClient {
       {
         method: 'POST',
         body: new URLSearchParams({
-          subscribed_fields: 'messages',
+          subscribed_fields: 'messages,message_reactions',
           access_token: token,
         }),
       },
@@ -244,12 +257,14 @@ export class InstagramApiClient {
 
   /**
    * Manda um texto no direct para quem já conversou com a conta (IGSID). Só dentro da janela de
-   * 24 h depois da última mensagem da pessoa. Devolve o ID da mensagem (o mesmo do eco).
+   * 24 h depois da última mensagem da pessoa. Com `replyToMid`, sai como resposta citando aquela
+   * mensagem. Devolve o ID da mensagem (o mesmo do eco).
    */
   async sendTextMessage(
     token: string,
     recipientId: string,
     text: string,
+    replyToMid?: string,
   ): Promise<string> {
     const body = await this.request(
       `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
@@ -262,10 +277,40 @@ export class InstagramApiClient {
         body: JSON.stringify({
           recipient: { id: recipientId },
           message: { text },
+          ...(replyToMid && { reply_to: { mid: replyToMid } }),
         }),
       },
     );
     return requireString(body.message_id, 'message_id');
+  }
+
+  /**
+   * Reage a uma mensagem do direct (pelo ID dela na Meta) ou tira a reação. O Instagram só aceita
+   * o coração ("love") pela API; mesma janela de 24 h do texto.
+   */
+  async sendReaction(
+    token: string,
+    recipientId: string,
+    messageId: string,
+    react: boolean,
+  ): Promise<void> {
+    await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          sender_action: react ? 'react' : 'unreact',
+          payload: react
+            ? { message_id: messageId, reaction: 'love' }
+            : { message_id: messageId },
+        }),
+      },
+    );
   }
 
   /** Baixa uma imagem da Meta (ex.: foto de perfil), até 2 MB. */

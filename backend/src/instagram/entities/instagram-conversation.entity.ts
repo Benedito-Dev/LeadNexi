@@ -7,7 +7,22 @@ export class InstagramMessageEntity {
   direction: 'received' | 'sent';
 
   text: string;
+  /** Reação da conta a esta mensagem (emoji), se houver */
+  reaction: string | null;
+  /** Reação do lead a esta mensagem (emoji), se houver */
+  leadReaction: string | null;
+  /** Mensagem que esta responde (citada), se houver */
+  replyTo: InstagramQuotedMessageEntity | null;
   createdAt: Date;
+}
+
+export class InstagramQuotedMessageEntity {
+  id: string;
+
+  @ApiProperty({ enum: ['received', 'sent'] })
+  direction: 'received' | 'sent';
+
+  text: string;
 }
 
 export class InstagramConversationEntity {

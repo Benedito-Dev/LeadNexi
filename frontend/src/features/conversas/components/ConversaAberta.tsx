@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, CheckCheck, ChevronDown, Clock3, Columns3, Copy, IdCard, Lock, LoaderCircle, MessagesSquare, MoreHorizontal, NotebookPen, Send } from 'lucide-react'
+import { ArrowLeft, CheckCheck, ChevronDown, Clock3, Columns3, Copy, Heart, IdCard, Lock, LoaderCircle, MessagesSquare, MoreHorizontal, NotebookPen, Reply, Send, X } from 'lucide-react'
 import { Link } from 'react-router'
 import { InstagramIcon, WhatsAppLogo } from '@/brand/icons'
 import { BotaoDaIA } from '@/components/ia/BotaoDaIA'
@@ -13,7 +13,7 @@ import { adicionarNota } from '../../crm/api'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
 import { registrarOpcaoUsada, sugerirResposta, type RespostaSugerida } from '../../ia/api'
 import { dicaDaIA, useStatusDaIA } from '../../ia/useStatusDaIA'
-import { enviarMensagem, fotoDoLead } from '../api'
+import { enviarMensagem, fotoDoLead, reagir } from '../api'
 import type { Etapa } from '../../crm/types'
 import type { Conversa, Historico, Mensagem } from '../tipos'
 
@@ -88,16 +88,21 @@ type Props = {
   onAlternarFicha: () => void
   /** Trecho salvo nas anotações do lead: o painel recarrega */
   onNotaSalva: () => void
+  /** Sua reação mudou numa mensagem: a conversa troca na hora */
+  onReagiu: (mensagemId: string, reaction: string | null) => void
 }
 
 /** Coluna do meio: a conversa aberta, separada por dia, e o campo de resposta. */
-export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha, onNotaSalva }: Props) {
+export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha, onNotaSalva, onReagiu }: Props) {
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const statusDaIA = useStatusDaIA()
   const [sugerindo, setSugerindo] = useState(false)
   const [sugestao, setSugestao] = useState<{ resposta: RespostaSugerida; escolhida: number } | null>(null)
   const [erroDaIA, setErroDaIA] = useState<string | null>(null)
+  // Mensagem que a próxima resposta cita (escolhida em "Responder" nos 3 pontinhos)
+  const [respondendo, setRespondendo] = useState<Mensagem | null>(null)
+  const campoRef = useRef<HTMLTextAreaElement>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   // Quantas mensagens já estavam na tela na última rolagem (0 = acabou de abrir)
   const vistasRef = useRef(0)
@@ -144,8 +149,9 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
     if (!podeEnviar) return
     setEnviando(true)
     try {
-      onEnviada(await enviarMensagem(conversa.id, texto.trim()))
+      onEnviada(await enviarMensagem(conversa.id, texto.trim(), respondendo))
       setTexto('')
+      setRespondendo(null)
     } catch (e) {
       addToast('error', 'Mensagem não enviada', e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : 'O Instagram não respondeu. Tente de novo.', 6000)
     } finally {
@@ -176,6 +182,21 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
       // Só alimenta a medição do que funciona
     })
   }
+
+  const responder = (mensagem: Mensagem) => {
+    setRespondendo(mensagem)
+    campoRef.current?.focus()
+  }
+
+  // Leva até a mensagem citada e pisca a bolha dela
+  const irPara = (id: string) => {
+    const alvo = document.getElementById(`mensagem-${id}`)
+    if (!alvo) return
+    alvo.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    alvo.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 600, iterations: 2 })
+  }
+
+  const autor = (direcao: Mensagem['direction']) => (direcao === 'sent' ? 'Você' : conversa.name)
 
   // Mensagens agrupadas por dia, com o dia num separador
   const grupos: { dia: string; mensagens: Mensagem[] }[] = []
@@ -271,31 +292,66 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                 {grupo.mensagens.map((mensagem, i) => {
                   const enviada = mensagem.direction === 'sent'
                   const seguida = grupo.mensagens[i + 1]?.direction === mensagem.direction
+                  const reacoes = [mensagem.leadReaction, mensagem.reaction].filter(Boolean)
                   return (
                     <div
                       key={mensagem.id}
                       className={cn(
                         'group flex items-center gap-1',
                         enviada ? 'flex-row-reverse' : 'flex-row',
+                        reacoes.length > 0 && 'mb-3',
                         new Date(mensagem.createdAt).getTime() > abertaEm && 'duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-3',
                       )}
                     >
                       <div
+                        id={`mensagem-${mensagem.id}`}
                         className={cn(
-                          'max-w-[80%] rounded-xl px-4 py-2.5 text-[15px] leading-6 shadow-sm',
+                          'relative max-w-[80%] rounded-xl px-4 py-2.5 text-[15px] leading-6 shadow-sm',
                           // Suas mensagens na cor do canal: violeta claro no Instagram, verde no WhatsApp
                           enviada ? (whatsapp ? 'bg-chat-wa-out text-chat-wa-out-foreground' : 'bg-leadnexi-violet/15 text-foreground') : 'bg-chat-wa-in text-chat-wa-in-foreground',
                           // A ponta da bolha só na última de uma sequência do mesmo lado
                           !seguida && (enviada ? 'rounded-br-sm' : 'rounded-bl-sm'),
                         )}
                       >
+                        {mensagem.replyTo && (
+                          <button
+                            type="button"
+                            onClick={() => irPara(mensagem.replyTo!.id)}
+                            className="mb-1.5 block w-full rounded-md border-l-2 border-leadnexi-violet bg-foreground/5 px-2.5 py-1 text-left text-[13px] leading-5 hover:bg-foreground/10"
+                          >
+                            <span className="block text-xs font-semibold text-leadnexi-violet-texto">{autor(mensagem.replyTo.direction)}</span>
+                            <span className="line-clamp-2 text-muted-foreground">{mensagem.replyTo.text || '(sem texto)'}</span>
+                          </button>
+                        )}
                         <p className="m-0 whitespace-pre-wrap break-words">{mensagem.text || '(sem texto: foto, áudio ou figurinha)'}</p>
                         <span className="mt-1 flex items-center justify-end gap-1 text-xs tabular-nums text-muted-foreground">
                           {hora(mensagem.createdAt)}
                           {enviada && <CheckCheck aria-label="Enviada" className={cn('h-3.5 w-3.5', whatsapp ? 'text-chat-wa-tick-read' : 'text-leadnexi-violet-texto')} strokeWidth={2} />}
                         </span>
+                        {/* Reações (a do lead e a sua) penduradas no pé da bolha, como no Instagram */}
+                        {reacoes.length > 0 && (
+                          <span
+                            className={cn('absolute -bottom-3.5 flex h-6 items-center gap-0.5 rounded-full border border-border bg-card px-1.5 text-sm leading-none shadow-sm', enviada ? 'right-2' : 'left-2')}
+                            aria-label={[mensagem.leadReaction && `${conversa.name} reagiu com ${mensagem.leadReaction}`, mensagem.reaction && `Você reagiu com ${mensagem.reaction}`].filter(Boolean).join('. ')}
+                          >
+                            {reacoes.map((emoji, j) => (
+                              <span key={j} aria-hidden>
+                                {emoji}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </div>
-                      {mensagem.text && <MenuDaMensagem mensagem={mensagem} leadId={conversa.id} podeAnotar={historico.blocked !== 'demo'} onNotaSalva={onNotaSalva} />}
+                      <MenuDaMensagem
+                        mensagem={mensagem}
+                        leadId={conversa.id}
+                        podeAnotar={historico.blocked !== 'demo'}
+                        instagram={!whatsapp}
+                        podeAgir={historico.canReply}
+                        onResponder={() => responder(mensagem)}
+                        onNotaSalva={onNotaSalva}
+                        onReagiu={onReagiu}
+                      />
                     </div>
                   )
                 })}
@@ -339,13 +395,27 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
               />
             )}
           </div>
+          {respondendo && (
+            <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border-l-2 border-leadnexi-violet bg-muted/60 py-1.5 pl-3 pr-1.5 duration-200 animate-in fade-in-0 slide-in-from-bottom-1">
+              <Reply aria-hidden className="h-4 w-4 shrink-0 text-leadnexi-violet-texto" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1 text-[13px] leading-5">
+                <span className="block text-xs font-semibold text-leadnexi-violet-texto">Respondendo a {autor(respondendo.direction)}</span>
+                <span className="block truncate text-muted-foreground">{respondendo.text || '(sem texto)'}</span>
+              </span>
+              <button type="button" onClick={() => setRespondendo(null)} aria-label="Cancelar resposta" className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground">
+                <X aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
           <form onSubmit={(e) => void enviar(e)} className="flex items-end gap-3 px-4 py-3">
             <div className="relative min-w-0 flex-1">
               <textarea
+                ref={campoRef}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 onKeyDown={(e) => {
-                  // Enter envia; Shift+Enter quebra a linha
+                  // Enter envia; Shift+Enter quebra a linha; Esc cancela a citação
+                  if (e.key === 'Escape' && respondendo) setRespondendo(null)
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault()
                     void enviar()
@@ -379,8 +449,33 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
   )
 }
 
-/** Os 3 pontinhos de uma mensagem (aparecem ao passar o mouse): copiar o texto ou guardar nas anotações do lead. */
-function MenuDaMensagem({ mensagem, leadId, podeAnotar, onNotaSalva }: { mensagem: Mensagem; leadId: string; podeAnotar: boolean; onNotaSalva: () => void }) {
+type MenuDaMensagemProps = {
+  mensagem: Mensagem
+  leadId: string
+  podeAnotar: boolean
+  /** Conversa do Instagram: responder citando e curtir */
+  instagram: boolean
+  /** Dentro das 24 h do Instagram e com a conta conectada (fora disso a Meta recusa) */
+  podeAgir: boolean
+  onResponder: () => void
+  onNotaSalva: () => void
+  onReagiu: (mensagemId: string, reaction: string | null) => void
+}
+
+/** Os 3 pontinhos de uma mensagem (aparecem ao passar o mouse): responder, curtir, copiar o texto ou guardar nas anotações do lead. */
+function MenuDaMensagem({ mensagem, leadId, podeAnotar, instagram, podeAgir, onResponder, onNotaSalva, onReagiu }: MenuDaMensagemProps) {
+  const temTexto = Boolean(mensagem.text)
+  const curtida = Boolean(mensagem.reaction)
+
+  const alternarCurtida = async () => {
+    try {
+      const { reaction } = await reagir(leadId, mensagem.id, !curtida)
+      onReagiu(mensagem.id, reaction)
+    } catch (erro) {
+      addToast('error', curtida ? 'Não foi possível tirar a curtida' : 'Não foi possível curtir', erro instanceof ErroDeApi ? erro.message : 'Tente de novo.')
+    }
+  }
+
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(mensagem.text)
@@ -400,6 +495,8 @@ function MenuDaMensagem({ mensagem, leadId, podeAnotar, onNotaSalva }: { mensage
     }
   }
 
+  if (!temTexto && !instagram) return null
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -412,15 +509,34 @@ function MenuDaMensagem({ mensagem, leadId, podeAnotar, onNotaSalva }: { mensage
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={mensagem.direction === 'sent' ? 'end' : 'start'} className="font-marca">
-        <DropdownMenuItem onSelect={() => void copiar()} className="gap-2">
-          <Copy aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-          Copiar
-        </DropdownMenuItem>
-        {podeAnotar && (
+        {instagram && (
+          <>
+            <DropdownMenuItem onSelect={onResponder} disabled={!podeAgir} className="gap-2">
+              <Reply aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              Responder
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void alternarCurtida()} disabled={!podeAgir} className="gap-2">
+              <Heart aria-hidden className={cn('h-4 w-4', curtida && 'fill-leadnexi-danger text-leadnexi-danger')} strokeWidth={1.75} />
+              {curtida ? 'Tirar curtida' : 'Curtir'}
+            </DropdownMenuItem>
+          </>
+        )}
+        {temTexto && (
+          <DropdownMenuItem onSelect={() => void copiar()} className="gap-2">
+            <Copy aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+            Copiar
+          </DropdownMenuItem>
+        )}
+        {temTexto && podeAnotar && (
           <DropdownMenuItem onSelect={() => void anotar()} className="gap-2">
             <NotebookPen aria-hidden className="h-4 w-4" strokeWidth={1.75} />
             Salvar nas anotações
           </DropdownMenuItem>
+        )}
+        {instagram && !podeAgir && (
+          <p className="m-0 max-w-56 border-t border-border px-2 pb-1 pt-2 text-[11px] font-medium leading-4 text-muted-foreground">
+            Responder e curtir só quando o Instagram libera a resposta (veja o aviso embaixo da conversa).
+          </p>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

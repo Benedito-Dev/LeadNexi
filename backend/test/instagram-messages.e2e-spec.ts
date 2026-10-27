@@ -30,7 +30,11 @@ describe('Mandar direct pelo LeadNexi (e2e)', () => {
     process.env.JWT_SECRET,
   )!;
 
-  const meta = { sendTextMessage: vi.fn(), getMessagingProfile: vi.fn() };
+  const meta = {
+    sendTextMessage: vi.fn(),
+    sendReaction: vi.fn(),
+    getMessagingProfile: vi.fn(),
+  };
 
   beforeAll(async () => {
     process.env.INSTAGRAM_APP_ID = 'app-de-teste';
@@ -151,6 +155,7 @@ describe('Mandar direct pelo LeadNexi (e2e)', () => {
       'token-real',
       'igsid-maria',
       'Temos sim, no tamanho M!',
+      undefined,
     );
 
     const echo = await deliverEcho('mid-enviada', 'Temos sim, no tamanho M!');
@@ -167,6 +172,170 @@ describe('Mandar direct pelo LeadNexi (e2e)', () => {
     const res = await send(lead.id, 'Oi').expect(201);
     expect(res.body.type).toBe('INSTAGRAM_MESSAGE_SENT');
     expect(await sentMessages(lead.id)).toHaveLength(1);
+  });
+
+  describe('reação', () => {
+    function messageOf(leadId: string, externalId: string | null) {
+      return prisma.leadActivity.create({
+        data: {
+          leadId,
+          type: 'INSTAGRAM_MESSAGE',
+          text: 'Tem tamanho M?',
+          externalId,
+        },
+      });
+    }
+    const reaction = (leadId: string, messageId: string) =>
+      `/leads/${leadId}/instagram/messages/${messageId}/reaction`;
+
+    it('coração na mensagem do lead vai para o Instagram e fica na conversa; tirar desfaz', async () => {
+      const lead = await leadFromDirect();
+      const message = await messageOf(lead.id, 'mid-do-lead');
+
+      await api().put(reaction(lead.id, message.id)).set(auth).expect(200);
+      expect(meta.sendReaction).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-maria',
+        'mid-do-lead',
+        true,
+      );
+      let conversa = await api()
+        .get(`/leads/${lead.id}/instagram/conversation`)
+        .set(auth)
+        .expect(200);
+      expect(conversa.body.messages[0]).toMatchObject({
+        reaction: '❤️',
+        leadReaction: null,
+      });
+
+      await api().delete(reaction(lead.id, message.id)).set(auth).expect(200);
+      expect(meta.sendReaction).toHaveBeenLastCalledWith(
+        'token-real',
+        'igsid-maria',
+        'mid-do-lead',
+        false,
+      );
+      conversa = await api()
+        .get(`/leads/${lead.id}/instagram/conversation`)
+        .set(auth)
+        .expect(200);
+      expect(conversa.body.messages[0].reaction).toBeNull();
+    });
+
+    it('mensagem sem registro da Meta ou janela fechada: não reage; de outro lead: 404', async () => {
+      const lead = await leadFromDirect();
+      const semId = await messageOf(lead.id, null);
+      const res = await api()
+        .put(reaction(lead.id, semId.id))
+        .set(auth)
+        .expect(409);
+      expect(res.body.message).toBe(MESSAGE_ERRORS.noMetaId);
+
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { instagramLastMessageAt: new Date(Date.now() - 25 * HOUR) },
+      });
+      const comId = await messageOf(lead.id, 'mid-antiga');
+      const closed = await api()
+        .put(reaction(lead.id, comId.id))
+        .set(auth)
+        .expect(409);
+      expect(closed.body.message).toBe(MESSAGE_ERRORS.windowClosed);
+
+      const outro = await leadFromDirect(null);
+      await api().put(reaction(outro.id, comId.id)).set(auth).expect(404);
+      expect(meta.sendReaction).not.toHaveBeenCalled();
+    });
+
+    it('responder citando: vai com o ID da mensagem citada e a conversa mostra a citação', async () => {
+      const lead = await leadFromDirect();
+      const message = await messageOf(lead.id, 'mid-do-lead');
+      await api()
+        .post(`/leads/${lead.id}/instagram/messages`)
+        .set(auth)
+        .send({ text: 'Temos sim!', replyToId: message.id })
+        .expect(201);
+      expect(meta.sendTextMessage).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-maria',
+        'Temos sim!',
+        'mid-do-lead',
+      );
+      const conversa = await api()
+        .get(`/leads/${lead.id}/instagram/conversation`)
+        .set(auth)
+        .expect(200);
+      expect(conversa.body.messages[1]).toMatchObject({
+        text: 'Temos sim!',
+        replyTo: {
+          id: message.id,
+          direction: 'received',
+          text: 'Tem tamanho M?',
+        },
+      });
+      expect(conversa.body.messages[0].replyTo).toBeNull();
+
+      const semId = await messageOf(lead.id, null);
+      const res = await api()
+        .post(`/leads/${lead.id}/instagram/messages`)
+        .set(auth)
+        .send({ text: 'Oi', replyToId: semId.id })
+        .expect(409);
+      expect(res.body.message).toBe(MESSAGE_ERRORS.noMetaId);
+    });
+
+    it('reação do lead pelo webhook fica na mensagem; "unreact" tira', async () => {
+      const lead = await leadFromDirect();
+      const message = await messageOf(lead.id, 'mid-da-loja');
+      const deliverReaction = (action: string, emoji?: string) => {
+        const raw = JSON.stringify({
+          object: 'instagram',
+          entry: [
+            {
+              id: ACCOUNT,
+              messaging: [
+                {
+                  sender: { id: 'igsid-maria' },
+                  recipient: { id: ACCOUNT },
+                  timestamp: Date.now(),
+                  reaction: {
+                    mid: 'mid-da-loja',
+                    action,
+                    reaction: 'love',
+                    emoji,
+                  },
+                },
+              ],
+            },
+          ],
+        });
+        const signature = createHmac('sha256', SECRET)
+          .update(raw)
+          .digest('hex');
+        return api()
+          .post('/instagram/webhook')
+          .set('Content-Type', 'application/json')
+          .set('X-Hub-Signature-256', `sha256=${signature}`)
+          .send(raw);
+      };
+
+      const res = await deliverReaction('react', '😂').expect(200);
+      expect(res.body).toMatchObject({ reactions: 1, ignored: 0 });
+      expect(
+        (
+          await prisma.leadActivity.findUniqueOrThrow({
+            where: { id: message.id },
+          })
+        ).leadReaction,
+      ).toBe('😂');
+
+      await deliverReaction('unreact').expect(200);
+      const depois = await prisma.leadActivity.findUniqueOrThrow({
+        where: { id: message.id },
+      });
+      expect(depois.leadReaction).toBeNull();
+      expect(depois.reaction).toBeNull();
+    });
   });
 
   it('lead que nunca mandou direct, ou com a janela de 24 h fechada: não manda', async () => {

@@ -19,7 +19,17 @@ export type Conversa = {
   lastMessage: { text: string; direction: 'received' | 'sent'; createdAt: string } | null
 }
 
-export type Mensagem = { id: string; direction: 'received' | 'sent'; text: string; createdAt: string }
+export type Mensagem = {
+  id: string
+  direction: 'received' | 'sent'
+  text: string
+  /** Sua reação a esta mensagem (emoji) e a do lead */
+  reaction?: string | null
+  leadReaction?: string | null
+  /** Mensagem que esta responde (citada) */
+  replyTo?: { id: string; direction: 'received' | 'sent'; text: string } | null
+  createdAt: string
+}
 
 /** GET /leads/:id/instagram/conversation */
 export type Historico = {

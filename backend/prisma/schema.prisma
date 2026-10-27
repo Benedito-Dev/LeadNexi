@@ -183,6 +183,11 @@ model LeadActivity {
   externalId String?          @unique @map("external_id")
   /// Quem fez de fora do app: "claude" (servidor MCP). Vazio = feito nas telas ou pelos webhooks
   via        String?
+  /// Reação da conta a esta mensagem do direct (emoji), e a do lead
+  reaction     String?
+  leadReaction String?        @map("lead_reaction")
+  /// Mensagem do direct que esta responde (citada), quando houver
+  replyToId    String?        @map("reply_to_id")
   createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([leadId, createdAt])

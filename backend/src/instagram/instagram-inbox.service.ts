@@ -11,6 +11,7 @@ import {
   InstagramApiClient,
   type MessagingProfile,
 } from './instagram-api.client.js';
+import { HEART } from './instagram-messages.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
 /** Origem dos leads que chegam pelo direct (a mesma do formulário de lead) */
@@ -45,6 +46,14 @@ interface MessagingEvent {
     is_echo?: unknown;
     is_deleted?: unknown;
     attachments?: { type?: unknown }[];
+    /** Resposta citando outra mensagem do direct */
+    reply_to?: { mid?: unknown };
+  };
+  /** Reação a uma mensagem (campo message_reactions do webhook) */
+  reaction?: {
+    mid?: unknown;
+    action?: unknown;
+    emoji?: unknown;
   };
 }
 
@@ -57,6 +66,8 @@ export interface InboxResult {
   messages: number;
   /** Respostas da própria conta (eco) registradas no histórico do lead */
   sent: number;
+  /** Reações (do lead ou da conta) guardadas na mensagem */
+  reactions: number;
   /** Ignoradas: repetidas, apagadas, de outra conta, sem ID ou resposta a quem não é lead */
   ignored: number;
 }
@@ -107,6 +118,7 @@ export class InstagramInboxService {
       created: 0,
       messages: 0,
       sent: 0,
+      reactions: 0,
       ignored: 0,
     };
     const account = await this.prisma.instagramAccount.findFirst({
@@ -120,9 +132,12 @@ export class InstagramInboxService {
         continue;
       }
       try {
-        const outcome = await this.receive(event, account.accessToken);
+        const outcome = event.reaction
+          ? await this.recordReaction(event, account.igUserId)
+          : await this.receive(event, account.accessToken);
         if (outcome === 'ignored') result.ignored++;
         else if (outcome === 'sent') result.sent++;
+        else if (outcome === 'reaction') result.reactions++;
         else {
           result.messages++;
           if (outcome === 'new-lead') result.created++;
@@ -191,6 +206,7 @@ export class InstagramInboxService {
           type: 'INSTAGRAM_MESSAGE',
           text: describeMessage(message),
           externalId: mid,
+          replyToId: await this.quotedId(message),
           createdAt: sentAt,
         },
       });
@@ -248,6 +264,7 @@ export class InstagramInboxService {
           type: 'INSTAGRAM_MESSAGE_SENT',
           text: describeMessage(message),
           externalId: mid,
+          replyToId: await this.quotedId(message),
           createdAt: sentAt,
         },
       });
@@ -256,6 +273,46 @@ export class InstagramInboxService {
       if (isUniqueViolation(error)) return 'ignored';
       throw error;
     }
+  }
+
+  /**
+   * Reação a uma mensagem do direct: a do lead e a da conta (feita no app do Instagram ou pelo
+   * LeadNexi) ficam guardadas na mensagem; "unreact" tira. Mensagem que não está no histórico: ignora.
+   */
+  private async recordReaction(
+    event: MessagingEvent,
+    accountIgId: string,
+  ): Promise<'reaction' | 'ignored'> {
+    const { mid, action, emoji } = event.reaction ?? {};
+    const senderId =
+      typeof event.sender?.id === 'string' ? event.sender.id : null;
+    if (typeof mid !== 'string' || !senderId) return 'ignored';
+    if (action !== 'react' && action !== 'unreact') return 'ignored';
+    const value =
+      action === 'react'
+        ? typeof emoji === 'string' && emoji
+          ? emoji
+          : HEART
+        : null;
+    const { count } = await this.prisma.leadActivity.updateMany({
+      where: { externalId: mid },
+      data:
+        senderId === accountIgId
+          ? { reaction: value }
+          : { leadReaction: value },
+    });
+    return count > 0 ? 'reaction' : 'ignored';
+  }
+
+  /** A mensagem citada (resposta), se ela estiver no histórico */
+  private async quotedId(message: NonNullable<MessagingEvent['message']>) {
+    const mid = message.reply_to?.mid;
+    if (typeof mid !== 'string') return null;
+    const quoted = await this.prisma.leadActivity.findUnique({
+      where: { externalId: mid },
+      select: { id: true },
+    });
+    return quoted?.id ?? null;
   }
 
   /** Nome, @ e foto de quem mandou. Se a Meta não responder: null (o lead nasce com nome genérico). */
@@ -395,7 +452,11 @@ function messagingEvents(
     }
     if (Array.isArray(entry?.changes)) {
       for (const change of entry.changes as Json[]) {
-        if (change?.field === 'messages' && change.value) {
+        if (
+          (change?.field === 'messages' ||
+            change?.field === 'message_reactions') &&
+          change.value
+        ) {
           events.push({ accountId, event: change.value as MessagingEvent });
         }
       }
