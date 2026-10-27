@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
+import { InstagramDirectUploadService } from '../src/instagram/instagram-direct-upload.service.js';
 import { StorageService } from './../src/storage/storage.service.js';
 import { fakeJpeg } from './fake-jpeg.js';
 
@@ -176,6 +177,22 @@ describe('Posts do Instagram (e2e)', () => {
       await api().post(`/instagram/media/${id}/complete`).set(auth).expect(200);
       const imagem = await upload();
       await schedule([id, imagem.id], { draft: true, scheduledAt: undefined }).expect(400);
+    });
+
+    it('imagem pelo caminho direto (agente): confere JPEG e proporção ao confirmar', async () => {
+      const certa = fakeJpeg(1080, 1350);
+      const inicio = await api().post('/instagram/media/video').set(auth).send(dados).expect(201);
+      expect(inicio.body.posterUploadUrl).toContain('parte=capa');
+
+      const svc = app.get(InstagramDirectUploadService);
+      const imagem = await svc.startImage({ mimeType: 'image/jpeg', sizeBytes: certa.length });
+      await api().put(imagem.uploadUrl.replace(/^\/api/, '')).set('Content-Type', 'image/jpeg').send(certa).expect(204);
+      await expect(svc.complete(imagem.id)).resolves.toMatchObject({ width: 1080, height: 1350 });
+
+      const deitada = fakeJpeg(1920, 900);
+      const outra = await svc.startImage({ mimeType: 'image/jpeg', sizeBytes: deitada.length });
+      await api().put(outra.uploadUrl.replace(/^\/api/, '')).set('Content-Type', 'image/jpeg').send(deitada).expect(204);
+      await expect(svc.complete(outra.id)).rejects.toThrow('proporção');
     });
 
     it('link de envio sem token é recusado', async () => {

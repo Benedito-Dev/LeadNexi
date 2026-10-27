@@ -44,7 +44,7 @@ import {
 } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
 import { InstagramSyncService } from './instagram-sync.service.js';
-import { InstagramVideoService } from './instagram-video.service.js';
+import { InstagramDirectUploadService } from './instagram-direct-upload.service.js';
 
 /** Limite por imagem: abaixo dos 4,5 MB que a Vercel aceita por requisição */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -57,7 +57,7 @@ export class InstagramPostsController {
     private readonly posts: InstagramPostsService,
     private readonly publisher: InstagramPublisherService,
     private readonly sync: InstagramSyncService,
-    private readonly video: InstagramVideoService,
+    private readonly video: InstagramDirectUploadService,
   ) {}
 
   @Post('media')
@@ -120,8 +120,13 @@ export class InstagramPostsController {
   @Put('media/:id/upload')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiExcludeEndpoint()
-  async uploadVideoLocal(@Param('id', ParseUUIDPipe) id: string, @Query('token') token: string | undefined, @Req() request: Request) {
-    await this.video.receiveLocal(id, token, request);
+  async uploadVideoLocal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('token') token: string | undefined,
+    @Query('parte') parte: string | undefined,
+    @Req() request: Request,
+  ) {
+    await this.video.receiveLocal(id, token, request, parte);
   }
 
   @Post('media/:id/poster')

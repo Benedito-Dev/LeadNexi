@@ -182,6 +182,11 @@ anotar, rascunhar e agendar post, lançar relatório de cliente.
 
 As ferramentas do MCP chamam os mesmos serviços das telas: nenhuma regra de negócio duplicada.
 
+**Conteúdo pelo MCP — feito:** enviar imagem (JPEG) e vídeo de Reel com capa direto ao armazenamento
+(`preparar_envio_de_imagem`, `preparar_envio_de_video`, `confirmar_envio`, que confere formato e
+proporção), `criar_rascunho_de_post`, `listar_rascunhos`, `listar_posts_agendados` e `agendar_post`
+(precisa do Instagram conectado). É o que o Criador e o Estrategista usam.
+
 ## 6. Escritório Virtual (agentes 24 h) — planejado em 27/10/2026
 
 **Para que serve:** agentes que trabalham sozinhos em horário marcado (conteúdo, agenda de posts,
@@ -207,7 +212,7 @@ LeadNexi (Vercel)                 Conteúdo (rascunhos e agendados), leads, e a 
 
 | Agente | Quando | O que faz | Depende de |
 |---|---|---|---|
-| Criador | 04:00 | 2 vídeos e 2 carrosséis, salvos como rascunho em Conteúdo | ferramentas de post no MCP |
+| Criador | 04:00 | 2 vídeos e 2 carrosséis, salvos como rascunho em Conteúdo | ferramentas de post no MCP (feitas) |
 | Estrategista | 06:00 | escolhe o melhor vídeo e o melhor carrossel, define o horário do dia e agenda | Criador |
 | Prospector | a definir | pega os 10 próximos leads sem 1ª mensagem e prepara cada uma | — |
 

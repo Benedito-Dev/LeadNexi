@@ -20,9 +20,9 @@ import {
 import { UpdateInstagramPostDto } from './dto/update-instagram-post.dto.js';
 
 /** Proporções que o Instagram aceita num post do feed: de 4:5 (retrato) a 1,91:1 (paisagem) */
-const MIN_RATIO = 4 / 5;
-const MAX_RATIO = 1.91;
-const RATIO_TOLERANCE = 0.01;
+export const MIN_RATIO = 4 / 5;
+export const MAX_RATIO = 1.91;
+export const RATIO_TOLERANCE = 0.01;
 
 /** Audiência do JWT dos links de imagem (não serve como token de acesso) */
 export const MEDIA_URL_AUDIENCE = 'instagram-media';

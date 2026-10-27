@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule } from '../clients/clients.module.js';
+import { InstagramModule } from '../instagram/instagram.module.js';
 import { LeadsModule } from '../leads/leads.module.js';
 import { PipelinesModule } from '../pipelines/pipelines.module.js';
 import { ResultsModule } from '../results/results.module.js';
@@ -9,7 +10,7 @@ import { McpTokensService } from './mcp-tokens.service.js';
 import { McpController } from './mcp.controller.js';
 
 @Module({
-  imports: [LeadsModule, ResultsModule, ClientsModule, PipelinesModule],
+  imports: [LeadsModule, ResultsModule, ClientsModule, PipelinesModule, InstagramModule],
   controllers: [McpTokensController, McpActionsController, McpController],
   providers: [McpTokensService],
   // Os agentes do Escritório avisam o LeadNexi com a mesma senha do MCP

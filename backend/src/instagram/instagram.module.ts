@@ -10,7 +10,7 @@ import { InstagramMessagesController } from './instagram-messages.controller.js'
 import { InstagramMessagesService } from './instagram-messages.service.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
-import { InstagramVideoService } from './instagram-video.service.js';
+import { InstagramDirectUploadService } from './instagram-direct-upload.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 import { InstagramSyncService } from './instagram-sync.service.js';
@@ -33,7 +33,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramService,
     InstagramSettingsService,
     InstagramPostsService,
-    InstagramVideoService,
+    InstagramDirectUploadService,
     InstagramPublisherService,
     InstagramSyncService,
     PublishAlarmService,
@@ -42,5 +42,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramApiClient,
     InstagramHashtagsService,
   ],
+  // O servidor MCP (o Claude e os agentes do Escritório) usa os mesmos serviços das telas
+  exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService],
 })
 export class InstagramModule {}

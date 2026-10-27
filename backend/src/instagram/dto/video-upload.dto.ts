@@ -30,3 +30,16 @@ export class StartVideoUploadDto {
   @Max(MAX_VIDEO_MS, { message: 'O vídeo pode ter no máximo 15 minutos.' })
   durationMs: number;
 }
+
+/** Imagem enviada direto ao armazenamento (o agente na VPS): JPEG de até 8 MB */
+export const MAX_DIRECT_IMAGE_BYTES = 8 * 1024 * 1024;
+
+export class StartImageUploadDto {
+  @IsIn(['image/jpeg'], { message: 'A imagem precisa ser JPEG.' })
+  mimeType: 'image/jpeg';
+
+  @IsInt()
+  @Min(1)
+  @Max(MAX_DIRECT_IMAGE_BYTES, { message: 'A imagem pode ter no máximo 8 MB.' })
+  sizeBytes: number;
+}
