@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   StreamableFile,
@@ -32,6 +33,7 @@ import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { stableOrigin } from '../common/utils/public-origin.js';
 import { CreateInstagramPostDto } from './dto/create-instagram-post.dto.js';
+import { StartVideoUploadDto } from './dto/video-upload.dto.js';
 import {
   QueryInstagramPostsDto,
   UpdateInstagramPostDto,
@@ -42,6 +44,7 @@ import {
 } from './instagram-posts.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
 import { InstagramSyncService } from './instagram-sync.service.js';
+import { InstagramVideoService } from './instagram-video.service.js';
 
 /** Limite por imagem: abaixo dos 4,5 MB que a Vercel aceita por requisição */
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -54,6 +57,7 @@ export class InstagramPostsController {
     private readonly posts: InstagramPostsService,
     private readonly publisher: InstagramPublisherService,
     private readonly sync: InstagramSyncService,
+    private readonly video: InstagramVideoService,
   ) {}
 
   @Post('media')
@@ -86,11 +90,55 @@ export class InstagramPostsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('token') token: string | undefined,
   ) {
-    const { stream, sizeBytes } = await this.posts.openMedia(id, token);
+    const { stream, sizeBytes, contentType } = await this.posts.openMedia(id, token);
     return new StreamableFile(stream, {
-      type: 'image/jpeg',
+      type: contentType,
       length: sizeBytes,
     });
+  }
+
+  /** Capa do vídeo de um Reel (link assinado, como a mídia). */
+  @Public()
+  @Get('media/:id/poster')
+  @Header('Cache-Control', 'private, max-age=3600')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiExcludeEndpoint()
+  async poster(@Param('id', ParseUUIDPipe) id: string, @Query('token') token: string | undefined) {
+    return new StreamableFile(await this.posts.openPoster(id, token), { type: 'image/jpeg' });
+  }
+
+  @Post('media/video')
+  @ApiOperation({
+    summary: 'Começa o envio de um vídeo (Reel): devolve o link para o navegador mandar o arquivo direto ao armazenamento',
+  })
+  startVideo(@Body() dto: StartVideoUploadDto) {
+    return this.video.start(dto);
+  }
+
+  /** Só no desenvolvimento (pasta local, sem bucket): a API recebe o vídeo no lugar do bucket. */
+  @Public()
+  @Put('media/:id/upload')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiExcludeEndpoint()
+  async uploadVideoLocal(@Param('id', ParseUUIDPipe) id: string, @Query('token') token: string | undefined, @Req() request: Request) {
+    await this.video.receiveLocal(id, token, request);
+  }
+
+  @Post('media/:id/poster')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  @ApiOperation({ summary: 'Capa do vídeo (um quadro em JPEG, tirado no navegador)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  savePoster(@Param('id', ParseUUIDPipe) id: string, @UploadedFile() file: { buffer: Buffer } | undefined) {
+    return this.video.savePoster(id, file);
+  }
+
+  @Post('media/:id/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirma que o vídeo terminou de subir: confere o arquivo e libera para entrar num post' })
+  @ApiConflictResponse({ description: 'O arquivo não chegou ou chegou incompleto' })
+  completeVideo(@Param('id', ParseUUIDPipe) id: string) {
+    return this.video.complete(id);
   }
 
   @Get('posts')

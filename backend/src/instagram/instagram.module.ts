@@ -10,6 +10,7 @@ import { InstagramMessagesController } from './instagram-messages.controller.js'
 import { InstagramMessagesService } from './instagram-messages.service.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
 import { InstagramPostsService } from './instagram-posts.service.js';
+import { InstagramVideoService } from './instagram-video.service.js';
 import { InstagramPublisherService } from './instagram-publisher.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 import { InstagramSyncService } from './instagram-sync.service.js';
@@ -32,6 +33,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramService,
     InstagramSettingsService,
     InstagramPostsService,
+    InstagramVideoService,
     InstagramPublisherService,
     InstagramSyncService,
     PublishAlarmService,

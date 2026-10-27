@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { CalendarClock, ChevronLeft, ChevronRight, FileText, ImagePlus, LoaderCircle, Send, Sparkles, TriangleAlert, X } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, Clapperboard, FileText, ImagePlus, LoaderCircle, Send, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { BotaoDaIA } from '@/components/ia/BotaoDaIA'
 import { Button } from '@/components/ui/button'
@@ -10,10 +10,11 @@ import { ErroDeApi } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { formatarDiaEHora } from '../../hoje/textos'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
-import { criarPost, enviarImagem, type PostCriado } from '../api'
+import { confirmarVideo, criarPost, enviarCapaDoVideo, enviarImagem, iniciarEnvioDeVideo, type PostCriado } from '../api'
 import { contarHashtags, LIMITE_DA_LEGENDA, LIMITE_DE_HASHTAGS, MAX_IMAGENS, prepararImagem, type ImagemPreparada } from '../imagens'
 import { dicaDaIA, useStatusDaIA } from '../../ia/useStatusDaIA'
 import { escreverLegendaComIA } from '../ia'
+import { ehVideo, enviarComProgresso, formatarDuracao, formatarTamanho, prepararVideo, type VideoPreparado } from '../video'
 import type { Post } from '../tipos'
 import { GruposDeHashtags } from './GruposDeHashtags'
 
@@ -49,7 +50,7 @@ export function NovoPost({ aberto, conectado, base, dia, onFechar, onCriado }: P
       <SheetContent className="flex w-full flex-col gap-0 p-0 font-marca sm:max-w-xl">
         <header className="border-b border-border px-6 py-4 pr-14">
           <SheetTitle className="m-0 text-lg font-extrabold tracking-[-0.02em] text-foreground">{base ? 'Duplicar post' : 'Novo post'}</SheetTitle>
-          <SheetDescription className="m-0 mt-0.5 text-[13px] font-medium text-muted-foreground">Foto única ou carrossel, para o Instagram.</SheetDescription>
+          <SheetDescription className="m-0 mt-0.5 text-[13px] font-medium text-muted-foreground">Foto, carrossel ou Reel (vídeo), para o Instagram.</SheetDescription>
         </header>
         {aberto && <Editor key={base?.id ?? dia ?? 'novo'} conectado={conectado} base={base} dia={dia} onFechar={onFechar} onCriado={onCriado} />}
       </SheetContent>
@@ -59,6 +60,8 @@ export function NovoPost({ aberto, conectado, base, dia, onFechar, onCriado }: P
 
 function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'aberto'>) {
   const [imagens, setImagens] = useState<ImagemPreparada[]>([])
+  // Reel: um vídeo só, no lugar das imagens
+  const [video, setVideo] = useState<VideoPreparado | null>(null)
   const [preparando, setPreparando] = useState(false)
   const [erroDeImagem, setErroDeImagem] = useState<string | null>(null)
   const [legenda, setLegenda] = useState(base?.caption ?? '')
@@ -98,10 +101,22 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
     imagensRef.current = imagens
   })
   useEffect(() => () => imagensRef.current.forEach((imagem) => URL.revokeObjectURL(imagem.previa)), [])
+  const videoRef = useRef(video)
+  useEffect(() => {
+    videoRef.current = video
+  })
+  useEffect(
+    () => () => {
+      if (videoRef.current) [videoRef.current.previa, videoRef.current.capaPrevia].forEach((url) => URL.revokeObjectURL(url))
+    },
+    [],
+  )
 
   // Duplicar: baixa as imagens do post original e prepara de novo (o servidor não reaproveita imagem)
   useEffect(() => {
     if (!base || base.images.length === 0) return
+    // Reel: só a legenda vem junto (o vídeo teria de ser baixado inteiro); o aviso aparece na seção
+    if (base.images.some((m) => m.kind === 'VIDEO')) return
     let ativo = true
     Promise.all(base.images.map(async (img, i) => prepararImagem(await (await fetch(img.url)).blob(), `Imagem ${i + 1}`)))
       .then((prontas) => {
@@ -115,7 +130,22 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
   }, [base])
 
   const adicionar = async (arquivos: FileList | null) => {
-    const escolhidos = Array.from(arquivos ?? []).filter((a) => a.type.startsWith('image/'))
+    const lista = Array.from(arquivos ?? [])
+    const arquivoDeVideo = lista.find(ehVideo)
+    if (arquivoDeVideo) {
+      if (imagens.length > 0) return setErroDeImagem('Um Reel tem um vídeo só, sem imagens. Remova as imagens para usar o vídeo.')
+      setErroDeImagem(null)
+      setPreparando(true)
+      try {
+        setVideo(await prepararVideo(arquivoDeVideo))
+      } catch (e) {
+        setErroDeImagem((e as Error).message)
+      } finally {
+        setPreparando(false)
+      }
+      return
+    }
+    const escolhidos = lista.filter((a) => a.type.startsWith('image/'))
     if (escolhidos.length === 0) return
     const espaco = MAX_IMAGENS - imagens.length
     setErroDeImagem(escolhidos.length > espaco ? `Máximo de ${MAX_IMAGENS} imagens por post.` : null)
@@ -128,6 +158,11 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
     } finally {
       setPreparando(false)
     }
+  }
+
+  const tirarVideo = () => {
+    if (video) [video.previa, video.capaPrevia].forEach((url) => URL.revokeObjectURL(url))
+    setVideo(null)
   }
 
   const remover = (id: string) =>
@@ -156,8 +191,8 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
   // Rascunho não sai para o Instagram: dá para guardar sem a conta conectada
   const bloqueio = !conectado && modo !== 'rascunho'
     ? 'Conecte o Instagram para agendar ou publicar.'
-    : imagens.length === 0
-      ? 'Adicione pelo menos uma imagem.'
+    : imagens.length === 0 && !video
+      ? 'Adicione uma imagem ou um vídeo.'
       : imagens.some((i) => !i.proporcaoOk)
         ? 'Ajuste as imagens marcadas: a proporção precisa ficar entre 4:5 e 1,91:1.'
         : legenda.length > LIMITE_DA_LEGENDA
@@ -186,7 +221,10 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
     setEscrevendo(true)
     setRetornoDaIA({ erro: null, avisos: [] })
     try {
-      const { legenda: escrita, avisos } = await escreverLegendaComIA(imagens)
+      const paraLer: ImagemPreparada[] = video
+        ? [{ id: 'capa', nome: 'Capa do vídeo', blob: video.capa, previa: video.capaPrevia, largura: video.largura, altura: video.altura, proporcaoOk: true }]
+        : imagens
+      const { legenda: escrita, avisos } = await escreverLegendaComIA(paraLer)
       setLegenda(escrita)
       setRetornoDaIA({ erro: null, avisos: avisos.map((aviso) => aviso.detail) })
     } catch (e) {
@@ -201,6 +239,23 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
     setErro(null)
     try {
       const ids: string[] = []
+      if (video) {
+        setEnviando({ etapa: 'Preparando o envio do vídeo…' })
+        const envio = await iniciarEnvioDeVideo({
+          mimeType: video.arquivo.type,
+          sizeBytes: video.arquivo.size,
+          width: video.largura,
+          height: video.altura,
+          durationMs: video.duracaoMs,
+        })
+        await enviarComProgresso(envio.uploadUrl, video.arquivo, envio.headers, (fracao) =>
+          setEnviando({ etapa: `Enviando o vídeo… ${Math.round(fracao * 100)}%` }),
+        )
+        setEnviando({ etapa: 'Enviando a capa…' })
+        await enviarCapaDoVideo(envio.id, video.capa)
+        await confirmarVideo(envio.id)
+        ids.push(envio.id)
+      }
       for (const [i, imagem] of imagens.entries()) {
         setEnviando({ etapa: `Enviando imagem ${i + 1} de ${imagens.length}…` })
         ids.push((await enviarImagem(imagem.blob)).id)
@@ -209,7 +264,13 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
       const quandoSai = modo === 'agora' ? { publishNow: true } : modo === 'rascunho' ? { draft: true } : { scheduledAt: new Date(quando).toISOString() }
       onCriado(await criarPost({ caption: legenda, mediaIds: ids, ...quandoSai }))
     } catch (e) {
-      setErro(e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : 'Não foi possível salvar o post. Tente de novo.')
+      setErro(
+        e instanceof ErroDeApi && e.status !== null && e.status < 500
+          ? e.message
+          : e instanceof Error && e.message.includes('vídeo')
+            ? e.message
+            : 'Não foi possível salvar o post. Tente de novo.',
+      )
       setEnviando(null)
     }
   }
@@ -295,10 +356,42 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
           <Passo
             id="np-imagens"
             numero={2}
-            titulo="Imagens"
-            detalhe={imagens.length === 0 ? `até ${MAX_IMAGENS}` : imagens.length === 1 ? 'Foto única' : `Carrossel · ${imagens.length} imagens`}
+            titulo="Imagens ou vídeo"
+            detalhe={
+              video
+                ? `Reel · ${formatarDuracao(video.duracaoMs)}`
+                : imagens.length === 0
+                  ? `até ${MAX_IMAGENS} imagens ou 1 vídeo`
+                  : imagens.length === 1
+                    ? 'Foto única'
+                    : `Carrossel · ${imagens.length} imagens`
+            }
           />
-          {imagens.length < MAX_IMAGENS && (
+          {video && (
+            <div className="flex gap-3 rounded-xl border border-border bg-card p-3">
+              <video src={video.previa} poster={video.capaPrevia} controls muted playsInline className="h-48 w-28 shrink-0 rounded-lg bg-black object-cover" />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground">
+                  <Clapperboard aria-hidden className="h-4 w-4 text-leadnexi-violet-texto" strokeWidth={1.75} />
+                  Reel
+                </span>
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                  {formatarDuracao(video.duracaoMs)} · {formatarTamanho(video.arquivo.size)} · {video.largura} x {video.altura}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">A capa é o quadro de 1 segundo.</span>
+                {video.altura < video.largura && (
+                  <span className="flex items-start gap-1.5 text-xs font-medium text-warn-foreground">
+                    <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    Vídeo deitado: no Reel ele aparece com faixas. O ideal é em pé (9:16).
+                  </span>
+                )}
+                <button type="button" onClick={tirarVideo} className="mt-auto self-start text-xs font-bold text-muted-foreground hover:text-leadnexi-danger">
+                  Tirar o vídeo
+                </button>
+              </div>
+            </div>
+          )}
+          {!video && imagens.length < MAX_IMAGENS && (
             <label
               onDragOver={(e) => {
                 e.preventDefault()
@@ -315,12 +408,14 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
                 {preparando ? <LoaderCircle aria-hidden className="h-5 w-5 animate-spin" strokeWidth={1.75} /> : <ImagePlus aria-hidden className="h-5 w-5" strokeWidth={1.75} />}
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">{preparando ? 'Preparando imagens…' : imagens.length > 0 ? 'Adicionar mais imagens' : 'Arraste ou clique para escolher'}</span>
-                <span className="block text-xs font-medium text-muted-foreground">JPG, PNG ou WebP · entre 4:5 e 1,91:1</span>
+                <span className="block text-sm font-semibold text-foreground">{preparando ? 'Preparando…' : imagens.length > 0 ? 'Adicionar mais imagens' : 'Arraste ou clique para escolher'}</span>
+                <span className="block text-xs font-medium text-muted-foreground">
+                  {imagens.length > 0 ? 'JPG, PNG ou WebP · entre 4:5 e 1,91:1' : 'Imagens JPG, PNG ou WebP · ou 1 vídeo MP4/MOV para Reel (até 300 MB)'}
+                </span>
               </span>
               <input
                 type="file"
-                accept="image/*"
+                accept={imagens.length > 0 ? 'image/*' : 'image/*,video/mp4,video/quicktime'}
                 multiple
                 className="sr-only"
                 onChange={(e) => {
@@ -362,6 +457,9 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
             </ol>
           )}
           {imagens.length > 1 && <p className="m-0 text-xs font-semibold text-muted-foreground">A imagem 1 é a capa do carrossel.</p>}
+          {base?.images.some((m) => m.kind === 'VIDEO') && !video && imagens.length === 0 && (
+            <p className="m-0 text-xs font-semibold text-muted-foreground">A legenda do Reel foi copiada. Para o vídeo, escolha o arquivo de novo.</p>
+          )}
           {erroDeImagem && <MensagemDeErro texto={erroDeImagem} />}
         </section>
 
@@ -371,8 +469,8 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
             <BotaoDaIA
               rotulo="Escrever com IA"
               ocupado={escrevendo}
-              desabilitado={statusDaIA?.configured !== true || imagens.length === 0 || escrevendo || Boolean(enviando)}
-              dica={dicaDaIA(statusDaIA, imagens.length === 0 ? 'Escolha uma imagem primeiro: a IA escreve a partir dela' : 'A IA lê a imagem e escreve a legenda')}
+              desabilitado={statusDaIA?.configured !== true || (imagens.length === 0 && !video) || escrevendo || Boolean(enviando)}
+              dica={dicaDaIA(statusDaIA, imagens.length === 0 && !video ? 'Escolha uma imagem ou um vídeo primeiro: a IA escreve a partir dele' : video ? 'A IA lê a capa do vídeo e escreve a legenda' : 'A IA lê a imagem e escreve a legenda')}
               onClick={() => void escreverComIA()}
             />
           </Passo>

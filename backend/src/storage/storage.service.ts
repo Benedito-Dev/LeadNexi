@@ -1,13 +1,15 @@
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream } from 'node:fs';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 
@@ -100,6 +102,39 @@ export class StorageService {
           Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
         }),
       );
+    }
+  }
+
+  /** Pasta local (só no desenvolvimento): o navegador não tem link direto para ela. */
+  get isLocal() {
+    return this.localDir !== null;
+  }
+
+  /**
+   * Link para o navegador enviar o arquivo direto ao bucket (PUT), sem passar pela API (o vídeo
+   * passa dos 4,5 MB da Vercel). `null` na pasta local: aí quem recebe é a própria API.
+   */
+  async presignUpload(key: string, contentType: string, expiresInSeconds: number) {
+    if (this.localDir) return null;
+    return getSignedUrl(this.requireClient(), new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }), {
+      expiresIn: expiresInSeconds,
+    });
+  }
+
+  /** Link direto para ler o arquivo (vídeo no navegador, com avanço; e para a Meta baixar). `null` na pasta local. */
+  async presignDownload(key: string, expiresInSeconds: number) {
+    if (this.localDir) return null;
+    return getSignedUrl(this.requireClient(), new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn: expiresInSeconds });
+  }
+
+  /** Tamanho do arquivo guardado, ou `null` se ele não está lá (confere se o envio direto chegou). */
+  async size(key: string): Promise<number | null> {
+    try {
+      if (this.localDir) return (await stat(this.localPath(key))).size;
+      const head = await this.requireClient().send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      return head.ContentLength ?? null;
+    } catch {
+      return null;
     }
   }
 

@@ -1,4 +1,4 @@
-import { FileText, Layers } from 'lucide-react'
+import { Clapperboard, FileText, Layers } from 'lucide-react'
 import type { Post } from '../tipos'
 
 /**
@@ -28,6 +28,11 @@ export function BandejaDeRascunhos({ rascunhos, onAbrir }: { rascunhos: Post[]; 
               >
                 <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
                   {capa && <img src={capa.url} alt="" className="h-full w-full object-cover" />}
+                  {capa?.kind === 'VIDEO' && (
+                    <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded bg-[hsl(var(--sidebar-bg))]/80 text-white">
+                      <Clapperboard aria-hidden className="h-3 w-3" strokeWidth={2} />
+                    </span>
+                  )}
                   {post.images.length > 1 && (
                     <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded bg-[hsl(var(--sidebar-bg))]/80 text-white">
                       <Layers aria-hidden className="h-3 w-3" strokeWidth={2} />
@@ -37,7 +42,7 @@ export function BandejaDeRascunhos({ rascunhos, onAbrir }: { rascunhos: Post[]; 
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[13px] font-semibold leading-5 text-foreground">{legenda || 'Sem legenda'}</span>
                   <span className="mt-0.5 block text-xs font-medium text-muted-foreground">
-                    {post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}
+                    {capa?.kind === 'VIDEO' ? 'Reel' : post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}
                   </span>
                 </span>
               </button>

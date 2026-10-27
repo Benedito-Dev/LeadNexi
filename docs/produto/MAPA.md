@@ -117,7 +117,8 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
 
 - **Posts:** calendário (arrastar para remarcar), lista e grade; "Novo post" (foto ou carrossel, legenda,
   hashtags salvas, agendar, publicar agora ou guardar como **rascunho**, sem data e sem precisar do Instagram
-  conectado). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde o
+  conectado). **Reel**: um vídeo MP4/MOV (3 s a 15 min, até 300 MB) no lugar das imagens; a capa é um quadro
+  tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde o
   agente Criador deixa o que produz e de onde o Estrategista escolhe (seção 6).
 
 Fora do plano (decisão de 26/10/2026): banco de provas. O servidor ainda tem `/proofs`, sem tela.

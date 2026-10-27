@@ -34,6 +34,11 @@ describe('Posts do Instagram (e2e)', () => {
       keys.forEach((key) => files.delete(key));
       return Promise.resolve();
     }),
+    // Como a pasta local: sem link direto do bucket, a API recebe o vídeo
+    isLocal: true,
+    presignUpload: vi.fn(() => Promise.resolve(null)),
+    presignDownload: vi.fn(() => Promise.resolve(null)),
+    size: vi.fn((key: string) => Promise.resolve(files.get(key)?.length ?? null)),
   };
 
   beforeAll(async () => {
@@ -116,6 +121,68 @@ describe('Posts do Instagram (e2e)', () => {
         ...overrides,
       });
   }
+
+  describe('vídeo (Reel)', () => {
+    const VIDEO = Buffer.alloc(4096, 7);
+    const dados = { mimeType: 'video/mp4', sizeBytes: VIDEO.length, width: 1080, height: 1920, durationMs: 15_000 };
+
+    async function enviarVideo() {
+      const inicio = await api().post('/instagram/media/video').set(auth).send(dados).expect(201);
+      const { id, uploadUrl } = inicio.body as { id: string; uploadUrl: string };
+      // O app de teste não tem o prefixo /api da produção
+      await api().put(uploadUrl.replace(/^\/api/, '')).set('Content-Type', 'video/mp4').send(VIDEO).expect(204);
+      await api()
+        .post(`/instagram/media/${id}/poster`)
+        .set(auth)
+        .attach('file', fakeJpeg(1080, 1920), { filename: 'capa.jpg', contentType: 'image/jpeg' })
+        .expect(201);
+      return id;
+    }
+
+    it('sobe o vídeo e a capa, confirma e vira um Reel com capa e link do vídeo', async () => {
+      const id = await enviarVideo();
+      // Antes de confirmar, não entra em post
+      await schedule([id], { draft: true, scheduledAt: undefined }).expect(400);
+      await api().post(`/instagram/media/${id}/complete`).set(auth).expect(200);
+
+      const post = await schedule([id], { draft: true, scheduledAt: undefined }).expect(201);
+      const [media] = post.body.images;
+      expect(media).toMatchObject({ kind: 'VIDEO', width: 1080, height: 1920, durationMs: 15_000 });
+      expect(media.url).toContain(`/media/${id}/poster?token=`);
+      const capa = await api().get(media.url.replace(/^\/api/, '')).expect(200);
+      expect(capa.headers['content-type']).toBe('image/jpeg');
+      const video = await api().get(media.videoUrl.replace(/^\/api/, '')).expect(200);
+      expect(video.headers['content-type']).toBe('video/mp4');
+      expect(Buffer.compare(video.body as Buffer, VIDEO)).toBe(0);
+    });
+
+    it('recusa vídeo curto, longo, grande ou em outro formato', async () => {
+      await api().post('/instagram/media/video').set(auth).send({ ...dados, durationMs: 2000 }).expect(400);
+      await api().post('/instagram/media/video').set(auth).send({ ...dados, durationMs: 16 * 60 * 1000 }).expect(400);
+      await api().post('/instagram/media/video').set(auth).send({ ...dados, sizeBytes: 301 * 1024 * 1024 }).expect(400);
+      await api().post('/instagram/media/video').set(auth).send({ ...dados, mimeType: 'video/webm' }).expect(400);
+    });
+
+    it('confirmar sem o arquivo inteiro é recusado; Reel não leva imagem junto', async () => {
+      const inicio = await api().post('/instagram/media/video').set(auth).send(dados).expect(201);
+      await api()
+        .post(`/instagram/media/${inicio.body.id}/poster`)
+        .set(auth)
+        .attach('file', fakeJpeg(1080, 1920), { filename: 'capa.jpg', contentType: 'image/jpeg' })
+        .expect(201);
+      await api().post(`/instagram/media/${inicio.body.id}/complete`).set(auth).expect(409);
+
+      const id = await enviarVideo();
+      await api().post(`/instagram/media/${id}/complete`).set(auth).expect(200);
+      const imagem = await upload();
+      await schedule([id, imagem.id], { draft: true, scheduledAt: undefined }).expect(400);
+    });
+
+    it('link de envio sem token é recusado', async () => {
+      const inicio = await api().post('/instagram/media/video').set(auth).send(dados).expect(201);
+      await api().put(`/instagram/media/${inicio.body.id}/upload`).set('Content-Type', 'video/mp4').send(VIDEO).expect(403);
+    });
+  });
 
   describe('rascunho', () => {
     it('guarda sem data e sem a conta conectada, fora da lista e do calendário', async () => {

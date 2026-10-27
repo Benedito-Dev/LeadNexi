@@ -46,12 +46,17 @@ describe('Publicação no Instagram (e2e)', () => {
       Promise.resolve(Readable.from(files.get(key) ?? Buffer.alloc(0))),
     ),
     deleteMany: vi.fn(() => Promise.resolve()),
+    isLocal: true,
+    presignUpload: vi.fn(() => Promise.resolve(null)),
+    presignDownload: vi.fn(() => Promise.resolve(null)),
+    size: vi.fn(() => Promise.resolve(null)),
   };
 
   // Meta simulada: cada contêiner leva o ID da imagem (dá para conferir a ordem do carrossel)
   const meta = {
     createImageContainer: vi.fn(),
     createCarouselContainer: vi.fn(),
+    createReelContainer: vi.fn(),
     getContainerStatus: vi.fn(),
     publishContainer: vi.fn(),
     getPermalink: vi.fn(),
@@ -109,6 +114,7 @@ describe('Publicação no Instagram (e2e)', () => {
         Promise.resolve(`c-${mediaIdOf(image.imageUrl)}`),
     );
     meta.createCarouselContainer.mockResolvedValue('carrossel');
+    meta.createReelContainer.mockResolvedValue('reel');
     meta.getContainerStatus.mockResolvedValue('FINISHED');
     meta.publishContainer.mockResolvedValue('midia-1');
     meta.getPermalink.mockResolvedValue('https://www.instagram.com/p/abc/');
@@ -224,6 +230,25 @@ describe('Publicação no Instagram (e2e)', () => {
   }
 
   describe('publicar agora', () => {
+    it('Reel: manda o link do vídeo e o da capa, espera a Meta processar e publica', async () => {
+      // Vídeo já confirmado, com capa (o envio em si é testado em instagram-posts)
+      const video = await prisma.instagramMedia.create({
+        data: { kind: 'VIDEO', storageKey: 'instagram/reel.mp4', posterKey: 'instagram/reel-capa.jpg', width: 1080, height: 1920, sizeBytes: 4096, mimeType: 'video/mp4', durationMs: 20_000 },
+      });
+      meta.getContainerStatus.mockResolvedValueOnce('IN_PROGRESS').mockResolvedValueOnce('IN_PROGRESS').mockResolvedValue('FINISHED');
+
+      const post = await publishNow([video.id], 'Reel novo #moda');
+
+      expect(post).toMatchObject({ status: 'PUBLISHED', error: null });
+      expect(meta.createImageContainer).not.toHaveBeenCalled();
+      const [igUserId, token, reel] = meta.createReelContainer.mock.calls[0] as [string, string, { videoUrl: string; coverUrl: string; caption: string }];
+      expect([igUserId, token, reel.caption]).toEqual(['17841', 'token-real', 'Reel novo #moda']);
+      expect(new URL(reel.videoUrl).pathname).toBe(`/api/instagram/media/${video.id}`);
+      expect(new URL(reel.coverUrl).pathname).toBe(`/api/instagram/media/${video.id}/poster`);
+      expect(meta.getContainerStatus).toHaveBeenCalledTimes(3);
+      expect(meta.publishContainer).toHaveBeenCalledWith('17841', 'token-real', 'reel');
+    });
+
     it('foto única: publica na hora com o link da imagem, a legenda e o token da conta', async () => {
       const [mediaId] = await uploadMany(1);
       const post = await publishNow([mediaId], 'Oi #moda');

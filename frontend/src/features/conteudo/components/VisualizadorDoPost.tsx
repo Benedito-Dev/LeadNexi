@@ -16,6 +16,26 @@ const teclaEhDoCampo = (alvo: EventTarget | null) => alvo instanceof HTMLElement
  * inteira, clicável para a tela cheia.
  */
 export function VisualizadorDoPost({ imagens }: { imagens: ImagemDoPost[] }) {
+  // Reel: o vídeo toca ali mesmo, em pé, com a capa enquanto não começa
+  const video = imagens[0]?.kind === 'VIDEO' ? imagens[0] : null
+  if (video?.videoUrl) {
+    return (
+      <video
+        src={video.videoUrl}
+        poster={video.url}
+        controls
+        playsInline
+        preload="metadata"
+        aria-label="Vídeo do Reel"
+        className="mx-auto block max-h-[70vh] w-auto max-w-full rounded-lg bg-black"
+      />
+    )
+  }
+  return <VisualizadorDeImagens imagens={imagens} />
+}
+
+/** Foto única ou carrossel: a arte na gaveta e em tela cheia. */
+function VisualizadorDeImagens({ imagens }: { imagens: ImagemDoPost[] }) {
   const total = imagens.length
   const multi = total > 1
   const aspecto = aspectoDas(imagens)

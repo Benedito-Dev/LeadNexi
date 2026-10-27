@@ -71,7 +71,7 @@ export function FeedDoPerfil({ posts, onAbrir }: { posts: Post[] | null; onAbrir
       chave: p.id,
       imagem: p.images[0]?.url ?? null,
       carrossel: p.images.length > 1,
-      video: false,
+      video: p.images[0]?.kind === 'VIDEO',
       marcado: {
         quando: new Date(dataDoPost(p)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
         falhou: p.status === 'FAILED',
@@ -89,7 +89,7 @@ export function FeedDoPerfil({ posts, onAbrir }: { posts: Post[] | null; onAbrir
     : doLeadNexi
         .filter((p) => p.status === 'PUBLISHED')
         .sort((a, b) => dataDoPost(b).localeCompare(dataDoPost(a)))
-        .map((p) => ({ chave: p.id, imagem: p.images[0]?.url ?? null, carrossel: p.images.length > 1, video: false, post: p, link: p.permalink }))
+        .map((p) => ({ chave: p.id, imagem: p.images[0]?.url ?? null, carrossel: p.images.length > 1, video: p.images[0]?.kind === 'VIDEO', post: p, link: p.permalink }))
 
   const usuario = real?.username ?? contaSalva?.username ?? 'seu_perfil'
   const foto = real?.profilePictureUrl ?? contaSalva?.profilePictureUrl ?? null

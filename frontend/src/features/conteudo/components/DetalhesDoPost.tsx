@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarClock, ChevronLeft, CopyPlus, ChevronRight, ExternalLink, Image as ImageIcon, Layers, LoaderCircle, RotateCw, Send, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronLeft, Clapperboard, CopyPlus, ChevronRight, ExternalLink, Image as ImageIcon, Layers, LoaderCircle, RotateCw, Send, Trash2 } from 'lucide-react'
 import { SeletorDeDataEHora } from '@/components/ui/seletor-de-data-hora'
 import { InstagramIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { cancelarPost, publicarAgora, remarcarPost } from '../api'
 import { dataDoPost, estaPendente, SITUACOES_DO_POST } from '../situacoes'
 import type { Post } from '../tipos'
+import { formatarDuracao } from '../video'
 import { VisualizadorDoPost } from './VisualizadorDoPost'
 
 type Props = {
@@ -106,12 +107,18 @@ function Conteudo({ post, onAtualizado, onCancelado, onAgendado, onDuplicar }: P
     [
       'Formato',
       <span key="f" className="inline-flex items-center gap-2">
-        {post.images.length > 1 ? (
+        {post.images[0]?.kind === 'VIDEO' ? (
+          <Clapperboard aria-hidden className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
+        ) : post.images.length > 1 ? (
           <Layers aria-hidden className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
         ) : (
           <ImageIcon aria-hidden className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
         )}
-        {post.images.length > 1 ? `Carrossel · ${post.images.length} imagens` : 'Foto'}
+        {post.images[0]?.kind === 'VIDEO'
+          ? `Reel${post.images[0].durationMs ? ` · ${formatarDuracao(post.images[0].durationMs)}` : ''}`
+          : post.images.length > 1
+            ? `Carrossel · ${post.images.length} imagens`
+            : 'Foto'}
       </span>,
     ],
   ]

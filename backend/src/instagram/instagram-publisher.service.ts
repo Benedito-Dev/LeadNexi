@@ -27,6 +27,9 @@ const BATCH_SIZE = 5;
 /** Conferências do contêiner antes de publicar (a Meta baixa e processa as imagens) */
 const STATUS_CHECKS = 10;
 const STATUS_INTERVAL_MS = 2000;
+/** Vídeo demora mais: a Meta processa o Reel (de 30 s a alguns minutos). Até 4 min, dentro dos 5 da função */
+const VIDEO_STATUS_CHECKS = 48;
+const VIDEO_STATUS_INTERVAL_MS = 5000;
 
 /** Falhas passageiras, segundo a documentação de erros de publicação da Meta */
 const RETRYABLE_SUBCODES = new Set([
@@ -278,9 +281,18 @@ export class InstagramPublisherService {
   private async send(
     igUserId: string,
     token: string,
-    post: { caption: string; images: { id: string }[] },
+    post: { caption: string; images: { id: string; kind: 'IMAGE' | 'VIDEO'; storageKey: string }[] },
     origin: string,
   ) {
+    // Reel: um vídeo só, com a capa tirada no navegador
+    const video = post.images.find((media) => media.kind === 'VIDEO');
+    if (video) {
+      const { videoUrl, coverUrl } = await this.posts.reelUrls(video, origin);
+      const reel = await this.api.createReelContainer(igUserId, token, { videoUrl, coverUrl, caption: post.caption || undefined });
+      await this.waitUntilReady(reel, token, VIDEO_STATUS_CHECKS, VIDEO_STATUS_INTERVAL_MS);
+      return this.api.publishContainer(igUserId, token, reel);
+    }
+
     const imageUrls = await Promise.all(
       post.images.map((image) => this.posts.publicMediaUrl(image.id, origin)),
     );
@@ -312,14 +324,14 @@ export class InstagramPublisherService {
     return this.api.publishContainer(igUserId, token, containerId);
   }
 
-  private async waitUntilReady(containerId: string, token: string) {
-    for (let check = 1; check <= STATUS_CHECKS; check++) {
+  private async waitUntilReady(containerId: string, token: string, checks = STATUS_CHECKS, intervalMs = STATUS_INTERVAL_MS) {
+    for (let check = 1; check <= checks; check++) {
       const status = await this.api.getContainerStatus(containerId, token);
       if (status === 'FINISHED') return;
       if (status === 'ERROR' || status === 'EXPIRED') {
         throw new PublishFailure(MESSAGES.processing, true);
       }
-      if (check < STATUS_CHECKS) await this.sleep(STATUS_INTERVAL_MS);
+      if (check < checks) await this.sleep(intervalMs);
     }
     throw new PublishFailure(MESSAGES.transient, true);
   }

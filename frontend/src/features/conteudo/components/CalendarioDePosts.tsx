@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
-import { ChevronLeft, ChevronRight, Layers, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, Layers, Plus } from 'lucide-react'
 import { botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { ErroDeApi } from '@/lib/api'
@@ -305,6 +305,12 @@ function Arte({ post, dividida, onAbrir }: { post: Post; dividida: boolean; onAb
       ) : (
         <span className="absolute inset-0 flex items-end bg-muted p-2 pb-3">
           <span className="line-clamp-3 text-xs leading-snug text-muted-foreground">{post.caption}</span>
+        </span>
+      )}
+      {!dividida && capa?.kind === 'VIDEO' && (
+        <span className="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-bold text-white" title="Reel">
+          <Clapperboard aria-hidden className="h-3 w-3" strokeWidth={2} />
+          Reel
         </span>
       )}
       {!dividida && post.images.length > 1 && (

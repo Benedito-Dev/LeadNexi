@@ -308,6 +308,25 @@ export class InstagramApiClient {
     return this.post(`${igUserId}/media`, token, params);
   }
 
+  /**
+   * Prepara um Reel na Meta: ela baixa o vídeo do `videoUrl` e a capa do `coverUrl` (links
+   * públicos). `share_to_feed`: aparece também no feed do perfil, não só na aba Reels.
+   */
+  async createReelContainer(
+    igUserId: string,
+    token: string,
+    reel: { videoUrl: string; coverUrl: string; caption?: string },
+  ): Promise<string> {
+    const params: Record<string, string> = {
+      media_type: 'REELS',
+      video_url: reel.videoUrl,
+      cover_url: reel.coverUrl,
+      share_to_feed: 'true',
+    };
+    if (reel.caption) params.caption = reel.caption;
+    return this.post(`${igUserId}/media`, token, params);
+  }
+
   /** Junta os contêineres das imagens (2 a 10, na ordem) num carrossel. */
   async createCarouselContainer(
     igUserId: string,

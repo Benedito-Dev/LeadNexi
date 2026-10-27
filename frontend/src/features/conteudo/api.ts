@@ -47,3 +47,17 @@ export const salvarGrupoDeHashtags = (dados: { name: string; tags: string }) =>
   api<GrupoDeHashtags>('/instagram/hashtag-sets', { method: 'POST', body: corpo(dados) })
 
 export const apagarGrupoDeHashtags = (id: string) => api<void>(`/instagram/hashtag-sets/${id}`, { method: 'DELETE' })
+
+/** Começa o envio do vídeo de um Reel: o servidor devolve o link para mandar o arquivo direto ao armazenamento. */
+export const iniciarEnvioDeVideo = (dados: { mimeType: string; sizeBytes: number; width: number; height: number; durationMs: number }) =>
+  api<{ id: string; uploadUrl: string; headers: Record<string, string> }>('/instagram/media/video', { method: 'POST', body: corpo(dados) })
+
+/** Capa do Reel (um quadro do vídeo, em JPEG). */
+export const enviarCapaDoVideo = (id: string, capa: Blob) => {
+  const arquivo = new FormData()
+  arquivo.append('file', capa, 'capa.jpg')
+  return api<{ id: string }>(`/instagram/media/${id}/poster`, { method: 'POST', body: arquivo })
+}
+
+/** O vídeo terminou de subir: o servidor confere o arquivo e libera para entrar num post. */
+export const confirmarVideo = (id: string) => api<{ id: string }>(`/instagram/media/${id}/complete`, { method: 'POST' })

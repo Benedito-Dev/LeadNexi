@@ -41,7 +41,13 @@ const SENT: InstagramPostStatus[] = ['PUBLISHED', 'REMOVED'];
 /** Fora do calendário e da lista: rascunho não tem data (aparece na bandeja de rascunhos) */
 const NOT_LISTED: InstagramPostStatus[] = [...SENT, 'DRAFT'];
 
-type MediaRef = { id: string; storageKey: string };
+type MediaRef = { id: string; storageKey: string; posterKey?: string | null };
+
+/** O que a tela e a publicação precisam saber de cada mídia do post */
+type MediaRow = { id: string; kind: 'IMAGE' | 'VIDEO'; width: number; height: number; storageKey: string; posterKey: string | null; durationMs: number | null; mimeType: string | null };
+
+/** Validade do link direto do vídeo (tela e Meta, que baixa ao publicar) */
+const VIDEO_URL_TTL_SECONDS = 60 * 60;
 
 /** Arquivo recebido no upload (o que o Multer entrega e o serviço usa) */
 export interface UploadedImage {
@@ -124,6 +130,8 @@ export class InstagramPostsService {
       throw new BadRequestException(`Use no máximo ${HASHTAG_LIMIT} hashtags.`);
     }
 
+    await this.checkMedia(dto.mediaIds);
+
     const postId = await this.prisma.$transaction(async (tx) => {
       const post = await tx.instagramPost.create({
         data: {
@@ -138,7 +146,7 @@ export class InstagramPostsService {
       // Só imagens soltas: prende cada uma de uma vez (duas abas agendando juntas não dividem imagem)
       for (const [position, id] of dto.mediaIds.entries()) {
         const { count } = await tx.instagramMedia.updateMany({
-          where: { id, postId: null },
+          where: { id, postId: null, pending: false },
           data: { postId: post.id, position },
         });
         if (count === 0) {
@@ -255,7 +263,7 @@ export class InstagramPostsService {
         proofNote: post.proofNote,
         caption: post.caption.slice(0, 140),
         publishedAt: post.publishedAt,
-        coverUrl: post.images[0] ? await this.signedMediaUrl(post.images[0].id) : null,
+        coverUrl: post.images[0] ? await this.thumbnailUrl(post.images[0]) : null,
       })),
     );
   }
@@ -268,7 +276,7 @@ export class InstagramPostsService {
     const images = await this.prisma.$transaction(async (tx) => {
       const post = await tx.instagramPost.findUnique({
         where: { id },
-        select: { images: { select: { id: true, storageKey: true } } },
+        select: { images: { select: { id: true, storageKey: true, posterKey: true } } },
       });
       if (!post) throw new NotFoundException('Post não encontrado');
 
@@ -302,7 +310,7 @@ export class InstagramPostsService {
         postId: null,
         createdAt: { lt: new Date(now.getTime() - ORPHAN_MEDIA_MS) },
       },
-      select: { id: true, storageKey: true },
+      select: { id: true, storageKey: true, posterKey: true },
       take: 1000,
     });
     await this.deleteMedia(orphans);
@@ -326,7 +334,50 @@ export class InstagramPostsService {
     return {
       stream: await this.storage.get(media.storageKey),
       sizeBytes: media.sizeBytes,
+      contentType: media.kind === 'VIDEO' ? (media.mimeType ?? 'video/mp4') : 'image/jpeg',
     };
+  }
+
+  /** Capa do vídeo (JPEG), com o mesmo link assinado do vídeo. */
+  async openPoster(id: string, token: string | undefined) {
+    try {
+      await this.jwtService.verifyAsync(token ?? '', { audience: MEDIA_URL_AUDIENCE, subject: id });
+    } catch {
+      throw new ForbiddenException('Link da capa inválido ou expirado');
+    }
+    const media = await this.prisma.instagramMedia.findUnique({ where: { id }, select: { posterKey: true } });
+    if (!media?.posterKey) throw new NotFoundException('Capa não encontrada');
+    return this.storage.get(media.posterKey);
+  }
+
+  /** O que aparece no lugar da mídia em miniatura: a própria imagem, ou a capa do vídeo. */
+  private async thumbnailUrl(media: { id: string; kind?: string }) {
+    const url = await this.signedMediaUrl(media.id);
+    return media.kind === 'VIDEO' ? url.replace(`/media/${media.id}?`, `/media/${media.id}/poster?`) : url;
+  }
+
+  /** Link para tocar o vídeo: direto do bucket (com avanço) ou, na pasta local, pela API. */
+  private async videoUrl(media: { id: string; storageKey: string }) {
+    return (await this.storage.presignDownload(media.storageKey, VIDEO_URL_TTL_SECONDS)) ?? this.signedMediaUrl(media.id);
+  }
+
+  /** Para publicar um Reel: o vídeo e a capa em links que a Meta consegue baixar. */
+  async reelUrls(media: { id: string; storageKey: string }, origin: string) {
+    const direto = await this.storage.presignDownload(media.storageKey, VIDEO_URL_TTL_SECONDS);
+    return {
+      videoUrl: direto ?? `${origin}${await this.signedMediaUrl(media.id)}`,
+      coverUrl: `${origin}${await this.thumbnailUrl({ id: media.id, kind: 'VIDEO' })}`,
+    };
+  }
+
+  /** Vídeo vai sozinho (é um Reel), já confirmado e com capa; imagens podem ir juntas (carrossel). */
+  private async checkMedia(ids: string[]) {
+    const media = await this.prisma.instagramMedia.findMany({ where: { id: { in: ids } }, select: { kind: true, pending: true, posterKey: true } });
+    const videos = media.filter((m) => m.kind === 'VIDEO');
+    if (videos.length === 0) return;
+    if (ids.length > 1) throw new BadRequestException('Um Reel tem um vídeo só, sem imagens junto.');
+    if (videos[0].pending) throw new BadRequestException('O vídeo ainda não terminou de subir.');
+    if (!videos[0].posterKey) throw new BadRequestException('O vídeo está sem capa. Envie de novo.');
   }
 
   /** Link de leitura da imagem, válido por 1 hora (o bucket continua privado). */
@@ -362,7 +413,7 @@ export class InstagramPostsService {
     isProof: boolean;
     proofNote: string | null;
     createdAt: Date;
-    images: { id: string; width: number; height: number }[];
+    images: MediaRow[];
   }) {
     return {
       id: post.id,
@@ -377,11 +428,15 @@ export class InstagramPostsService {
       proofNote: post.proofNote,
       createdAt: post.createdAt,
       images: await Promise.all(
-        post.images.map(async ({ id, width, height }) => ({
-          id,
-          width,
-          height,
-          url: await this.signedMediaUrl(id),
+        post.images.map(async (media) => ({
+          id: media.id,
+          kind: media.kind,
+          width: media.width,
+          height: media.height,
+          // Vídeo: `url` é a capa (miniaturas continuam funcionando) e `videoUrl` toca o vídeo
+          url: await this.thumbnailUrl(media),
+          videoUrl: media.kind === 'VIDEO' ? await this.videoUrl(media) : null,
+          durationMs: media.durationMs,
         })),
       ),
     };
@@ -390,7 +445,7 @@ export class InstagramPostsService {
   /** Apaga do armazenamento e depois do banco (se o armazenamento falhar, o registro fica para o cron). */
   private async deleteMedia(media: MediaRef[]) {
     if (media.length === 0) return;
-    await this.storage.deleteMany(media.map((item) => item.storageKey));
+    await this.storage.deleteMany(media.flatMap((item) => (item.posterKey ? [item.storageKey, item.posterKey] : [item.storageKey])));
     await this.prisma.instagramMedia.deleteMany({
       where: { id: { in: media.map((item) => item.id) } },
     });
