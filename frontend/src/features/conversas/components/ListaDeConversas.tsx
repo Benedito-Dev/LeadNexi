@@ -116,7 +116,7 @@ function ItemDaLista({ conversa, aberta, onAbrir }: { conversa: Conversa; aberta
         type="button"
         onClick={onAbrir}
         aria-current={aberta ? 'true' : undefined}
-        className={cn('flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors', aberta ? 'bg-accent' : 'hover:bg-accent/50', conversa.archived && !aberta && 'opacity-70')}
+        className={cn('flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors', aberta ? 'bg-accent' : 'hover:bg-accent/50')}
       >
         <span className="relative shrink-0">
           <FotoRedonda src={fotoDoLead(conversa.avatarId)} nome={conversa.name} className="h-10 w-10 bg-leadnexi-violet/15 text-sm text-leadnexi-violet-texto" />

@@ -54,7 +54,7 @@ function deslizarAteOFim(area: HTMLElement) {
 }
 
 /** Até quantas alturas da área de distância do fim a conversa desliza (mais longe que isso, salta). */
-const TELAS_PARA_DESLIZAR = 2
+const TELAS_PARA_DESLIZAR = 4
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
