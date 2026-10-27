@@ -36,6 +36,8 @@ export type Atividade = {
   type: string
   text: string | null
   dueAt: string | null
+  /** "claude" quando veio do servidor MCP */
+  via?: string | null
   createdAt: string
 }
 

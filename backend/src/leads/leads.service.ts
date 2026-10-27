@@ -21,6 +21,19 @@ import {
 } from './dto/record-whatsapp.dto.js';
 import { UpdateLeadDto } from './dto/update-lead.dto.js';
 import { avatarKey } from './lead-avatar.js';
+import type { ActivityVia } from './activity-via.js';
+
+/** Nome de cada campo no histórico ("Claude editou: telefone, responsável"). */
+const FIELD_LABELS: Record<string, string> = {
+  name: 'nome',
+  phone: 'telefone',
+  email: 'e-mail',
+  instagramUsername: 'Instagram',
+  source: 'origem',
+  responsibleName: 'responsável',
+  estimatedValue: 'valor estimado',
+  notes: 'observações',
+};
 
 const stageSummary = {
   select: { id: true, name: true, pipelineId: true, stageType: true },
@@ -127,7 +140,7 @@ export class LeadsService {
   }
 
   /** Cria o lead no fim da coluna informada e registra "Criado" no histórico. */
-  async create(dto: CreateLeadDto) {
+  async create(dto: CreateLeadDto, via?: ActivityVia) {
     const stage = await this.stagesService.findOrFail(dto.stageId);
     const list = dto.listId
       ? await this.leadLists.findOrFail(dto.listId)
@@ -149,6 +162,7 @@ export class LeadsService {
             type: 'CREATED',
             text: dto.source ?? null,
             toStage: stage.name,
+            via,
           },
         },
       },
@@ -156,12 +170,17 @@ export class LeadsService {
     });
   }
 
-  async update(id: string, dto: UpdateLeadDto) {
+  /** Edita os dados; vindo do Claude, registra no histórico quais campos mudaram. */
+  async update(id: string, dto: UpdateLeadDto, via?: ActivityVia) {
     await this.findOne(id);
     const { listId, followUpAt, meetingAt, ...leadData } = dto;
+    const changed = Object.keys(dto)
+      .filter((key) => dto[key as keyof UpdateLeadDto] !== undefined)
+      .map((key) => FIELD_LABELS[key] ?? key);
     return this.prisma.lead.update({
       where: { id },
       data: {
+        ...(via && changed.length ? { activities: { create: { type: 'LEAD_UPDATED', text: changed.join(', '), via } } } : {}),
         ...leadData,
         ...(listId ? { list: { connect: { id: listId } } } : {}),
         ...(followUpAt !== undefined
@@ -180,7 +199,7 @@ export class LeadsService {
    * Reordena a coluna de origem e a de destino na mesma transação; trocar de etapa
    * registra "de → para" no histórico, também na mesma transação.
    */
-  async move(id: string, dto: MoveLeadDto) {
+  async move(id: string, dto: MoveLeadDto, via?: ActivityVia) {
     const { stageId, position } = dto;
     const lead = await this.findOne(id);
     const targetStage = await this.stagesService.findOrFail(stageId);
@@ -222,6 +241,7 @@ export class LeadsService {
           type: 'STAGE_CHANGED',
           fromStage: lead.stage.name,
           toStage: targetStage.name,
+          via,
         },
       });
       // Fechou: nasce a ficha de cliente (uma por lead; voltar e fechar de novo mantém a mesma)
@@ -353,7 +373,7 @@ export class LeadsService {
   }
 
   /** Registra uma resposta manual do WhatsApp e cancela qualquer próximo follow-up. */
-  async recordWhatsAppResponse(id: string, { text: responseText }: RecordWhatsAppResponseDto) {
+  async recordWhatsAppResponse(id: string, { text: responseText }: RecordWhatsAppResponseDto, via?: ActivityVia) {
     const lead = await this.findOne(id);
     if (lead.stage.stageType === 'WON' || lead.stage.stageType === 'LOST') {
       throw new BadRequestException('Este lead já está em uma etapa encerrada.');
@@ -394,6 +414,7 @@ export class LeadsService {
           cadenceStep: lead.cadenceStep,
           fromStage: lead.stage.name,
           toStage: respondedStage.name,
+          via,
         },
       });
       await this.applyPositions(tx, source, lead.stageId === respondedStage.id ? orderedTarget : withoutLead);

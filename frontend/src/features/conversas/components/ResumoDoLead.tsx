@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { CalendarClock, Check, FileText, History, MapPin, Phone, StickyNote, Tag, UserCheck, UserX, Wallet } from 'lucide-react'
 import { InstagramIcon, WhatsAppLogo } from '@/brand/icons'
+import { ViaClaude } from '@/components/ia/ViaClaude'
 import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -54,6 +55,8 @@ function descrever(e: Evento): string | null {
       return 'Mensagem no WhatsApp'
     case 'WHATSAPP_MESSAGE_RECEIVED':
       return 'Respondeu no WhatsApp'
+    case 'LEAD_UPDATED':
+      return e.text ? `Dados editados: ${e.text}` : 'Dados editados'
     default:
       return null
   }
@@ -268,7 +271,10 @@ export function ResumoDoLead({ conversa, lead, corDaEtapa, onAbrirFicha, onMudou
                   {notas.map((n) => (
                     <li key={n.id} className="list-none rounded-lg bg-muted/60 px-3 py-2">
                       <p className="m-0 line-clamp-3 whitespace-pre-wrap text-[13px] leading-5 text-foreground">{n.text}</p>
-                      <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground">há {formatarDecorrido(n.createdAt)}</span>
+                      <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground">
+                        há {formatarDecorrido(n.createdAt)}
+                        <ViaClaude via={n.via} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -285,7 +291,10 @@ export function ResumoDoLead({ conversa, lead, corDaEtapa, onAbrirFicha, onMudou
                       <span aria-hidden className="relative mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-leadnexi-violet/60" />
                       <span className="min-w-0 flex-1">
                         <span className="block text-[13px] font-medium text-foreground">{texto}</span>
-                        <span className="block text-[10px] font-semibold text-muted-foreground">há {formatarDecorrido(e.createdAt)}</span>
+                        <span className="block text-[10px] font-semibold text-muted-foreground">
+                          há {formatarDecorrido(e.createdAt)}
+                          <ViaClaude via={e.via} />
+                        </span>
                       </span>
                     </li>
                   ))}

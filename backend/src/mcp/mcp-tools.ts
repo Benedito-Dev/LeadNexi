@@ -3,6 +3,7 @@ import * as z from 'zod/v4';
 import type { ClientsService } from '../clients/clients.service.js';
 import type { LeadActivitiesService } from '../leads/lead-activities.service.js';
 import type { LeadsService } from '../leads/leads.service.js';
+import type { PipelinesService } from '../pipelines/pipelines.service.js';
 import type { ResultsService } from '../results/results.service.js';
 
 export type McpDeps = {
@@ -10,6 +11,7 @@ export type McpDeps = {
   activities: LeadActivitiesService;
   results: ResultsService;
   clients: ClientsService;
+  pipelines: PipelinesService;
 };
 
 type LeadRow = {
@@ -36,7 +38,7 @@ const resumoDoLead = (lead: LeadRow) => ({
 const resposta = (dados: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(dados, null, 1) }] });
 
 /**
- * Ferramentas que o Claude usa para consultar o LeadNexi (rodada 1: só leitura). Chamam os
+ * Ferramentas que o Claude usa para consultar o LeadNexi (as de ação estão em mcp-acoes.ts). Chamam os
  * mesmos serviços das telas: nenhuma regra de negócio duplicada (docs/produto/MAPA.md, seção 5).
  */
 export function registrarFerramentas(server: McpServer, { leads, activities, results, clients }: McpDeps) {
@@ -47,6 +49,7 @@ export function registrarFerramentas(server: McpServer, { leads, activities, res
       description:
         'A tela Hoje do LeadNexi: meta do dia e quantas ações já foram feitas, e a fila de leads para agir (respostas para responder, follow-ups vencidos, novas lojas para a 1ª mensagem e compromissos). Use para "o que eu tenho pra hoje?".',
       inputSchema: {},
+      annotations: { readOnlyHint: true },
     },
     async () => {
       const dia = await activities.todayDashboard();
@@ -72,6 +75,7 @@ export function registrarFerramentas(server: McpServer, { leads, activities, res
         busca: z.string().max(120).optional().describe('Nome, telefone, e-mail ou @'),
         limite: z.number().int().min(1).max(50).optional().describe('Quantos trazer (padrão 20)'),
       },
+      annotations: { readOnlyHint: true },
     },
     async ({ busca, limite }) => {
       const { data, meta } = await leads.findAll({ search: busca?.trim() || undefined, page: 1, limit: limite ?? 20 });
@@ -85,6 +89,7 @@ export function registrarFerramentas(server: McpServer, { leads, activities, res
       title: 'Ver um lead',
       description: 'Dados completos de um lead e o histórico dele (mensagens, anotações, mudanças de etapa), do mais novo para o mais antigo.',
       inputSchema: { id: z.string().uuid().describe('id do lead (vem de buscar_leads ou ver_hoje)') },
+      annotations: { readOnlyHint: true },
     },
     async ({ id }) => {
       const [lead, historico] = await Promise.all([leads.findOne(id), activities.list(id)]);
@@ -102,6 +107,7 @@ export function registrarFerramentas(server: McpServer, { leads, activities, res
       description:
         'O placar da semana e do mês: contatados, responderam, reuniões, propostas, fechados e faturamento (com as taxas), sequência de dias batendo a meta e desempenho de cada mensagem.',
       inputSchema: {},
+      annotations: { readOnlyHint: true },
     },
     async () => {
       const { settings, ...placar } = await results.getDashboard();
@@ -118,6 +124,7 @@ export function registrarFerramentas(server: McpServer, { leads, activities, res
       title: 'Listar clientes',
       description: 'Clientes que fecharam: plano, mensalidade, situação da cobrança e os totais de gasto e conversas dos relatórios semanais.',
       inputSchema: {},
+      annotations: { readOnlyHint: true },
     },
     async () => {
       const lista = await clients.list();

@@ -9,6 +9,7 @@ import { CreateNoteDto } from './dto/create-note.dto.js';
 import { ScheduleFollowUpDto } from './dto/schedule-follow-up.dto.js';
 import { DAY_MS, SENT_TYPES, STREAK_WINDOW_DAYS, scoreboard } from './scoreboard.js';
 import { messageTemplates } from '../results/message-templates.js';
+import type { ActivityVia } from './activity-via.js';
 
 const stageSummary = {
   select: { id: true, name: true, pipelineId: true, stageType: true },
@@ -157,10 +158,10 @@ export class LeadActivitiesService {
     });
   }
 
-  async addNote(leadId: string, { text }: CreateNoteDto) {
+  async addNote(leadId: string, { text }: CreateNoteDto, via?: ActivityVia) {
     await this.ensureLead(leadId);
     return this.prisma.leadActivity.create({
-      data: { leadId, type: 'NOTE', text: text.trim() },
+      data: { leadId, type: 'NOTE', text: text.trim(), via },
     });
   }
 
@@ -177,14 +178,14 @@ export class LeadActivitiesService {
   }
 
   /** Agenda (ou reagenda) o próximo contato e registra no histórico. */
-  async scheduleFollowUp(leadId: string, { dueAt, note }: ScheduleFollowUpDto) {
+  async scheduleFollowUp(leadId: string, { dueAt, note }: ScheduleFollowUpDto, via?: ActivityVia) {
     await this.ensureLead(leadId);
     const date = new Date(dueAt);
     const text = note?.trim() || null;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.leadActivity.create({
-        data: { leadId, type: 'FOLLOW_UP_SCHEDULED', dueAt: date, text },
+        data: { leadId, type: 'FOLLOW_UP_SCHEDULED', dueAt: date, text, via },
       });
       return tx.lead.update({
         where: { id: leadId },

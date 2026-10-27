@@ -3,6 +3,7 @@ import { CalendarClock, Plus, Trash2 } from 'lucide-react'
 import { WhatsAppIcon } from '@/brand/icons'
 import { DeleteDialog } from '@/components/modal/DeleteDialog'
 import { MutaseDialog } from '@/components/modal/MutaseDialog'
+import { ViaClaude } from '@/components/ia/ViaClaude'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toE164BR } from '@/lib/phone'
@@ -217,6 +218,7 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                             {formatarDataHora(nota.createdAt)}
+                            <ViaClaude via={nota.via} />
                           </span>
                           <button
                             className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"

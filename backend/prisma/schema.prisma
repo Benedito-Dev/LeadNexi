@@ -150,6 +150,8 @@ enum LeadActivityType {
   WHATSAPP_MESSAGE_SENT
   /// Resposta do lead registrada manualmente pelo usuário no WhatsApp
   WHATSAPP_MESSAGE_RECEIVED
+  /// Dados do lead editados (hoje, só quando vem do Claude: o texto lista os campos)
+  LEAD_UPDATED
 }
 
 // Histórico do lead: uma linha por acontecimento, da mais nova para a mais antiga
@@ -175,6 +177,8 @@ model LeadActivity {
   variation   String?
   /// ID da mensagem na Meta: a mesma mensagem avisada duas vezes entra uma vez só
   externalId String?          @unique @map("external_id")
+  /// Quem fez de fora do app: "claude" (servidor MCP). Vazio = feito nas telas ou pelos webhooks
+  via        String?
   createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([leadId, createdAt])

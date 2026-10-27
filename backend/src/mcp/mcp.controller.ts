@@ -7,12 +7,14 @@ import { Public } from '../auth/decorators/public.decorator.js';
 import { ClientsService } from '../clients/clients.service.js';
 import { LeadActivitiesService } from '../leads/lead-activities.service.js';
 import { LeadsService } from '../leads/leads.service.js';
+import { PipelinesService } from '../pipelines/pipelines.service.js';
 import { ResultsService } from '../results/results.service.js';
 import { McpTokensService } from './mcp-tokens.service.js';
-import { registrarFerramentas } from './mcp-tools.js';
+import { registrarAcoes } from './mcp-acoes.js';
+import { registrarFerramentas, type McpDeps } from './mcp-tools.js';
 
 /**
- * Servidor MCP: o Claude (Claude Code, por enquanto) consulta o LeadNexi por aqui. Sem sessão
+ * Servidor MCP: o Claude (Claude Code, por enquanto) consulta e age no LeadNexi por aqui. Sem sessão
  * (cada POST é independente), o que funciona igual na Vercel. Fora do login do app: entra com
  * `Authorization: Bearer <token>` gerado em Configurações › IA e Claude.
  */
@@ -28,6 +30,7 @@ export class McpController {
     private readonly activities: LeadActivitiesService,
     private readonly results: ResultsService,
     private readonly clients: ClientsService,
+    private readonly pipelines: PipelinesService,
   ) {}
 
   @Post()
@@ -38,7 +41,9 @@ export class McpController {
     }
 
     const server = new McpServer({ name: 'leadnexi', version: '0.1.0' });
-    registrarFerramentas(server, { leads: this.leads, activities: this.activities, results: this.results, clients: this.clients });
+    const deps: McpDeps = { leads: this.leads, activities: this.activities, results: this.results, clients: this.clients, pipelines: this.pipelines };
+    registrarFerramentas(server, deps);
+    registrarAcoes(server, deps);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {
       void transport.close();
