@@ -5,7 +5,7 @@ import { InstagramIcon } from '@/brand/icons'
 import { botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { buscarAppDaMeta, buscarConta } from './api'
+import { buscarAppDaMeta, buscarConta, buscarPerfil } from './api'
 import { CartaoAppDaMeta } from './components/CartaoAppDaMeta'
 import { CartaoConectar } from './components/CartaoConectar'
 import { CartaoConta } from './components/CartaoConta'
@@ -43,6 +43,17 @@ export function CanalInstagram() {
       .then(([situacao, configuracao]) => {
         setConta(situacao)
         setApp(configuracao)
+        // O link da foto guardado expira em poucos dias: lê o perfil na Meta para mostrar a atual
+        // (o servidor também guarda o link novo)
+        if (situacao.connected && !situacao.account.needsReconnect) {
+          buscarPerfil()
+            .then((perfil) => {
+              if (!perfil.connected) return
+              const { profilePictureUrl, name, username } = perfil.profile
+              setConta((atual) => (atual?.connected ? { ...atual, account: { ...atual.account, profilePictureUrl, name, username } } : atual))
+            })
+            .catch(() => undefined)
+        }
       })
       .catch(() => setErro(true))
   }, [])
