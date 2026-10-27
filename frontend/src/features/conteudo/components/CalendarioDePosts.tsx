@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
-import { ChevronLeft, ChevronRight, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Layers, Plus } from 'lucide-react'
 import { botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
 import { ErroDeApi } from '@/lib/api'
@@ -34,6 +34,8 @@ type Props = {
   onAbrir: (post: Post) => void
   /** O servidor devolveu o post remarcado. */
   onRemarcado: (post: Post) => void
+  /** "+" num dia livre de hoje em diante: abre o "Novo post" com o dia marcado. */
+  onCriarNoDia: (dia: Date) => void
 }
 
 /**
@@ -41,7 +43,7 @@ type Props = {
  * com o número do dia num selo por cima e um filete na base por post, na cor da situação. Dia
  * livre fica tracejado. Agendado ou com falha arrasta para outro dia (mantém o horário).
  */
-export function CalendarioDePosts({ modo, ancora, onAncora, dias, posts, onAbrir, onRemarcado }: Props) {
+export function CalendarioDePosts({ modo, ancora, onAncora, dias, posts, onAbrir, onRemarcado, onCriarNoDia }: Props) {
   const [hoje] = useState(() => chaveDoDia(new Date()))
 
   const porDia = useMemo(() => {
@@ -146,6 +148,7 @@ export function CalendarioDePosts({ modo, ancora, onAncora, dias, posts, onAbrir
               carregando={posts === null}
               onAbrir={onAbrir}
               onSoltar={(postId) => void remarcar(postId, dia)}
+              onCriar={() => onCriarNoDia(dia)}
             />
           ),
         )}
@@ -175,6 +178,7 @@ function QuadradoDoDia({
   carregando,
   onAbrir,
   onSoltar,
+  onCriar,
 }: {
   dia: Date
   posts: Post[]
@@ -183,6 +187,7 @@ function QuadradoDoDia({
   carregando: boolean
   onAbrir: (post: Post) => void
   onSoltar: (postId: string) => void
+  onCriar: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [emCima, setEmCima] = useState(false)
@@ -218,6 +223,19 @@ function QuadradoDoDia({
         emCima && 'ring-2 ring-leadnexi-cyan ring-offset-2 ring-offset-card',
       )}
     >
+      {/* Dia livre de hoje em diante: o quadrado todo cria um post nesse dia */}
+      {posts.length === 0 && !passado && !carregando && (
+        <button
+          type="button"
+          onClick={onCriar}
+          aria-label={`Novo post em ${dia.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+          className="group absolute inset-0 grid place-items-center rounded-xl text-muted-foreground/50 transition-colors hover:bg-leadnexi-violet/5 hover:text-leadnexi-violet-texto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan"
+        >
+          <span className="grid h-9 w-9 place-items-center rounded-full border border-dashed border-current transition-transform group-hover:scale-110">
+            <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
+          </span>
+        </button>
+      )}
       {posts.length > 0 && (
         <div className="absolute inset-0 flex">
           <Arte post={posts[0]} dividida={posts.length > 1} onAbrir={onAbrir} />

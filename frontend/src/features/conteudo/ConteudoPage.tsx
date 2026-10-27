@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CircleAlert, Images, Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import { InstagramIcon } from '@/brand/icons'
-import { botaoPrincipalDoTopo } from '@/components/list-page/botoes'
 import { ListPageHeader } from '@/components/list-page/ListPageHeader'
-import { Button } from '@/components/ui/button'
 import { barraDeSegmentos, segmento } from '@/components/ui/segmentos'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -15,7 +13,7 @@ import { CalendarioDePosts } from './components/CalendarioDePosts'
 import { DetalhesDoPost } from './components/DetalhesDoPost'
 import { FeedDoPerfil } from './components/FeedDoPerfil'
 import { NovoPost } from './components/NovoPost'
-import { diasVisiveis, somarDias, type Modo } from './datas'
+import { chaveDoDia, diasVisiveis, somarDias, type Modo } from './datas'
 import { dataDoPost } from './situacoes'
 import type { Post } from './tipos'
 
@@ -43,7 +41,7 @@ export function ConteudoPage() {
   const [automatica, setAutomatica] = useState<boolean | null>(null)
   const [abertoId, setAbertoId] = useState<string | null>(null)
   // "Novo post" aberto, vazio (null) ou duplicando um post
-  const [novo, setNovo] = useState<{ base: Post | null } | null>(null)
+  const [novo, setNovo] = useState<{ base: Post | null; dia?: string } | null>(null)
   // Muda a cada post criado: recarrega o período
   const [recarga, setRecarga] = useState(0)
   const periodo = `${de}|${ate}`
@@ -102,15 +100,21 @@ export function ConteudoPage() {
             : 'Posts do Instagram'
         }
         actions={
-          <>
-            <Button className={botaoPrincipalDoTopo} onClick={() => setNovo({ base: null })}>
-              <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
-              Novo post
-            </Button>
+          // Informação e visão primeiro; a ação principal por último, à direita, separada por um divisor
+          <div className="flex flex-wrap items-center gap-3">
             {automatica !== null && (
-              <span className="hidden items-center gap-2 text-[13px] font-semibold text-muted-foreground lg:inline-flex" title="Se os agendados saem sozinhos na hora marcada">
-                <span aria-hidden className={cn('h-2 w-2 rounded-full', automatica ? 'bg-success-foreground' : 'bg-warn-foreground')} />
-                {automatica ? 'Publicação automática ligada' : 'Publicação automática desligada'}
+              <span
+                className={cn(
+                  'hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold lg:inline-flex',
+                  automatica ? 'border-success-border bg-success/60 text-success-foreground' : 'border-warn-border bg-warn/60 text-warn-foreground',
+                )}
+                title={automatica ? 'Os agendados saem sozinhos na hora marcada' : 'Os agendados não saem sozinhos: use "Publicar agora" na hora marcada'}
+              >
+                <span aria-hidden className="relative flex h-2 w-2">
+                  {automatica && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-foreground opacity-60" />}
+                  <span className={cn('relative inline-flex h-2 w-2 rounded-full', automatica ? 'bg-success-foreground' : 'bg-warn-foreground')} />
+                </span>
+                {automatica ? 'Publica sozinho' : 'Publicação manual'}
               </span>
             )}
             <div className={cn(barraDeSegmentos, 'gap-1 p-1')} role="tablist" aria-label="Visão">
@@ -120,7 +124,18 @@ export function ConteudoPage() {
                 </button>
               ))}
             </div>
-          </>
+            <span aria-hidden className="mx-1 hidden h-8 w-px bg-border sm:block" />
+            <button
+              type="button"
+              onClick={() => setNovo({ base: null })}
+              className="group inline-flex h-11 items-center gap-2.5 rounded-xl bg-gradient-to-br from-leadnexi-violet to-leadnexi-violet-600 pl-2 pr-5 text-sm font-bold text-leadnexi-on-accent shadow-[0_6px_20px_-6px_hsl(var(--leadnexi-violet)/0.7)] transition-all hover:-translate-y-px hover:shadow-[0_10px_24px_-6px_hsl(var(--leadnexi-violet)/0.8)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan focus-visible:ring-offset-2"
+            >
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/20 transition-transform duration-300 group-hover:rotate-90">
+                <Plus aria-hidden className="h-4 w-4" strokeWidth={2.5} />
+              </span>
+              Novo post
+            </button>
+          </div>
         }
       />
 
@@ -148,7 +163,10 @@ export function ConteudoPage() {
       {visao === 'feed' ? (
         <FeedDoPerfil posts={posts} onAbrir={(post) => setAbertoId(post.id)} />
       ) : (
-        <CalendarioDePosts modo={modo} ancora={ancora} onAncora={setAncora} dias={dias} posts={posts} onAbrir={(post) => setAbertoId(post.id)} onRemarcado={trocar} />
+        <CalendarioDePosts modo={modo} ancora={ancora} onAncora={setAncora} dias={dias} posts={posts} onAbrir={(post) => setAbertoId(post.id)}
+          onRemarcado={trocar}
+          onCriarNoDia={(dia) => setNovo({ base: null, dia: chaveDoDia(dia) })}
+        />
       )}
 
       <DetalhesDoPost
@@ -163,7 +181,7 @@ export function ConteudoPage() {
           setNovo({ base: post })
         }}
       />
-      <NovoPost aberto={novo !== null} conectado={conta?.connected === true && !conta.account.needsReconnect} base={novo?.base ?? null} onFechar={() => setNovo(null)} onCriado={criado} />
+      <NovoPost aberto={novo !== null} conectado={conta?.connected === true && !conta.account.needsReconnect} base={novo?.base ?? null} dia={novo?.dia ?? null} onFechar={() => setNovo(null)} onCriado={criado} />
     </div>
   )
 }

@@ -30,6 +30,8 @@ type Props = {
   conectado: boolean
   /** Post a duplicar: a legenda e as imagens já vêm preenchidas */
   base: Post | null
+  /** Dia já escolhido ("AAAA-MM-DD"), vindo do "+" do calendário */
+  dia?: string | null
   onFechar: () => void
   onCriado: (post: PostCriado) => void
 }
@@ -39,7 +41,7 @@ type Props = {
  * capa), a legenda com os grupos de hashtags e quando publicar. As imagens viram JPEG no
  * navegador, já no formato que o Instagram aceita, e sobem uma por vez.
  */
-export function NovoPost({ aberto, conectado, base, onFechar, onCriado }: Props) {
+export function NovoPost({ aberto, conectado, base, dia, onFechar, onCriado }: Props) {
   return (
     <Sheet open={aberto} onOpenChange={(a) => !a && onFechar()}>
       <SheetContent className="flex w-full flex-col gap-0 p-0 font-marca sm:max-w-xl">
@@ -47,24 +49,28 @@ export function NovoPost({ aberto, conectado, base, onFechar, onCriado }: Props)
           <SheetTitle className="m-0 text-lg font-extrabold tracking-[-0.02em] text-foreground">{base ? 'Duplicar post' : 'Novo post'}</SheetTitle>
           <SheetDescription className="m-0 mt-0.5 text-[13px] font-medium text-muted-foreground">Foto única ou carrossel, para o Instagram.</SheetDescription>
         </header>
-        {aberto && <Editor key={base?.id ?? 'novo'} conectado={conectado} base={base} onFechar={onFechar} onCriado={onCriado} />}
+        {aberto && <Editor key={base?.id ?? dia ?? 'novo'} conectado={conectado} base={base} dia={dia} onFechar={onFechar} onCriado={onCriado} />}
       </SheetContent>
     </Sheet>
   )
 }
 
-function Editor({ conectado, base, onFechar, onCriado }: Omit<Props, 'aberto'>) {
+function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'aberto'>) {
   const [imagens, setImagens] = useState<ImagemPreparada[]>([])
   const [preparando, setPreparando] = useState(false)
   const [erroDeImagem, setErroDeImagem] = useState<string | null>(null)
   const [legenda, setLegenda] = useState(base?.caption ?? '')
   const [modo, setModo] = useState<Modo>('agendar')
   const [minimo] = useState(() => paraCampo(new Date()))
+  // Padrão: amanhã às 9h. Vindo do "+" do calendário: aquele dia às 9h (hoje, se já passou das 9h, a próxima hora cheia)
   const [quando, setQuando] = useState(() => {
-    const amanha = new Date()
-    amanha.setDate(amanha.getDate() + 1)
-    amanha.setHours(9, 0, 0, 0)
-    return paraCampo(amanha)
+    const agora = new Date()
+    const escolhido = dia ? new Date(`${dia}T09:00`) : new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1, 9)
+    if (escolhido.getTime() <= agora.getTime()) {
+      escolhido.setTime(agora.getTime())
+      escolhido.setHours(agora.getHours() + 1, 0, 0, 0)
+    }
+    return paraCampo(escolhido)
   })
   const [arrastando, setArrastando] = useState(false)
   // A IA escrevendo a legenda: a caixa vira um carregando até voltar preenchida
