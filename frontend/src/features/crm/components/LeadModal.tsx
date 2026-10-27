@@ -14,6 +14,7 @@ import { ICONE_DA_ETAPA } from '../etapas'
 import type { Atividade, Lead, StageType } from '../types'
 import { EtiquetaContato } from './EtiquetaContato'
 import { LeadForm } from './LeadForm'
+import { ResumoDaIA } from './ResumoDaIA'
 import { iconeDaOrigem } from '../origens'
 
 // Verde do WhatsApp com texto escuro por cima (contraste ~7,5:1 nos dois temas)
@@ -150,6 +151,8 @@ export function LeadModal({ lead, etapa, origens, onFechar, onLeadAtualizado, on
     <MutaseDialog open onOpenChange={onFechar} title={lead.name} description={resumo} size="lg" className="bg-card [&_h2]:font-marca [&_h2]:text-xl [&_h2]:font-extrabold">
       <MutaseDialog.Body className="space-y-4">
         {/* Blocos sem caixa: título simples com uma linha fina embaixo, no lugar da faixa cinza */}
+        <ResumoDaIA lead={lead} onResumido={onLeadAtualizado} />
+
         <section>
           <div className="mb-3 border-b border-border pb-2">
             <h4 className="font-marca text-base font-bold text-foreground">Dados do lead</h4>

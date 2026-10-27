@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnsupportedMediaTypeException } from '@nestjs/common';
 import type * as z from 'zod/v4';
 import { AiFeature, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -8,12 +8,13 @@ import { checkGuardrails } from './guardrails.js';
 import { buildLeadContext, HISTORY_LIMIT } from './lead-context.js';
 import {
   ANALYSIS_SYSTEM,
+  CAPTION_SYSTEM,
   MESSAGE_SYSTEM,
   PROMPT_VERSIONS,
   REPLY_SYSTEM,
   SUMMARY_SYSTEM,
 } from './prompts.js';
-import { AnalysisOutput, MessageOutput, ReplyOutput, SummaryOutput } from './schemas.js';
+import { AnalysisOutput, CaptionOutput, MessageOutput, ReplyOutput, SummaryOutput } from './schemas.js';
 
 const STEP_TASK: Record<number, string> = {
   1: '1ª mensagem da cadência (dia 0), para o número da loja.',
@@ -147,6 +148,33 @@ export class AiService {
       ...output,
       opportunities: output.opportunities.slice(0, 3),
       warnings: checkGuardrails(allText, context),
+    };
+  }
+
+  /**
+   * Legenda do post a partir das imagens (tela Conteúdo). Não é de um lead, então não fica em
+   * ai_suggestions (que pertence a um lead); a legenda vai para o post quando ele é agendado.
+   */
+  async writeCaption(images: { buffer: Buffer }[] | undefined) {
+    if (!images?.length) throw new BadRequestException('Envie ao menos 1 imagem no campo "images".');
+    if (images.some(({ buffer }) => buffer[0] !== 0xff || buffer[1] !== 0xd8)) {
+      throw new UnsupportedMediaTypeException('As imagens precisam estar em JPEG.');
+    }
+    const task =
+      images.length > 1
+        ? `Escreva a legenda deste carrossel de ${images.length} imagens.`
+        : 'Escreva a legenda deste post de 1 imagem.';
+    const output = await this.model.generate({
+      system: CAPTION_SYSTEM,
+      context: '',
+      task,
+      schema: CaptionOutput,
+      images: images.map(({ buffer }) => buffer),
+    });
+    return {
+      model: this.model.model,
+      caption: output.caption,
+      warnings: checkGuardrails(output.caption, ''),
     };
   }
 

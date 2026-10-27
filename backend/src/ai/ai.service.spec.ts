@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnsupportedMediaTypeException } from '@nestjs/common';
 import type { AiModelService } from './ai-model.service.js';
 import { AiService } from './ai.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
@@ -113,5 +113,24 @@ describe('AiService', () => {
     expect(prisma.lead.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'lead-1' }, data: expect.objectContaining({ aiSummary: { ...summary, suggestionId: 'sug-1' } }) }),
     );
+  });
+
+  it('escreve a legenda vendo as imagens do post e confere as regras de ouro', async () => {
+    const { service, model, prisma } = setup({ caption: 'Seu anúncio com resultado garantido.\n\n#AlvoDigital #Fortaleza' });
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+
+    const result = await service.writeCaption([{ buffer: jpeg }, { buffer: jpeg }]);
+
+    expect(model.generate.mock.calls[0][0].images).toEqual([jpeg, jpeg]);
+    expect(model.generate.mock.calls[0][0].task).toContain('carrossel de 2 imagens');
+    expect(result.caption).toContain('#AlvoDigital');
+    expect(result.warnings.map((warning) => warning.kind)).toEqual(['promise']);
+    expect(prisma.aiSuggestion.create).not.toHaveBeenCalled();
+  });
+
+  it('recusa legenda sem imagem ou com imagem fora do JPEG', async () => {
+    const { service } = setup({});
+    await expect(service.writeCaption([])).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.writeCaption([{ buffer: Buffer.from('PNG') }])).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
   });
 });

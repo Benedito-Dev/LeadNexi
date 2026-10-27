@@ -2,12 +2,17 @@ import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, CheckCheck, ChevronDown, Clock3, Columns3, Copy, IdCard, Lock, LoaderCircle, MessagesSquare, MoreHorizontal, NotebookPen, Send } from 'lucide-react'
 import { Link } from 'react-router'
 import { InstagramIcon, WhatsAppLogo } from '@/brand/icons'
+import { BotaoDaIA } from '@/components/ia/BotaoDaIA'
+import { OpcoesDaIA } from '@/components/ia/OpcoesDaIA'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { ErroDeApi } from '@/lib/api'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { adicionarNota } from '../../crm/api'
+import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
+import { registrarOpcaoUsada, sugerirResposta, type RespostaSugerida } from '../../ia/api'
+import { dicaDaIA, useStatusDaIA } from '../../ia/useStatusDaIA'
 import { enviarMensagem, fotoDoLead } from '../api'
 import type { Etapa } from '../../crm/types'
 import type { Conversa, Historico, Mensagem } from '../tipos'
@@ -89,6 +94,10 @@ type Props = {
 export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha, onNotaSalva }: Props) {
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const statusDaIA = useStatusDaIA()
+  const [sugerindo, setSugerindo] = useState(false)
+  const [sugestao, setSugestao] = useState<{ resposta: RespostaSugerida; escolhida: number } | null>(null)
+  const [erroDaIA, setErroDaIA] = useState<string | null>(null)
   const areaRef = useRef<HTMLDivElement>(null)
   // Quantas mensagens já estavam na tela na última rolagem (0 = acabou de abrir)
   const vistasRef = useRef(0)
@@ -142,6 +151,30 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
     } finally {
       setEnviando(false)
     }
+  }
+
+  // "Sugerir resposta": a IA lê a última mensagem do lead e propõe 2 respostas; a principal já entra no campo
+  const sugerir = async () => {
+    setSugerindo(true)
+    setErroDaIA(null)
+    try {
+      const resposta = await sugerirResposta(conversa.id, conversa.canal)
+      setSugestao({ resposta, escolhida: 0 })
+      if (resposta.options[0]) setTexto(resposta.options[0].text)
+    } catch (e) {
+      setErroDaIA(e instanceof ErroDeApi ? e.message : 'A IA não respondeu. Tente de novo.')
+    } finally {
+      setSugerindo(false)
+    }
+  }
+
+  const escolherSugestao = (indice: number) => {
+    if (!sugestao) return
+    setSugestao({ ...sugestao, escolhida: indice })
+    setTexto(sugestao.resposta.options[indice].text)
+    void registrarOpcaoUsada(sugestao.resposta.suggestionId, indice).catch(() => {
+      // Só alimenta a medição do que funciona
+    })
   }
 
   // Mensagens agrupadas por dia, com o dia num separador
@@ -285,40 +318,62 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
           </span>
         </div>
       ) : (
-        <form onSubmit={(e) => void enviar(e)} className="flex items-end gap-3 border-t border-border bg-card px-4 py-3">
-          <div className="relative min-w-0 flex-1">
-            <textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={(e) => {
-                // Enter envia; Shift+Enter quebra a linha
-                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault()
-                  void enviar()
-                }
-              }}
-              rows={1}
-              disabled={!historico}
-              placeholder="Escreva a resposta…"
-              title="Enter envia, Shift+Enter quebra a linha"
-              aria-label="Resposta"
-              className="block max-h-36 min-h-12 w-full resize-none rounded-3xl border border-input bg-background px-5 py-3 text-sm leading-6 text-foreground outline-none [field-sizing:content] placeholder:text-muted-foreground focus:border-leadnexi-violet/60"
-            />
-            {tamanho > LIMITE_EM_BYTES * 0.8 && (
-              <span className={cn('absolute -top-5 right-1 text-[11px] font-semibold tabular-nums', tamanho > LIMITE_EM_BYTES ? 'text-leadnexi-danger' : 'text-muted-foreground')}>
-                {tamanho}/{LIMITE_EM_BYTES}
-              </span>
+        <div className="border-t border-border bg-card">
+          <div className="flex flex-col gap-2 px-4 pt-3">
+            <div>
+              <BotaoDaIA
+                rotulo={sugestao ? 'Sugerir de novo' : 'Sugerir resposta'}
+                ocupado={sugerindo}
+                desabilitado={statusDaIA?.configured !== true || !historico || sugerindo}
+                dica={dicaDaIA(statusDaIA, 'A IA lê a última mensagem e sugere a resposta. Nada é enviado.')}
+                onClick={() => void sugerir()}
+              />
+            </div>
+            {erroDaIA && <MensagemDeErro texto={erroDaIA} />}
+            {sugestao && (
+              <OpcoesDaIA
+                opcoes={sugestao.resposta.options}
+                escolhida={sugestao.escolhida}
+                onEscolher={escolherSugestao}
+                aviso={sugestao.resposta.warning ?? (sugestao.resposta.objection ? `Objeção: ${sugestao.resposta.objection}` : null)}
+              />
             )}
           </div>
-          <button
-            type="submit"
-            disabled={!podeEnviar}
-            aria-label="Enviar"
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-leadnexi-violet to-leadnexi-violet-600 text-leadnexi-on-accent shadow-[0_6px_16px_-6px_hsl(var(--leadnexi-violet)/0.7)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
-          >
-            {enviando ? <LoaderCircle aria-hidden className="h-5 w-5 animate-spin" strokeWidth={2} /> : <Send aria-hidden className="h-5 w-5" strokeWidth={2} />}
-          </button>
-        </form>
+          <form onSubmit={(e) => void enviar(e)} className="flex items-end gap-3 px-4 py-3">
+            <div className="relative min-w-0 flex-1">
+              <textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter envia; Shift+Enter quebra a linha
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    void enviar()
+                  }
+                }}
+                rows={1}
+                disabled={!historico}
+                placeholder="Escreva a resposta…"
+                title="Enter envia, Shift+Enter quebra a linha"
+                aria-label="Resposta"
+                className="block max-h-36 min-h-12 w-full resize-none rounded-3xl border border-input bg-background px-5 py-3 text-sm leading-6 text-foreground outline-none [field-sizing:content] placeholder:text-muted-foreground focus:border-leadnexi-violet/60"
+              />
+              {tamanho > LIMITE_EM_BYTES * 0.8 && (
+                <span className={cn('absolute -top-5 right-1 text-[11px] font-semibold tabular-nums', tamanho > LIMITE_EM_BYTES ? 'text-leadnexi-danger' : 'text-muted-foreground')}>
+                  {tamanho}/{LIMITE_EM_BYTES}
+                </span>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={!podeEnviar}
+              aria-label="Enviar"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-leadnexi-violet to-leadnexi-violet-600 text-leadnexi-on-accent shadow-[0_6px_16px_-6px_hsl(var(--leadnexi-violet)/0.7)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
+            >
+              {enviando ? <LoaderCircle aria-hidden className="h-5 w-5 animate-spin" strokeWidth={2} /> : <Send aria-hidden className="h-5 w-5" strokeWidth={2} />}
+            </button>
+          </form>
+        </div>
       )}
     </section>
   )

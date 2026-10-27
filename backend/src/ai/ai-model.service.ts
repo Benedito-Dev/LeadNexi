@@ -40,6 +40,7 @@ export class AiModelService {
     context,
     task,
     schema,
+    images = [],
   }: {
     system: string;
     /** Dados do lead, histórico e banco de provas (ver lead-context.ts) */
@@ -47,6 +48,8 @@ export class AiModelService {
     /** O pedido do momento, ex.: "Escreva a 1ª mensagem pelo WhatsApp" */
     task: string;
     schema: Schema;
+    /** Imagens JPEG que o modelo deve ver antes do texto (ex.: as do post, para a legenda) */
+    images?: Buffer[];
   }): Promise<z.infer<Schema>> {
     if (!this.client) {
       throw new ServiceUnavailableException(
@@ -65,7 +68,18 @@ export class AiModelService {
         thinking: { type: 'adaptive' },
         output_config: { effort: 'medium', format: betaZodOutputFormat(schema) },
         system,
-        messages: [{ role: 'user', content: `${context}\n\n<pedido>\n${task}\n</pedido>` }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              ...images.map((image) => ({
+                type: 'image' as const,
+                source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: image.toString('base64') },
+              })),
+              { type: 'text' as const, text: `${context}\n\n<pedido>\n${task}\n</pedido>` },
+            ],
+          },
+        ],
       });
     } catch (error) {
       throw this.toHttpError(error);

@@ -44,6 +44,11 @@ export const SummaryOutput = z.object({
 });
 export type SummaryOutput = z.infer<typeof SummaryOutput>;
 
+export const CaptionOutput = z.object({
+  caption: z.string().describe('A legenda pronta, com as hashtags no fim'),
+});
+export type CaptionOutput = z.infer<typeof CaptionOutput>;
+
 export const AnalysisOutput = z.object({
   headline: z.string(),
   findings: z.array(z.string()),

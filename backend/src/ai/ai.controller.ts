@@ -1,6 +1,21 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -9,6 +24,9 @@ import {
 } from '@nestjs/swagger';
 import { AiService } from './ai.service.js';
 import { GenerateMessageDto, SuggestionFeedbackDto, SuggestReplyDto } from './dto/ai-requests.dto.js';
+
+/** Limite por imagem da legenda; o navegador já reduz antes, para caber nos 4,5 MB da Vercel */
+const MAX_CAPTION_IMAGE_BYTES = 1024 * 1024;
 
 @ApiTags('IA')
 @ApiBearerAuth()
@@ -58,6 +76,22 @@ export class AiController {
   @ApiNotFoundResponse({ description: 'Lead não encontrado' })
   analysis(@Param('id', ParseUUIDPipe) id: string) {
     return this.ai.analysis(id);
+  }
+
+  @Post('ai/caption')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FilesInterceptor('images', 10, { limits: { fileSize: MAX_CAPTION_IMAGE_BYTES } }))
+  @ApiOperation({ summary: 'Escreve a legenda do post a partir das imagens (JPEG, até 10; não publica nada)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { images: { type: 'array', items: { type: 'string', format: 'binary' } } },
+    },
+  })
+  @ApiOkResponse({ description: '{ model, caption, warnings }' })
+  caption(@UploadedFiles() images: { buffer: Buffer }[] | undefined) {
+    return this.ai.writeCaption(images);
   }
 
   @Patch('ai/suggestions/:id')

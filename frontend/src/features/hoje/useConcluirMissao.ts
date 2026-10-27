@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addToast } from '@/lib/toast'
-import { concluirContato, registrarWhatsAppEnviado } from './api'
+import { concluirContato, registrarWhatsAppEnviado, type OrigemDaMensagem } from './api'
 import type { TipoMissao } from './missoes'
 import type { LeadDoPainel } from './tipos'
 
@@ -20,12 +20,12 @@ export function useConcluirMissao(lead: LeadDoPainel, tipo: TipoMissao, onMudou:
     setTimeout(onMudou, 700)
   }
 
-  const concluir = async (mensagem: string) => {
+  const concluir = async (mensagem: string, origem?: OrigemDaMensagem | null) => {
     if (ocupado || feita) return
     setOcupado(true)
     try {
       if (tipo === 'follow-up') await concluirContato(lead.id)
-      else await registrarWhatsAppEnviado(lead.id, mensagem)
+      else await registrarWhatsAppEnviado(lead.id, mensagem, origem)
       marcarFeita()
     } catch {
       addToast('error', 'Não foi possível registrar', 'Tente de novo.')

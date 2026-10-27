@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils'
 import { iconeDaOrigem } from '../../crm/origens'
 import { contextoDaMissao, mensagemSugerida, TIPOS, type Missao } from '../missoes'
 import { useConcluirMissao } from '../useConcluirMissao'
+import { useMensagemDaIA } from '../useMensagemDaIA'
 import { BotaoConversa } from './BotaoConversa'
 import { BotaoWhatsApp } from './BotaoWhatsApp'
+import { BotaoGerarMensagem, OpcoesDaIA } from './MensagemDaIA'
 import { ModelosDeMensagem } from './ModelosDeMensagem'
 import { CirculoConcluir, etiqueta, EtiquetaDaEtapa, EtiquetasDoLead, MenuAdiar, type AcoesDaMissao } from './pecas'
 
@@ -29,6 +31,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
   const [mensagem, setMensagem] = useState(() => mensagemSugerida(lead, tipo))
   const { feita, ocupado, podeMarcar, concluir, marcarFeita } = useConcluirMissao(lead, tipo, onMudou)
   const temMensagem = tipo === 'new' || tipo === 'follow-up'
+  const ia = useMensagemDaIA(lead.id)
   const origem = lead.source ? { nome: lead.source, ...iconeDaOrigem(lead.source) } : null
 
   // Atalhos: ← → navega, F marca como feito, Enter abre a ficha. Não disparam enquanto se digita
@@ -42,13 +45,13 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
       if (e.key === 'ArrowLeft') onAnterior()
       else if (e.key === 'ArrowRight') onProxima()
       else if (e.key === 'Enter') onAbrir(lead)
-      else if ((e.key === 'f' || e.key === 'F') && podeMarcar) void concluir(mensagem)
+      else if ((e.key === 'f' || e.key === 'F') && podeMarcar) void concluir(mensagem, ia.origem)
       else return
       e.preventDefault()
     }
     window.addEventListener('keydown', aoTeclar)
     return () => window.removeEventListener('keydown', aoTeclar)
-  }, [onAnterior, onProxima, onAbrir, lead, podeMarcar, concluir, mensagem])
+  }, [onAnterior, onProxima, onAbrir, lead, podeMarcar, concluir, mensagem, ia.origem])
 
   return (
     <section
@@ -119,8 +122,19 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
             <label htmlFor={`mensagem-${lead.id}`} className="text-[13px] font-semibold text-muted-foreground">
               Mensagem
             </label>
-            <ModelosDeMensagem lead={lead} mensagem={mensagem} onEscolher={setMensagem} />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <ModelosDeMensagem
+                lead={lead}
+                mensagem={mensagem}
+                onEscolher={(texto) => {
+                  setMensagem(texto)
+                  ia.desmarcar()
+                }}
+              />
+              <BotaoGerarMensagem ia={ia} onGerada={setMensagem} />
+            </div>
           </div>
+          <OpcoesDaIA ia={ia} onEscolher={setMensagem} />
           <textarea
             id={`mensagem-${lead.id}`}
             value={mensagem}
@@ -133,7 +147,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
       )}
 
       <div className="flex flex-wrap items-center gap-2.5 border-t border-border pt-4">
-        {temMensagem && <BotaoWhatsApp lead={lead} mensagem={mensagem} onEnviado={marcarFeita} />}
+        {temMensagem && <BotaoWhatsApp lead={lead} mensagem={mensagem} origem={ia.origem} onEnviado={marcarFeita} />}
         {tipo === 'response' && (
           <BotaoConversa lead={lead} className={cn(botaoPrincipalDoTopo, 'h-11 rounded-lg px-4 text-sm font-semibold')} onRegistrada={marcarFeita} />
         )}
@@ -144,7 +158,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
         )}
         {podeMarcar && (
           <span className="inline-flex items-center gap-2 text-[13px] font-bold text-muted-foreground">
-            <CirculoConcluir lead={lead} tipo={tipo} feita={feita} ocupado={ocupado} onConcluir={() => void concluir(mensagem)} />
+            <CirculoConcluir lead={lead} tipo={tipo} feita={feita} ocupado={ocupado} onConcluir={() => void concluir(mensagem, ia.origem)} />
             {tipo === 'new' ? 'Já mandei' : 'Feito'}
           </span>
         )}

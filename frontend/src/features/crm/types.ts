@@ -1,3 +1,5 @@
+import type { ResumoDaIA } from '../ia/api'
+
 export type StageType = 'CONTACT' | 'SENT' | 'RESPONDED' | 'MEETING' | 'PROPOSAL' | 'WON' | 'LOST' | 'CUSTOM'
 
 export type Etapa = {
@@ -20,6 +22,9 @@ export type Lead = {
   position: number
   followUpAt: string | null
   createdAt: string
+  /** Último resumo da IA (botão "Resumir" da ficha) e quando foi feito. */
+  aiSummary?: ResumoDaIA | null
+  aiSummaryAt?: string | null
   _count?: { activities: number }
 }
 

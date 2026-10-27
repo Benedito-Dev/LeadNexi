@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { CalendarClock, ChevronLeft, ChevronRight, ImagePlus, LoaderCircle, Send, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
+import { BotaoDaIA } from '@/components/ia/BotaoDaIA'
 import { Button } from '@/components/ui/button'
 import { SeletorDeDataEHora } from '@/components/ui/seletor-de-data-hora'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
@@ -11,6 +12,7 @@ import { formatarDiaEHora } from '../../hoje/textos'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
 import { criarPost, enviarImagem, type PostCriado } from '../api'
 import { contarHashtags, LIMITE_DA_LEGENDA, LIMITE_DE_HASHTAGS, MAX_IMAGENS, prepararImagem, type ImagemPreparada } from '../imagens'
+import { dicaDaIA, useStatusDaIA } from '../../ia/useStatusDaIA'
 import { escreverLegendaComIA } from '../ia'
 import type { Post } from '../tipos'
 import { GruposDeHashtags } from './GruposDeHashtags'
@@ -75,6 +77,9 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
   const [arrastando, setArrastando] = useState(false)
   // A IA escrevendo a legenda: a caixa vira um carregando até voltar preenchida
   const [escrevendo, setEscrevendo] = useState(false)
+  const statusDaIA = useStatusDaIA()
+  // Erro da IA ou avisos da legenda que ela escreveu (número sem fonte, promessa de resultado)
+  const [retornoDaIA, setRetornoDaIA] = useState<{ erro: string | null; avisos: string[] }>({ erro: null, avisos: [] })
   // Os próximos 7 dias para escolher com um clique ("Hoje", "Amanhã", "Qua 28"...)
   const [proximosDias] = useState(() =>
     Array.from({ length: 7 }, (_, i) => {
@@ -173,8 +178,13 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
 
   const escreverComIA = async () => {
     setEscrevendo(true)
+    setRetornoDaIA({ erro: null, avisos: [] })
     try {
-      setLegenda(await escreverLegendaComIA(imagens))
+      const { legenda: escrita, avisos } = await escreverLegendaComIA(imagens)
+      setLegenda(escrita)
+      setRetornoDaIA({ erro: null, avisos: avisos.map((aviso) => aviso.detail) })
+    } catch (e) {
+      setRetornoDaIA({ erro: e instanceof ErroDeApi ? e.message : 'A IA não respondeu. Tente de novo.', avisos: [] })
     } finally {
       setEscrevendo(false)
     }
@@ -350,7 +360,13 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
         {/* 3. Legenda */}
         <section aria-labelledby="np-legenda" className="flex flex-col gap-3 border-t border-border pt-5">
           <Passo id="np-legenda" numero={3} titulo="Legenda" detalhe={`${legenda.length}/${LIMITE_DA_LEGENDA}`} alerta={legenda.length > LIMITE_DA_LEGENDA}>
-            <BotaoDaIA desabilitado={imagens.length === 0 || escrevendo || Boolean(enviando)} escrevendo={escrevendo} onClick={() => void escreverComIA()} />
+            <BotaoDaIA
+              rotulo="Escrever com IA"
+              ocupado={escrevendo}
+              desabilitado={statusDaIA?.configured !== true || imagens.length === 0 || escrevendo || Boolean(enviando)}
+              dica={dicaDaIA(statusDaIA, imagens.length === 0 ? 'Escolha uma imagem primeiro: a IA escreve a partir dela' : 'A IA lê a imagem e escreve a legenda')}
+              onClick={() => void escreverComIA()}
+            />
           </Passo>
           {escrevendo ? (
             <div role="status" aria-label="A IA está escrevendo a legenda" className="flex min-h-40 flex-col gap-2.5 rounded-lg border border-leadnexi-violet/40 bg-leadnexi-violet/5 p-4">
@@ -373,6 +389,13 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
               aria-invalid={legenda.length > LIMITE_DA_LEGENDA || hashtags > LIMITE_DE_HASHTAGS}
             />
           )}
+          {retornoDaIA.erro && <MensagemDeErro texto={retornoDaIA.erro} />}
+          {retornoDaIA.avisos.map((aviso) => (
+            <p key={aviso} className="m-0 flex items-start gap-2 text-[13px] font-medium text-warn-foreground">
+              <TriangleAlert aria-hidden className="mt-px h-4 w-4 shrink-0" strokeWidth={1.75} />
+              {aviso}
+            </p>
+          ))}
           <p className={cn('m-0 text-xs font-semibold tabular-nums', hashtags > LIMITE_DE_HASHTAGS ? 'text-leadnexi-danger' : 'text-muted-foreground')}>
             {hashtags}/{LIMITE_DE_HASHTAGS} hashtags
           </p>
@@ -419,30 +442,5 @@ function Passo({ id, numero, titulo, detalhe, alerta = false, children }: { id: 
       {children}
       {detalhe && <span className={cn('text-xs font-semibold tabular-nums', alerta ? 'text-leadnexi-danger' : 'text-muted-foreground')}>{detalhe}</span>}
     </div>
-  )
-}
-
-/**
- * "Escrever com IA": só liga com imagem escolhida (a IA escreve a partir dela). Contorno em
- * gradiente da marca; desligado, fica apagado e diz o que falta.
- */
-function BotaoDaIA({ desabilitado, escrevendo, onClick }: { desabilitado: boolean; escrevendo: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={desabilitado}
-      title={desabilitado && !escrevendo ? 'Escolha uma imagem primeiro: a IA escreve a partir dela' : 'A IA lê a imagem e escreve a legenda'}
-      className="group rounded-full bg-gradient-to-r from-leadnexi-violet to-leadnexi-cyan p-px transition-opacity disabled:cursor-not-allowed disabled:from-border disabled:to-border"
-    >
-      <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-background px-3 text-xs font-bold text-foreground transition-colors group-enabled:group-hover:bg-leadnexi-violet/10 group-disabled:text-muted-foreground">
-        {escrevendo ? (
-          <LoaderCircle aria-hidden className="h-3.5 w-3.5 animate-spin text-leadnexi-violet-texto" strokeWidth={2} />
-        ) : (
-          <Sparkles aria-hidden className="h-3.5 w-3.5 text-leadnexi-violet-texto group-disabled:text-muted-foreground" strokeWidth={2} />
-        )}
-        {escrevendo ? 'Escrevendo…' : 'Escrever com IA'}
-      </span>
-    </button>
   )
 }
