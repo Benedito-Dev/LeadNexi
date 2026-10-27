@@ -386,6 +386,8 @@ model InstagramAppSettings {
 }
 
 enum InstagramPostStatus {
+  /// Guardado sem data: espera alguém (a pessoa ou o agente Estrategista) escolher quando sai
+  DRAFT
   /// Esperando a hora de publicar
   SCHEDULED
   /// Sendo enviado ao Instagram agora
@@ -400,8 +402,8 @@ enum InstagramPostStatus {
 model InstagramPost {
   id                  String              @id @default(uuid())
   caption             String
-  /// Quando publicar
-  scheduledAt         DateTime            @map("scheduled_at")
+  /// Quando publicar (vazio no rascunho)
+  scheduledAt         DateTime?           @map("scheduled_at")
   status              InstagramPostStatus @default(SCHEDULED)
   /// Motivo da falha, em português claro, para a tela
   error               String?

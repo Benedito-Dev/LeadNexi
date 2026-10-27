@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarClock, ChevronLeft, CopyPlus, ChevronRight, ExternalLink, Image as ImageIcon, Layers, LoaderCircle, RotateCw, Send, Trash2 } from 'lucide-react'
+import { SeletorDeDataEHora } from '@/components/ui/seletor-de-data-hora'
 import { InstagramIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
@@ -7,7 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { ErroDeApi } from '@/lib/api'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
-import { cancelarPost, publicarAgora } from '../api'
+import { cancelarPost, publicarAgora, remarcarPost } from '../api'
 import { dataDoPost, estaPendente, SITUACOES_DO_POST } from '../situacoes'
 import type { Post } from '../tipos'
 import { VisualizadorDoPost } from './VisualizadorDoPost'
@@ -21,12 +22,14 @@ type Props = {
   /** O servidor devolveu o post (publicado agora ou tentando de novo). */
   onAtualizado: (post: Post) => void
   onCancelado: (id: string) => void
+  /** Rascunho agendado: sai da faixa de rascunhos e entra no calendário. */
+  onAgendado: (post: Post) => void
   /** Abre o "Novo post" com a legenda e as imagens deste. */
   onDuplicar: (post: Post) => void
 }
 
 /** Painel lateral com o post: a arte grande, os dados, as ações e o anterior/próximo do período. */
-export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, onCancelado, onDuplicar }: Props) {
+export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, onCancelado, onAgendado, onDuplicar }: Props) {
   const indice = post ? lista.findIndex((p) => p.id === post.id) : -1
   return (
     <Sheet open={post !== null} onOpenChange={(aberto) => !aberto && onFechar()}>
@@ -45,7 +48,7 @@ export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, 
             </span>
           )}
         </header>
-        {post && <Conteudo key={post.id} post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onDuplicar={onDuplicar} />}
+        {post && <Conteudo key={post.id} post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onAgendado={onAgendado} onDuplicar={onDuplicar} />}
       </SheetContent>
     </Sheet>
   )
@@ -74,7 +77,7 @@ function quando(iso: string) {
 
 const rotuloDeSecao = 'm-0 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'
 
-function Conteudo({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, 'onAtualizado' | 'onCancelado' | 'onDuplicar'> & { post: Post }) {
+function Conteudo({ post, onAtualizado, onCancelado, onAgendado, onDuplicar }: Pick<Props, 'onAtualizado' | 'onCancelado' | 'onAgendado' | 'onDuplicar'> & { post: Post }) {
   const situacao = SITUACOES_DO_POST[post.status]
   const { texto, hashtags } = separarHashtags(post.caption)
   const titulo = tituloDoPost(texto)
@@ -97,7 +100,7 @@ function Conteudo({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, '
       post.status === 'PUBLISHED' ? 'Publicado' : 'Quando',
       <span key="q" className="inline-flex items-center gap-2 first-letter:uppercase">
         <CalendarClock aria-hidden className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
-        <span className="first-letter:uppercase">{quando(dataDoPost(post))}</span>
+        <span className="first-letter:uppercase">{post.status === 'DRAFT' ? 'Sem data (rascunho)' : quando(dataDoPost(post))}</span>
       </span>,
     ],
     [
@@ -153,7 +156,11 @@ function Conteudo({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, '
         </section>
       </div>
 
-      <Acoes post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onDuplicar={onDuplicar} />
+      {post.status === 'DRAFT' ? (
+        <AcoesDoRascunho post={post} onCancelado={onCancelado} onAgendado={onAgendado} />
+      ) : (
+        <Acoes post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onDuplicar={onDuplicar} />
+      )}
     </>
   )
 }
@@ -234,6 +241,82 @@ function Acoes({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, 'onA
         <CopyPlus aria-hidden className="h-4 w-4" strokeWidth={1.75} />
         Duplicar
       </Button>
+    </footer>
+  )
+}
+
+/** "2026-10-02T09:00" no horário local, para o seletor de data e hora. */
+function paraCampo(data: Date) {
+  const dois = (n: number) => String(n).padStart(2, '0')
+  return `${data.getFullYear()}-${dois(data.getMonth() + 1)}-${dois(data.getDate())}T${dois(data.getHours())}:${dois(data.getMinutes())}`
+}
+
+/**
+ * Rodapé do rascunho: "Apagar rascunho" (confirma com um segundo clique) e "Agendar", que abre o
+ * seletor de dia e hora (amanhã às 9h já vem marcado) e confirma no "Agendar para…".
+ */
+function AcoesDoRascunho({ post, onCancelado, onAgendado }: Pick<Props, 'onCancelado' | 'onAgendado'> & { post: Post }) {
+  const [quando, setQuando] = useState<string | null>(null)
+  const [confirmandoApagar, setConfirmandoApagar] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const [minimo] = useState(() => paraCampo(new Date()))
+
+  const abrirAgenda = () => {
+    const amanha = new Date()
+    amanha.setDate(amanha.getDate() + 1)
+    amanha.setHours(9, 0, 0, 0)
+    setQuando(paraCampo(amanha))
+  }
+
+  const agendar = async () => {
+    if (!quando) return
+    if (quando < minimo) return addToast('error', 'Esse horário já passou', 'Escolha um horário no futuro.')
+    setOcupado(true)
+    try {
+      onAgendado(await remarcarPost(post.id, new Date(quando).toISOString()))
+    } catch (e) {
+      addToast('error', 'Não foi possível agendar', e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : 'Tente de novo.')
+      setOcupado(false)
+    }
+  }
+
+  const apagar = async () => {
+    if (!confirmandoApagar) return setConfirmandoApagar(true)
+    setOcupado(true)
+    try {
+      await cancelarPost(post.id)
+      onCancelado(post.id)
+      addToast('success', 'Rascunho apagado')
+    } catch {
+      addToast('error', 'Não foi possível apagar', 'Tente de novo.')
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <footer className="flex flex-col gap-3 border-t border-border px-6 py-4">
+      {quando !== null && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+          <span className="text-[13px] font-semibold text-muted-foreground">Quando publicar</span>
+          <SeletorDeDataEHora valor={quando} minimo={minimo} onChange={setQuando} />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="outline"
+          className={cn(botaoSecundarioDoTopo, 'h-11', confirmandoApagar && 'border-leadnexi-danger/60 text-leadnexi-danger hover:text-leadnexi-danger')}
+          disabled={ocupado}
+          onClick={() => void apagar()}
+          onBlur={() => setConfirmandoApagar(false)}
+        >
+          <Trash2 aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+          {confirmandoApagar ? 'Confirmar' : 'Apagar rascunho'}
+        </Button>
+        <Button className={cn(botaoPrincipalDoTopo, 'h-11')} disabled={ocupado} onClick={() => (quando === null ? abrirAgenda() : void agendar())}>
+          {ocupado ? <LoaderCircle aria-hidden className="h-4 w-4 animate-spin" strokeWidth={1.75} /> : <CalendarClock aria-hidden className="h-4 w-4" strokeWidth={1.75} />}
+          {quando === null ? 'Agendar' : 'Confirmar agendamento'}
+        </Button>
+      </div>
     </footer>
   )
 }

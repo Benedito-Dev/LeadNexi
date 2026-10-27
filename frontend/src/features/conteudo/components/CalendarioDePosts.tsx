@@ -77,7 +77,8 @@ export function CalendarioDePosts({ modo, ancora, onAncora, dias, posts, onAbrir
   // Soltou um post num dia: mesmo horário, no dia de destino
   const remarcar = async (postId: string, dia: Date) => {
     const post = posts?.find((p) => p.id === postId)
-    if (!post || chaveDoDia(new Date(post.scheduledAt)) === chaveDoDia(dia)) return
+    // No calendário só entra post com data (rascunho fica na bandeja)
+    if (!post?.scheduledAt || chaveDoDia(new Date(post.scheduledAt)) === chaveDoDia(dia)) return
     const atual = new Date(post.scheduledAt)
     const novo = new Date(dia)
     novo.setHours(atual.getHours(), atual.getMinutes(), 0, 0)

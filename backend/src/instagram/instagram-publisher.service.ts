@@ -107,11 +107,12 @@ export class InstagramPublisherService {
    */
   async create(dto: CreateInstagramPostDto, origin: string) {
     const post = await this.posts.create(dto);
+    if (dto.draft) return post;
     if (dto.publishNow) {
       await this.publish(post.id, origin, 'manual');
       return this.posts.findOne(post.id);
     }
-    const armed = await this.alarm.wakeAt(post.scheduledAt, origin);
+    const armed = await this.alarm.wakeAt(post.scheduledAt!, origin);
     return { ...post, alarmFailed: this.alarm.configured && !armed };
   }
 
@@ -122,7 +123,7 @@ export class InstagramPublisherService {
   async update(id: string, dto: UpdateInstagramPostDto, origin: string) {
     const post = await this.posts.update(id, dto);
     if (!dto.scheduledAt) return post;
-    const armed = await this.alarm.wakeAt(post.scheduledAt, origin);
+    const armed = await this.alarm.wakeAt(post.scheduledAt!, origin);
     return { ...post, alarmFailed: this.alarm.configured && !armed };
   }
 
@@ -200,7 +201,7 @@ export class InstagramPublisherService {
       orderBy: { scheduledAt: 'asc' },
       select: { scheduledAt: true },
     });
-    if (!next) return false;
+    if (!next?.scheduledAt) return false;
     const soonest = Date.now() + RETRY_DELAY_MS;
     const at =
       next.scheduledAt.getTime() > Date.now()

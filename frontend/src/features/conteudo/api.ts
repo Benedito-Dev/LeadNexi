@@ -5,6 +5,10 @@ import type { Post } from './tipos'
 export const listarPosts = (de: string, ate: string) => api<Post[]>(`/instagram/posts?${new URLSearchParams({ from: de, to: ate })}`)
 
 /** Remarca um post agendado ou com falha (arrastar no calendário). */
+/** Rascunhos (sem data), o mais novo primeiro. */
+export const listarRascunhos = () => api<Post[]>('/instagram/posts/drafts')
+
+/** Remarca um post, ou agenda um rascunho (vira "Agendado"). */
 export const remarcarPost = (id: string, scheduledAt: string) => api<Post>(`/instagram/posts/${id}`, { method: 'PATCH', body: corpo({ scheduledAt }) })
 
 /** "Publicar agora" num agendado ou "Tentar de novo" num que falhou. */
@@ -32,7 +36,7 @@ export const enviarImagem = (imagem: Blob) => {
 /** Post criado: agendado, publicado ou recusado; `alarmFailed` = o despertador não respondeu. */
 export type PostCriado = Post & { alarmFailed?: boolean }
 
-export const criarPost = (dados: { caption: string; mediaIds: string[]; scheduledAt?: string; publishNow?: boolean }) =>
+export const criarPost = (dados: { caption: string; mediaIds: string[]; scheduledAt?: string; publishNow?: boolean; draft?: boolean }) =>
   api<PostCriado>('/instagram/posts', { method: 'POST', body: corpo(dados) })
 
 export type GrupoDeHashtags = { id: string; name: string; tags: string }

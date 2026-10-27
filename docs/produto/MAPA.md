@@ -116,7 +116,9 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
 **Para que serve:** publicar no Instagram sem sair do LeadNexi.
 
 - **Posts:** calendário (arrastar para remarcar), lista e grade; "Novo post" (foto ou carrossel, legenda,
-  hashtags salvas, agendar ou publicar agora).
+  hashtags salvas, agendar, publicar agora ou guardar como **rascunho**, sem data e sem precisar do Instagram
+  conectado). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde o
+  agente Criador deixa o que produz e de onde o Estrategista escolhe (seção 6).
 
 Fora do plano (decisão de 26/10/2026): banco de provas. O servidor ainda tem `/proofs`, sem tela.
 

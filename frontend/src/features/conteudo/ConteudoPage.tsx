@@ -8,7 +8,8 @@ import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { buscarConta } from '../instagram/api'
 import type { SituacaoDaConta } from '../instagram/tipos'
-import { buscarPublicacao, listarPosts, listarTodosOsPosts, sincronizarPosts, type PostCriado } from './api'
+import { buscarPublicacao, listarPosts, listarRascunhos, listarTodosOsPosts, sincronizarPosts, type PostCriado } from './api'
+import { BandejaDeRascunhos } from './components/BandejaDeRascunhos'
 import { CalendarioDePosts } from './components/CalendarioDePosts'
 import { DetalhesDoPost } from './components/DetalhesDoPost'
 import { FeedDoPerfil } from './components/FeedDoPerfil'
@@ -44,6 +45,7 @@ export function ConteudoPage() {
   const [novo, setNovo] = useState<{ base: Post | null; dia?: string } | null>(null)
   // Muda a cada post criado: recarrega o período
   const [recarga, setRecarga] = useState(0)
+  const [rascunhos, setRascunhos] = useState<Post[]>([])
   const periodo = `${de}|${ate}`
   const posts = carregados?.periodo === periodo ? carregados.posts : null
 
@@ -69,10 +71,21 @@ export function ConteudoPage() {
       .catch(() => setErro(true))
   }, [de, ate, recarga])
 
+  // Rascunhos não têm data: vêm à parte, para a faixa acima do calendário
+  useEffect(() => {
+    listarRascunhos()
+      .then(setRascunhos)
+      .catch(() => setRascunhos([]))
+  }, [recarga])
+
   const trocar = (post: Post) => setCarregados((c) => c && { ...c, posts: c.posts.map((p) => (p.id === post.id ? post : p)) })
   const criado = (post: PostCriado) => {
     setNovo(null)
     setRecarga((n) => n + 1)
+    if (post.status === 'DRAFT' || !post.scheduledAt) {
+      addToast('success', 'Rascunho guardado', 'Está em Rascunhos, acima do calendário.')
+      return
+    }
     const quando = new Date(post.scheduledAt).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     if (post.status === 'PUBLISHED') addToast('success', 'Post publicado no Instagram')
     else if (post.status === 'FAILED') addToast('error', 'Post não publicado', post.error ?? 'Abra o post para tentar de novo.', 6000)
@@ -81,6 +94,7 @@ export function ConteudoPage() {
   }
   const tirar = (id: string) => {
     setCarregados((c) => c && { ...c, posts: c.posts.filter((p) => p.id !== id) })
+    setRascunhos((lista) => lista.filter((p) => p.id !== id))
     setAbertoId(null)
   }
   // Ordem do "2 de 3" nos detalhes: a do calendário (mais antigo primeiro) ou a do feed (mais novo primeiro)
@@ -160,6 +174,8 @@ export function ConteudoPage() {
         </p>
       )}
 
+      <BandejaDeRascunhos rascunhos={rascunhos} onAbrir={(post) => setAbertoId(post.id)} />
+
       {visao === 'feed' ? (
         <FeedDoPerfil posts={posts} onAbrir={(post) => setAbertoId(post.id)} />
       ) : (
@@ -170,12 +186,17 @@ export function ConteudoPage() {
       )}
 
       <DetalhesDoPost
-        post={posts?.find((p) => p.id === abertoId) ?? null}
-        lista={ordenados}
+        post={posts?.find((p) => p.id === abertoId) ?? rascunhos.find((p) => p.id === abertoId) ?? null}
+        lista={rascunhos.some((p) => p.id === abertoId) ? rascunhos : ordenados}
         onIrPara={(post) => setAbertoId(post.id)}
         onFechar={() => setAbertoId(null)}
         onAtualizado={trocar}
         onCancelado={tirar}
+        onAgendado={(post) => {
+          setAbertoId(null)
+          setRecarga((n) => n + 1)
+          if (post.scheduledAt) addToast('success', 'Rascunho agendado', new Date(post.scheduledAt).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
+        }}
         onDuplicar={(post) => {
           setAbertoId(null)
           setNovo({ base: post })

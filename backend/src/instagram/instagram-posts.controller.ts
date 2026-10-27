@@ -107,6 +107,12 @@ export class InstagramPostsController {
     );
   }
 
+  @Get('posts/drafts')
+  @ApiOperation({ summary: 'Rascunhos (posts sem data), o mais novo primeiro' })
+  drafts() {
+    return this.posts.drafts();
+  }
+
   @Get('posts/proofs')
   @ApiOperation({
     summary:
@@ -119,7 +125,7 @@ export class InstagramPostsController {
   @Patch('posts/:id')
   @ApiOperation({
     summary:
-      'Remarca um post agendado ou com falha (arrastar no calendário) e/ou marca um publicado como exemplo',
+      'Remarca um post agendado ou com falha (arrastar no calendário), agenda um rascunho e/ou marca um publicado como exemplo',
   })
   @ApiConflictResponse({
     description: 'O post já foi enviado (remarcar) ou não está publicado (exemplo)',
@@ -154,7 +160,7 @@ export class InstagramPostsController {
   @Post('posts')
   @ApiOperation({
     summary:
-      'Agenda um post com imagens já enviadas, ou publica na hora (publishNow: a resposta traz o resultado)',
+      'Agenda um post com imagens já enviadas, guarda como rascunho (draft) ou publica na hora (publishNow: a resposta traz o resultado)',
   })
   @ApiConflictResponse({ description: 'Instagram não conectado' })
   create(@Body() dto: CreateInstagramPostDto, @Req() request: Request) {

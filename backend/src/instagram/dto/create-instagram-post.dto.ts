@@ -30,7 +30,7 @@ export class CreateInstagramPostDto {
    * Quando publicar (ISO 8601, com fuso). Ignorado com `publishNow`.
    * @example "2026-10-02T12:00:00.000Z"
    */
-  @ValidateIf((dto: CreateInstagramPostDto) => !dto.publishNow)
+  @ValidateIf((dto: CreateInstagramPostDto) => !dto.publishNow && !dto.draft)
   @IsDateString()
   scheduledAt?: string;
 
@@ -38,6 +38,11 @@ export class CreateInstagramPostDto {
   @IsOptional()
   @IsBoolean()
   publishNow?: boolean;
+
+  /** Guardar como rascunho, sem data (não precisa do Instagram conectado); agenda-se depois */
+  @IsOptional()
+  @IsBoolean()
+  draft?: boolean;
 
   /** Imagens já enviadas (POST /instagram/media), na ordem do carrossel: a primeira é a capa */
   @IsArray()

@@ -1,5 +1,5 @@
-/** REMOVED: publicado, mas apagado (ou arquivado) no Instagram depois */
-export type SituacaoDoPost = 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED' | 'REMOVED'
+/** DRAFT: guardado sem data. REMOVED: publicado, mas apagado (ou arquivado) no Instagram depois */
+export type SituacaoDoPost = 'DRAFT' | 'SCHEDULED' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED' | 'REMOVED'
 
 export type ImagemDoPost = {
   id: string
@@ -13,7 +13,8 @@ export type ImagemDoPost = {
 export type Post = {
   id: string
   caption: string
-  scheduledAt: string
+  /** Vazio no rascunho */
+  scheduledAt: string | null
   status: SituacaoDoPost
   /** Motivo da falha, quando status = FAILED */
   error: string | null

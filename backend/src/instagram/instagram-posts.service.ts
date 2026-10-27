@@ -33,11 +33,13 @@ const MEDIA_URL_TTL = '1h';
 export const ORPHAN_MEDIA_MS = 24 * 60 * 60 * 1000;
 
 /** Pode ser cancelado: o que ainda não foi para o Instagram, ou o que já saiu de lá (tira da lista) */
-const CANCELABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED', 'REMOVED'];
+const CANCELABLE: InstagramPostStatus[] = ['DRAFT', 'SCHEDULED', 'FAILED', 'REMOVED'];
 /** Pode mudar de horário: o que ainda não foi para o Instagram (com falha volta a "Agendado") */
-const RESCHEDULABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED'];
+const RESCHEDULABLE: InstagramPostStatus[] = ['DRAFT', 'SCHEDULED', 'FAILED'];
 /** Já foram para o Instagram (os removidos de lá seguem na lista, marcados, até alguém tirar) */
 const SENT: InstagramPostStatus[] = ['PUBLISHED', 'REMOVED'];
+/** Fora do calendário e da lista: rascunho não tem data (aparece na bandeja de rascunhos) */
+const NOT_LISTED: InstagramPostStatus[] = [...SENT, 'DRAFT'];
 
 type MediaRef = { id: string; storageKey: string };
 
@@ -101,15 +103,21 @@ export class InstagramPostsService {
    * marcado como "Publicando" (ninguém mais pega o post enquanto ele é enviado).
    */
   async create(dto: CreateInstagramPostDto) {
-    await this.requireConnectedAccount(
-      dto.publishNow
-        ? 'Conecte o Instagram para publicar.'
-        : 'Conecte o Instagram para agendar posts.',
-    );
+    if (dto.draft && dto.publishNow) {
+      throw new BadRequestException('Escolha entre guardar como rascunho e publicar agora.');
+    }
+    // Rascunho não sai para o Instagram: guarda mesmo sem a conta conectada
+    if (!dto.draft) {
+      await this.requireConnectedAccount(
+        dto.publishNow
+          ? 'Conecte o Instagram para publicar.'
+          : 'Conecte o Instagram para agendar posts.',
+      );
+    }
     const now = new Date();
-    const scheduledAt = dto.publishNow ? now : new Date(dto.scheduledAt!);
+    const scheduledAt = dto.draft ? null : dto.publishNow ? now : new Date(dto.scheduledAt!);
     // 1 minuto de folga para o relógio do navegador
-    if (scheduledAt.getTime() < now.getTime() - 60_000) {
+    if (scheduledAt && scheduledAt.getTime() < now.getTime() - 60_000) {
       throw new BadRequestException('Escolha um horário no futuro.');
     }
     if (countHashtags(dto.caption) > HASHTAG_LIMIT) {
@@ -121,6 +129,7 @@ export class InstagramPostsService {
         data: {
           caption: dto.caption,
           scheduledAt,
+          ...(dto.draft ? { status: 'DRAFT' } : {}),
           ...(dto.publishNow
             ? { status: 'PUBLISHING', publishingStartedAt: now }
             : {}),
@@ -161,7 +170,7 @@ export class InstagramPostsService {
     }
     const [pending, published] = await Promise.all([
       this.prisma.instagramPost.findMany({
-        where: { status: { notIn: SENT } },
+        where: { status: { notIn: NOT_LISTED } },
         orderBy: { scheduledAt: 'asc' },
         include,
       }),
@@ -177,8 +186,19 @@ export class InstagramPostsService {
     );
   }
 
+  /** Rascunhos (sem data), o mais novo primeiro: a bandeja da tela e o que o Estrategista escolhe. */
+  async drafts() {
+    const posts = await this.prisma.instagramPost.findMany({
+      where: { status: 'DRAFT' },
+      orderBy: { createdAt: 'desc' },
+      include: { images: { orderBy: { position: 'asc' } } },
+    });
+    return Promise.all(posts.map((post) => this.toView(post)));
+  }
+
   /**
-   * Remarca (agendado ou com falha: volta a "Agendado", com as tentativas zeradas) e/ou marca um
+   * Remarca ou agenda um rascunho (agendado, com falha ou rascunho: vira "Agendado", com as
+   * tentativas zeradas) e/ou marca um
    * publicado como exemplo para o follow-up. O despertador é remarcado por quem chama.
    */
   async update(id: string, dto: UpdateInstagramPostDto, now = new Date()) {
@@ -189,6 +209,7 @@ export class InstagramPostsService {
     if (!post) throw new NotFoundException('Post não encontrado');
 
     if (dto.scheduledAt) {
+      if (post.status === 'DRAFT') await this.requireConnectedAccount('Conecte o Instagram para agendar posts.');
       const scheduledAt = new Date(dto.scheduledAt);
       // 1 minuto de folga para o relógio do navegador
       if (scheduledAt.getTime() < now.getTime() - 60_000) {
@@ -333,7 +354,7 @@ export class InstagramPostsService {
   private async toView(post: {
     id: string;
     caption: string;
-    scheduledAt: Date;
+    scheduledAt: Date | null;
     status: InstagramPostStatus;
     error: string | null;
     publishedAt: Date | null;

@@ -117,6 +117,50 @@ describe('Posts do Instagram (e2e)', () => {
       });
   }
 
+  describe('rascunho', () => {
+    it('guarda sem data e sem a conta conectada, fora da lista e do calendário', async () => {
+      await prisma.instagramAccount.deleteMany();
+      const media = await upload();
+      const res = await schedule([media.id], { draft: true, scheduledAt: undefined }).expect(201);
+      expect(res.body).toMatchObject({ status: 'DRAFT', scheduledAt: null });
+
+      const drafts = await api().get('/instagram/posts/drafts').set(auth).expect(200);
+      expect(drafts.body.map((p: { id: string }) => p.id)).toEqual([res.body.id]);
+      const list = await api().get('/instagram/posts').set(auth).expect(200);
+      expect(list.body).toHaveLength(0);
+    });
+
+    it('agendar o rascunho vira "Agendado" (com a conta conectada)', async () => {
+      const media = await upload();
+      const draft = await schedule([media.id], { draft: true, scheduledAt: undefined }).expect(201);
+      const when = new Date(Date.now() + DAY).toISOString();
+
+      const res = await api().patch(`/instagram/posts/${draft.body.id}`).set(auth).send({ scheduledAt: when }).expect(200);
+      expect(res.body).toMatchObject({ status: 'SCHEDULED', scheduledAt: when });
+      const drafts = await api().get('/instagram/posts/drafts').set(auth).expect(200);
+      expect(drafts.body).toHaveLength(0);
+    });
+
+    it('agendar o rascunho sem a conta conectada é recusado; apagar o rascunho funciona', async () => {
+      const media = await upload();
+      const draft = await schedule([media.id], { draft: true, scheduledAt: undefined }).expect(201);
+      await prisma.instagramAccount.deleteMany();
+
+      await api()
+        .patch(`/instagram/posts/${draft.body.id}`)
+        .set(auth)
+        .send({ scheduledAt: new Date(Date.now() + DAY).toISOString() })
+        .expect(409);
+      await api().delete(`/instagram/posts/${draft.body.id}`).set(auth).expect(204);
+      expect(await prisma.instagramPost.count()).toBe(0);
+    });
+
+    it('rascunho e publicar agora juntos é recusado', async () => {
+      const media = await upload();
+      await schedule([media.id], { draft: true, publishNow: true, scheduledAt: undefined }).expect(400);
+    });
+  });
+
   describe('envio de imagem', () => {
     it('guarda o JPEG no armazenamento e devolve um link assinado', async () => {
       const media = await upload();

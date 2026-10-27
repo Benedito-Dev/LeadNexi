@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { CalendarClock, ChevronLeft, ChevronRight, ImagePlus, LoaderCircle, Send, Sparkles, TriangleAlert, X } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, FileText, ImagePlus, LoaderCircle, Send, Sparkles, TriangleAlert, X } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { BotaoDaIA } from '@/components/ia/BotaoDaIA'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,7 @@ import type { Post } from '../tipos'
 import { GruposDeHashtags } from './GruposDeHashtags'
 
 
-type Modo = 'agendar' | 'agora'
+type Modo = 'agendar' | 'agora' | 'rascunho'
 
 /** "2026-10-02T09:00" no horário local, para o <input type="datetime-local">. */
 function paraCampo(data: Date) {
@@ -153,7 +153,8 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
 
   const hashtags = contarHashtags(legenda)
   // O primeiro motivo que impede salvar, dito em português claro
-  const bloqueio = !conectado
+  // Rascunho não sai para o Instagram: dá para guardar sem a conta conectada
+  const bloqueio = !conectado && modo !== 'rascunho'
     ? 'Conecte o Instagram para agendar ou publicar.'
     : imagens.length === 0
       ? 'Adicione pelo menos uma imagem.'
@@ -163,7 +164,7 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
           ? `A legenda passou de ${LIMITE_DA_LEGENDA} caracteres.`
           : hashtags > LIMITE_DE_HASHTAGS
             ? `Use no máximo ${LIMITE_DE_HASHTAGS} hashtags.`
-            : modo === 'agora'
+            : modo !== 'agendar'
               ? null
               : !quando
                 ? 'Escolha a data e a hora.'
@@ -174,7 +175,12 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
 
   const situacao = enviando
     ? enviando.etapa
-    : (bloqueio ?? (modo === 'agora' ? 'Vai para o seu perfil assim que você clicar em "Publicar agora".' : `Será publicado ${formatarDiaEHora(new Date(quando).toISOString()).toLowerCase()}.`))
+    : (bloqueio ??
+      (modo === 'agora'
+        ? 'Vai para o seu perfil assim que você clicar em "Publicar agora".'
+        : modo === 'rascunho'
+          ? 'Fica guardado em Rascunhos, sem data. Você (ou o Estrategista) agenda depois.'
+          : `Será publicado ${formatarDiaEHora(new Date(quando).toISOString()).toLowerCase()}.`))
 
   const escreverComIA = async () => {
     setEscrevendo(true)
@@ -199,8 +205,9 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
         setEnviando({ etapa: `Enviando imagem ${i + 1} de ${imagens.length}…` })
         ids.push((await enviarImagem(imagem.blob)).id)
       }
-      setEnviando({ etapa: modo === 'agora' ? 'Publicando no Instagram…' : 'Agendando…' })
-      onCriado(await criarPost({ caption: legenda, mediaIds: ids, ...(modo === 'agora' ? { publishNow: true } : { scheduledAt: new Date(quando).toISOString() }) }))
+      setEnviando({ etapa: modo === 'agora' ? 'Publicando no Instagram…' : modo === 'rascunho' ? 'Guardando o rascunho…' : 'Agendando…' })
+      const quandoSai = modo === 'agora' ? { publishNow: true } : modo === 'rascunho' ? { draft: true } : { scheduledAt: new Date(quando).toISOString() }
+      onCriado(await criarPost({ caption: legenda, mediaIds: ids, ...quandoSai }))
     } catch (e) {
       setErro(e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : 'Não foi possível salvar o post. Tente de novo.')
       setEnviando(null)
@@ -214,11 +221,12 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
         {/* 1. Quando: a primeira decisão */}
         <section aria-labelledby="np-quando" className="flex flex-col gap-3">
           <Passo id="np-quando" numero={1} titulo="Quando publicar" />
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="np-quando">
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="np-quando">
             {(
               [
                 ['agendar', 'Agendar', 'Escolha o dia e a hora', CalendarClock],
                 ['agora', 'Publicar agora', 'Vai direto para o perfil', Send],
+                ['rascunho', 'Rascunho', 'Guardar sem data', FileText],
               ] as const
             ).map(([valor, rotulo, detalhe, Icone]) => (
               <button
@@ -228,7 +236,7 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
                 aria-checked={modo === valor}
                 onClick={() => setModo(valor)}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors',
+                  'flex flex-col items-start gap-2 rounded-xl border-2 p-3 text-left transition-colors',
                   modo === valor ? 'border-leadnexi-violet bg-leadnexi-violet/10' : 'border-border hover:border-leadnexi-violet/40',
                 )}
               >
@@ -237,7 +245,7 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-bold text-foreground">{rotulo}</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{detalhe}</span>
+                  <span className="block text-xs font-medium text-muted-foreground">{detalhe}</span>
                 </span>
               </button>
             ))}
@@ -418,10 +426,12 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
               <LoaderCircle aria-hidden className="h-4 w-4 animate-spin" strokeWidth={1.75} />
             ) : modo === 'agora' ? (
               <Send aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+            ) : modo === 'rascunho' ? (
+              <FileText aria-hidden className="h-4 w-4" strokeWidth={1.75} />
             ) : (
               <CalendarClock aria-hidden className="h-4 w-4" strokeWidth={1.75} />
             )}
-            {modo === 'agora' ? 'Publicar agora' : 'Agendar'}
+            {modo === 'agora' ? 'Publicar agora' : modo === 'rascunho' ? 'Guardar rascunho' : 'Agendar'}
           </Button>
         </div>
       </footer>
