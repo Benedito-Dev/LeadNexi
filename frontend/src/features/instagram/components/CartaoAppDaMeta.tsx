@@ -135,7 +135,7 @@ function Formulario({ app, onSalvo, onCancelar }: { app: AppDaMeta; onSalvo: (ap
 }
 
 /** Campo só de leitura com "Copiar": valores que vão no painel da Meta. */
-function CampoCopiar({ id, rotulo, valor, dica }: { id: string; rotulo: string; valor: string; dica: string }) {
+export function CampoCopiar({ id, rotulo, valor, dica }: { id: string; rotulo: string; valor: string; dica: string }) {
   const [copiado, setCopiado] = useState(false)
 
   const copiar = async () => {

@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bot, ListChecks, UserRound } from 'lucide-react'
+import { ListChecks, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -30,16 +30,5 @@ export const TELAS_PLANEJADAS = {
     resumo: 'Seus dados de acesso',
     etapa: 1,
     itens: ['Nome e e-mail', 'Trocar senha', 'Tema claro ou escuro'],
-  },
-  ia: {
-    icone: Bot,
-    titulo: 'IA e Claude',
-    resumo: 'Inteligência artificial e conexão com o seu Claude',
-    etapa: 6,
-    itens: [
-      'Situação da IA e o modelo usado',
-      'MCP: endereço, gerar e revogar o token do Claude',
-      'Últimas ações feitas pelo Claude (tudo também fica no histórico do lead)',
-    ],
   },
 } satisfies Record<string, TelaPlanejada>

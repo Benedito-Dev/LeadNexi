@@ -142,7 +142,8 @@ Uma tela com sub-abas à esquerda (no celular, uma lista que abre cada uma).
 - **IA e Claude:**
   - IA: se está configurada e qual modelo. Servidor: **tem** `GET /ai/status`.
   - MCP: endereço do servidor MCP, gerar e revogar o token do Claude, últimas ações feitas pelo Claude.
-    Servidor: **falta** (etapa 6).
+    Tela **feita**. Servidor: **tem** `POST /mcp`, `/mcp/tokens`, `GET /mcp/actions`. Por enquanto só para o
+    Claude Code (token no cabeçalho); o claude.ai pediria login OAuth.
 
 ## 4. Peças compartilhadas (fazer uma vez só)
 

@@ -158,6 +158,16 @@ export class LeadActivitiesService {
     });
   }
 
+  /** O que foi feito de fora das telas (ex.: pelo Claude), do mais novo para o mais antigo. */
+  listByVia(via: ActivityVia, take = 20) {
+    return this.prisma.leadActivity.findMany({
+      where: { via },
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: { id: true, type: true, text: true, toStage: true, dueAt: true, createdAt: true, lead: { select: { id: true, name: true } } },
+    });
+  }
+
   async addNote(leadId: string, { text }: CreateNoteDto, via?: ActivityVia) {
     await this.ensureLead(leadId);
     return this.prisma.leadActivity.create({

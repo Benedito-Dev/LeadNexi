@@ -12,6 +12,7 @@ import { HojePage } from '@/features/hoje/HojePage'
 import { ResultadosPage } from '@/features/resultados/ResultadosPage'
 import { CanaisPage } from '@/features/configuracoes/CanaisPage'
 import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayout'
+import { IaPage } from '@/features/configuracoes/IaPage'
 import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
 import { CartaoEmBreve, TelaEmBreve } from '@/pages/EmBreve'
 import { TELAS_PLANEJADAS as T } from '@/pages/telasPlanejadas'
@@ -52,7 +53,7 @@ export function App() {
                 <Route path="perfil" element={<CartaoEmBreve tela={T.perfil} />} />
                 <Route path="canais" element={<CanaisPage />} />
                 <Route path="prospeccao" element={<ProspeccaoPage />} />
-                <Route path="ia" element={<CartaoEmBreve tela={T.ia} />} />
+                <Route path="ia" element={<IaPage />} />
               </Route>
               {/* A volta do login do Instagram (servidor) ainda aponta para /instagram?conectado=1 ou ?erro=... */}
               <Route path="/instagram" element={<VoltaDoInstagram />} />
