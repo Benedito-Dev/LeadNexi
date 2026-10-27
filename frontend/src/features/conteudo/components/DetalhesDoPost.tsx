@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarClock, ChevronLeft, ChevronRight, ExternalLink, Image as ImageIcon, Layers, LoaderCircle, RotateCw, Send, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronLeft, CopyPlus, ChevronRight, ExternalLink, Image as ImageIcon, Layers, LoaderCircle, RotateCw, Send, Trash2 } from 'lucide-react'
 import { InstagramIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
@@ -21,10 +21,12 @@ type Props = {
   /** O servidor devolveu o post (publicado agora ou tentando de novo). */
   onAtualizado: (post: Post) => void
   onCancelado: (id: string) => void
+  /** Abre o "Novo post" com a legenda e as imagens deste. */
+  onDuplicar: (post: Post) => void
 }
 
 /** Painel lateral com o post: a arte grande, os dados, as ações e o anterior/próximo do período. */
-export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, onCancelado }: Props) {
+export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, onCancelado, onDuplicar }: Props) {
   const indice = post ? lista.findIndex((p) => p.id === post.id) : -1
   return (
     <Sheet open={post !== null} onOpenChange={(aberto) => !aberto && onFechar()}>
@@ -43,7 +45,7 @@ export function DetalhesDoPost({ post, lista, onIrPara, onFechar, onAtualizado, 
             </span>
           )}
         </header>
-        {post && <Conteudo key={post.id} post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} />}
+        {post && <Conteudo key={post.id} post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onDuplicar={onDuplicar} />}
       </SheetContent>
     </Sheet>
   )
@@ -72,7 +74,7 @@ function quando(iso: string) {
 
 const rotuloDeSecao = 'm-0 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'
 
-function Conteudo({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado' | 'onCancelado'> & { post: Post }) {
+function Conteudo({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, 'onAtualizado' | 'onCancelado' | 'onDuplicar'> & { post: Post }) {
   const situacao = SITUACOES_DO_POST[post.status]
   const { texto, hashtags } = separarHashtags(post.caption)
   const titulo = tituloDoPost(texto)
@@ -151,7 +153,7 @@ function Conteudo({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado
         </section>
       </div>
 
-      <Acoes post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} />
+      <Acoes post={post} onAtualizado={onAtualizado} onCancelado={onCancelado} onDuplicar={onDuplicar} />
     </>
   )
 }
@@ -160,7 +162,7 @@ function Conteudo({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado
  * Rodapé: enquanto não saiu, "Cancelar post" e "Publicar agora" (ou "Tentar de novo"), cada um
  * confirma com um segundo clique; publicado, "Ver no Instagram"; removido, "Tirar da lista".
  */
-function Acoes({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado' | 'onCancelado'> & { post: Post }) {
+function Acoes({ post, onAtualizado, onCancelado, onDuplicar }: Pick<Props, 'onAtualizado' | 'onCancelado' | 'onDuplicar'> & { post: Post }) {
   const [confirmando, setConfirmando] = useState<'cancelar' | 'publicar' | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const pendente = estaPendente(post)
@@ -185,7 +187,6 @@ function Acoes({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado' |
     }
   }
 
-  if (!pendente && post.status !== 'PUBLISHED' && post.status !== 'REMOVED') return null
   return (
     <footer className="grid grid-cols-2 gap-3 border-t border-border px-6 py-4">
       {(pendente || post.status === 'REMOVED') && (
@@ -217,12 +218,22 @@ function Acoes({ post, onAtualizado, onCancelado }: Pick<Props, 'onAtualizado' |
           href={post.permalink}
           target="_blank"
           rel="noopener noreferrer"
-          className={cn(botaoSecundarioDoTopo, 'col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border text-sm no-underline hover:bg-accent')}
+          className={cn(botaoSecundarioDoTopo, 'inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border text-sm no-underline hover:bg-accent')}
         >
           <ExternalLink aria-hidden className="h-4 w-4" strokeWidth={1.75} />
           Ver no Instagram
         </a>
       )}
+      {/* Duplicar vale para qualquer post: ao lado do "Ver no Instagram", ou numa linha só embaixo */}
+      <Button
+        variant="outline"
+        className={cn(botaoSecundarioDoTopo, 'h-11', !(post.status === 'PUBLISHED' && post.permalink) && 'col-span-2')}
+        disabled={ocupado}
+        onClick={() => onDuplicar(post)}
+      >
+        <CopyPlus aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+        Duplicar
+      </Button>
     </footer>
   )
 }

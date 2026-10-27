@@ -21,3 +21,25 @@ export const sincronizarPosts = () => api<{ removed: number; restored: number }>
 
 /** Todos os posts (feed): os que ainda não saíram e os publicados. */
 export const listarTodosOsPosts = () => api<Post[]>('/instagram/posts')
+
+/** Envia uma imagem (JPEG já preparado no navegador); ela fica solta até entrar num post. */
+export const enviarImagem = (imagem: Blob) => {
+  const arquivo = new FormData()
+  arquivo.append('file', imagem, 'imagem.jpg')
+  return api<{ id: string }>('/instagram/media', { method: 'POST', body: arquivo })
+}
+
+/** Post criado: agendado, publicado ou recusado; `alarmFailed` = o despertador não respondeu. */
+export type PostCriado = Post & { alarmFailed?: boolean }
+
+export const criarPost = (dados: { caption: string; mediaIds: string[]; scheduledAt?: string; publishNow?: boolean }) =>
+  api<PostCriado>('/instagram/posts', { method: 'POST', body: corpo(dados) })
+
+export type GrupoDeHashtags = { id: string; name: string; tags: string }
+
+export const listarGruposDeHashtags = () => api<GrupoDeHashtags[]>('/instagram/hashtag-sets')
+
+export const salvarGrupoDeHashtags = (dados: { name: string; tags: string }) =>
+  api<GrupoDeHashtags>('/instagram/hashtag-sets', { method: 'POST', body: corpo(dados) })
+
+export const apagarGrupoDeHashtags = (id: string) => api<void>(`/instagram/hashtag-sets/${id}`, { method: 'DELETE' })

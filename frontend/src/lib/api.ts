@@ -63,7 +63,8 @@ async function mensagemDoErro(res: Response) {
 async function chamar(caminho: string, init: RequestInit, jaRenovou = false): Promise<Response> {
   const headers = new Headers(init.headers)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  // Arquivo (FormData): o navegador põe o Content-Type com a fronteira do multipart sozinho
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
   let res: Response
   try {
