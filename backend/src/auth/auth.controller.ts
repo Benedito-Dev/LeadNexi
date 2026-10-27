@@ -1,16 +1,30 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Req,
   Res,
+  StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiConsumes,
+  ApiExcludeEndpoint,
   ApiCookieAuth,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -25,7 +39,9 @@ import { AuthService } from './auth.service.js';
 import type { AuthenticatedUser } from './auth.types.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { AuthUserEntity, LoginResponseEntity } from './entities/auth.entity.js';
 import {
   clearRefreshCookie,
@@ -112,5 +128,55 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Token ausente ou inválido' })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.id);
+  }
+
+  @Patch('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edita o nome e o e-mail de login' })
+  @ApiOkResponse({ type: AuthUserEntity })
+  @ApiConflictResponse({ description: 'E-mail já usado por outro usuário' })
+  updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.id, dto);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 512 * 1024, files: 1 } }))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Troca a foto de perfil (JPEG recortado no navegador, até 512 KB)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiOkResponse({ type: AuthUserEntity })
+  setAvatar(@CurrentUser() user: AuthenticatedUser, @UploadedFile() file: { buffer: Buffer } | undefined) {
+    return this.authService.setAvatar(user.id, file);
+  }
+
+  @Delete('me/avatar')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove a foto de perfil (volta a inicial do nome)' })
+  @ApiOkResponse({ type: AuthUserEntity })
+  removeAvatar(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.removeAvatar(user.id);
+  }
+
+  /** Foto pública como a dos leads: a tag <img> não manda o token, e o ID muda a cada foto. */
+  @Public()
+  @Get('avatars/:id')
+  @Header('Cache-Control', 'public, max-age=31536000, immutable')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiExcludeEndpoint()
+  async avatar(@Param('id', ParseUUIDPipe) id: string) {
+    return new StreamableFile(await this.authService.avatar(id), { type: 'image/jpeg' });
+  }
+
+  @Post('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 5, ttl: MINUTE } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Troca a senha (confere a atual) e encerra as outras sessões' })
+  @ApiNoContentResponse({ description: 'Senha trocada' })
+  @ApiBadRequestResponse({ description: 'Senha atual não confere ou nova curta demais' })
+  @ApiTooManyRequestsResponse({ description: 'Tentativas demais: espere 1 minuto' })
+  async changePassword(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto, @Req() req: Request) {
+    await this.authService.changePassword(user.id, dto, readRefreshCookie(req));
   }
 }

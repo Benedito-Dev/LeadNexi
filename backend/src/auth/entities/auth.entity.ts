@@ -2,6 +2,8 @@ export class AuthUserEntity {
   id: string;
   email: string;
   name: string;
+  /** Foto de perfil em GET /auth/avatars/:avatarId (null = sem foto) */
+  avatarId: string | null;
 }
 
 export class LoginResponseEntity {

@@ -2,7 +2,9 @@ import { useState, type ComponentType } from 'react'
 import { BarChart3, CalendarCheck, ChevronDown, Handshake, Images, LogOut, MessagesSquare, Settings, Users } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/contexto'
+import { fotoDoUsuario } from '@/auth/foto'
 import { Button } from '@/components/ui/button'
+import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -199,9 +201,11 @@ export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: bool
 
         <div className="border-t border-[hsl(var(--sidebar-border))] px-3 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-highlight text-xs font-semibold text-sidebar-highlight-foreground">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
+            <FotoRedonda
+              src={fotoDoUsuario(user?.avatarId)}
+              nome={user?.name || 'U'}
+              className="h-8 w-8 bg-sidebar-highlight text-xs font-semibold text-sidebar-highlight-foreground"
+            />
             {!collapsed && (
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium text-[hsl(var(--sidebar-foreground))]">{user?.name || 'Usuário'}</span>

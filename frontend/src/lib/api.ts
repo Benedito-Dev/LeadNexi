@@ -29,7 +29,7 @@ export function aoExpirarSessao(callback: () => void) {
   aoPerderSessao = callback
 }
 
-export type Sessao = { accessToken: string; user: { id: string; email: string; name: string } }
+export type Sessao = { accessToken: string; user: { id: string; email: string; name: string; avatarId: string | null } }
 
 /** Troca o cookie de refresh por um access token novo. Chamadas simultâneas dividem a mesma troca. */
 export function renovarSessao(): Promise<Sessao | null> {

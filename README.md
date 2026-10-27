@@ -65,7 +65,7 @@ A documentação completa (com "Try it out") está em **http://localhost:3000/ap
 
 | Recurso | Endpoints |
 |---|---|
-| Auth | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` |
+| Auth | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` · `PATCH /auth/me` (nome e e-mail) · `POST /auth/password` (troca a senha e encerra as outras sessões) · `POST/DELETE /auth/me/avatar` (foto de perfil, JPEG) · `GET /auth/avatars/:id` (a foto, pública) |
 | Pipelines | `GET /pipelines` · `GET /pipelines/:id` (Kanban completo) · `POST` · `PATCH /:id` · `DELETE /:id` |
 | Stages | `POST /pipelines/:id/stages` · `PATCH /pipelines/:id/stages/reorder` · `PATCH /stages/:id` · `DELETE /stages/:id` |
 | Leads | `GET /leads?search&pipelineId&stageId&source&page&limit` · `GET /leads/:id` · `POST` · `PATCH /:id` · `PATCH /:id/move` · `DELETE /:id` |

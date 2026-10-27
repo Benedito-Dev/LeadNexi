@@ -101,6 +101,15 @@ export class RefreshTokensService {
     }
   }
 
+  /** Troca de senha: encerra as outras sessões do usuário e mantém a do token apresentado. */
+  async revokeOthers(userId: string, raw: string | undefined): Promise<void> {
+    const keep = await this.find(raw).then((current) => current.familyId).catch(() => null);
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null, ...(keep ? { familyId: { not: keep } } : {}) },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   /** Busca pelo id e confere o segredo em tempo constante. */
   private async find(raw: string | undefined) {
     const [id, secret] = raw?.split('.') ?? [];

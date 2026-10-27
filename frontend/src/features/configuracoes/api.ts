@@ -41,3 +41,21 @@ export type AcaoDoClaude = {
 }
 
 export const listarAcoesDoClaude = () => api<AcaoDoClaude[]>('/mcp/actions')
+
+type UsuarioSalvo = { id: string; email: string; name: string; avatarId: string | null }
+
+/** Perfil (PATCH /auth/me): nome e e-mail de login. */
+export const salvarPerfil = (dados: { name: string; email: string }) => api<UsuarioSalvo>('/auth/me', { method: 'PATCH', body: corpo(dados) })
+
+/** Foto de perfil já recortada (JPEG quadrado). */
+export const enviarFotoDePerfil = (foto: Blob) => {
+  const arquivo = new FormData()
+  arquivo.append('file', foto, 'foto.jpg')
+  return api<UsuarioSalvo>('/auth/me/avatar', { method: 'POST', body: arquivo })
+}
+
+export const removerFotoDePerfil = () => api<UsuarioSalvo>('/auth/me/avatar', { method: 'DELETE' })
+
+/** Troca a senha; as outras sessões são encerradas (esta continua). */
+export const trocarSenha = (currentPassword: string, newPassword: string) =>
+  api<void>('/auth/password', { method: 'POST', body: corpo({ currentPassword, newPassword }) })

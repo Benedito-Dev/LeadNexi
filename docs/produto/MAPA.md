@@ -132,7 +132,7 @@ Servidor: **tem** `GET /results`.
 
 Uma tela com sub-abas à esquerda (no celular, uma lista que abre cada uma).
 
-- **Perfil:** nome, e-mail, trocar senha, tema. Servidor: **tem** `GET /auth/me`; editar e trocar senha **faltam**.
+- **Perfil** — pronto: foto, nome, e-mail, trocar senha (encerra as outras sessões), tema. Servidor: **tem** `GET/PATCH /auth/me` e `POST /auth/password`.
 - **Canais:** um cartão por canal, no mesmo formato (situação, conectar, desconectar, o que falta configurar).
   - Instagram: app da Meta, conectar a conta, conta conectada. Tela **feita** (ainda não commitada como
     `/instagram`; muda para cá). Servidor: **tem**.

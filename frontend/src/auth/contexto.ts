@@ -11,6 +11,8 @@ type ValorAuth = {
   /** Abre a sessão com a resposta do login: o app aparece (as rotas protegidas liberam). */
   abrirSessao: (sessao: Sessao) => void
   sair: () => Promise<void>
+  /** Nome ou e-mail editados no Perfil: o menu mostra na hora. */
+  atualizarUsuario: (user: Usuario) => void
 }
 
 export const AuthContexto = createContext<ValorAuth | null>(null)

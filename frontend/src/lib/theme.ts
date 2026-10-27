@@ -17,6 +17,9 @@ function lerModo(): ModoTema {
 
 const media = () => window.matchMedia('(prefers-color-scheme: dark)')
 
+/** Avisa os outros lugares que mostram o tema (botão do topo, Perfil) que ele mudou. */
+const EVENTO = 'leadnexi-tema'
+
 /** Claro, escuro ou sistema, com a classe `dark` no <html> (mesmo esquema do Rizar). */
 export function useTheme() {
   const [mode, setModeState] = useState<ModoTema>(lerModo)
@@ -26,6 +29,12 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
+
+  useEffect(() => {
+    const aoTrocar = (e: Event) => setModeState((e as CustomEvent<ModoTema>).detail)
+    window.addEventListener(EVENTO, aoTrocar)
+    return () => window.removeEventListener(EVENTO, aoTrocar)
+  }, [])
 
   useEffect(() => {
     const m = media()
@@ -41,6 +50,7 @@ export function useTheme() {
     } catch {
       // Sem armazenamento, o tema vale só nesta aba
     }
+    window.dispatchEvent(new CustomEvent<ModoTema>(EVENTO, { detail: novo }))
   }
 
   return { mode, setMode, isDark }

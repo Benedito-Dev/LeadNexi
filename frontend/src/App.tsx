@@ -13,10 +13,9 @@ import { ResultadosPage } from '@/features/resultados/ResultadosPage'
 import { CanaisPage } from '@/features/configuracoes/CanaisPage'
 import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayout'
 import { IaPage } from '@/features/configuracoes/IaPage'
+import { PerfilPage } from '@/features/configuracoes/PerfilPage'
 import { ListasPage } from '@/features/listas/ListasPage'
 import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
-import { CartaoEmBreve } from '@/pages/EmBreve'
-import { TELAS_PLANEJADAS as T } from '@/pages/telasPlanejadas'
 import { LoginPage } from '@/pages/LoginPage'
 
 /** Leva a volta do login do Instagram para Configurações › Canais, mantendo o ?conectado / ?erro. */
@@ -51,7 +50,7 @@ export function App() {
               <Route path="/resultados" element={<ResultadosPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
                 <Route index element={<Navigate to="canais" replace />} />
-                <Route path="perfil" element={<CartaoEmBreve tela={T.perfil} />} />
+                <Route path="perfil" element={<PerfilPage />} />
                 <Route path="canais" element={<CanaisPage />} />
                 <Route path="prospeccao" element={<ProspeccaoPage />} />
                 <Route path="ia" element={<IaPage />} />
