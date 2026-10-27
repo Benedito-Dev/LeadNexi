@@ -15,6 +15,7 @@ import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayou
 import { IaPage } from '@/features/configuracoes/IaPage'
 import { PerfilPage } from '@/features/configuracoes/PerfilPage'
 import { ListasPage } from '@/features/listas/ListasPage'
+import { EscritorioPage } from '@/features/escritorio/EscritorioPage'
 import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
 import { LoginPage } from '@/pages/LoginPage'
 
@@ -48,6 +49,7 @@ export function App() {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/conteudo" element={<ConteudoPage />} />
               <Route path="/resultados" element={<ResultadosPage />} />
+              <Route path="/escritorio" element={<EscritorioPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
                 <Route index element={<Navigate to="canais" replace />} />
                 <Route path="perfil" element={<PerfilPage />} />

@@ -14,7 +14,8 @@ Decisões que guiam o mapa (25/10/2026):
 1. **Menu por tarefa, não por canal.** Instagram e WhatsApp não são abas: são conexões que alimentam as telas.
    Mensagens de todos os canais caem em Conversas; posts, em Conteúdo; conectar canais, em Configurações.
    Canal novo = mais uma conexão e mais um filtro, nunca uma aba nova.
-2. **No máximo 7 itens no menu.** O que passar disso vira sub-aba de um item que já existe.
+2. **No máximo 8 itens no menu** (era 7; o Escritório entrou como item próprio em 27/10/2026). O que passar disso vira
+   sub-aba de um item que já existe.
 3. **IA não é aba.** Aparece dentro das ações (gerar mensagem, sugerir resposta, resumir). Em Configurações fica
    só o modelo e a conexão com o Claude.
 4. **Uma peça, um lugar.** Componentes que aparecem em mais de uma tela são feitos uma vez só (seção 4).
@@ -32,6 +33,7 @@ CRM
 Clientes        pós-venda
 Conteúdo        posts do Instagram
 Resultados      placar e metas
+Escritório      agentes 24 h em pixel art (seção 6)
 Configurações
  ├ Perfil
  ├ Canais       Instagram, WhatsApp
@@ -177,7 +179,46 @@ anotar, rascunhar e agendar post, lançar relatório de cliente.
 
 As ferramentas do MCP chamam os mesmos serviços das telas: nenhuma regra de negócio duplicada.
 
-## 6. Ordem de construção
+## 6. Escritório Virtual (agentes 24 h) — planejado em 27/10/2026
+
+**Para que serve:** agentes que trabalham sozinhos em horário marcado (conteúdo, agenda de posts,
+prospecção) e uma aba no LeadNexi para ver o escritório funcionando, em pixel art.
+
+**Decisão:** os agentes rodam no **Claude Code logado na assinatura** do Benedito, numa **VPS Linux**
+dele. Não usam a API da Anthropic.
+
+**Como funciona:**
+
+```
+VPS Linux (sempre ligada)
+ ├ Claude Code (assinatura)       cada agente = uma pasta com o CLAUDE.md dele (papel e regras)
+ ├ agendador (cron/systemd)       acorda cada agente no horário: `claude -p "<tarefa>"`
+ ├ ferramentas                    Node, ffmpeg, Remotion, Chromium (montar vídeo e carrossel)
+ └ MCP do LeadNexi (produção)     um token por agente: tudo entra no histórico "via <agente>"
+          │
+          ▼
+LeadNexi (Vercel)                 Conteúdo (rascunhos e agendados), leads, e a aba Escritório
+```
+
+**Agentes (primeira leva):**
+
+| Agente | Quando | O que faz | Depende de |
+|---|---|---|---|
+| Criador | 04:00 | 2 vídeos e 2 carrosséis, salvos como rascunho em Conteúdo | ferramentas de post no MCP |
+| Estrategista | 06:00 | escolhe o melhor vídeo e o melhor carrossel, define o horário do dia e agenda | Criador |
+| Prospector | a definir | pega os 10 próximos leads sem 1ª mensagem e prepara cada uma | — |
+
+Enviar a mensagem sozinho no WhatsApp depende da etapa 7 (WhatsApp no LeadNexi, adiada). Até lá, o
+Prospector deixa as 10 mensagens prontas na tela Hoje e o envio é um clique.
+
+**Aba Escritório** (`/escritorio`, 8º item do menu) — **feita** (rodada 9.2): cada agente como um
+personagem em pixel art na sua mesa, com a situação (dormindo, trabalhando, terminou, falhou), a
+última e a próxima execução e o que produziu. Os agentes avisam o LeadNexi no começo e no fim de
+cada execução. Servidor: **tem** `GET /agents`, `GET /agents/:id/runs` e, para os agentes (senha do
+MCP no cabeçalho), `POST /agents/runs` `{ agent }` ao acordar e `PATCH /agents/runs/:id` `{ status, summary }`
+ao terminar. Execução aberta há mais de 2 h aparece como "parou sem avisar".
+
+## 7. Ordem de construção
 
 Cada etapa entrega valor sozinha e não refaz a anterior.
 
@@ -191,6 +232,7 @@ Cada etapa entrega valor sozinha e não refaz a anterior.
 | 6 | **MCP** + Configurações › IA e Claude | o Claude cria um lead e registra um contato |
 | 7 | **WhatsApp não oficial** (adaptador + Canais › WhatsApp + filtro em Conversas) | uma resposta do WhatsApp aparece em Conversas |
 | 8 | **Listas** e gerador de lista | monta uma lista nova pelo Google Maps |
+| 9 | **Escritório Virtual** (seção 6), em rodadas: VPS com Claude Code e um agente de teste · aba Escritório · Criador · Estrategista · Prospector | o Criador deixa 2 vídeos e 2 carrosséis em Conteúdo às 4h, sem ninguém mexer |
 
 A ordem pode trocar entre etapas independentes (3, 4 e 8 não dependem umas das outras).
 As etapas 1 e 2 vêm primeiro porque tudo que é canal depende delas.

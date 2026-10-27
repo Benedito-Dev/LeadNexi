@@ -1,0 +1,47 @@
+/* Escritório Virtual: animações dos personagens em pixel art. Movimento em passos (steps) para
+   ficar com cara de jogo antigo; quem pede menos movimento no sistema vê tudo parado. */
+
+@keyframes lnx-robo-respira {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes lnx-robo-pisca {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+@keyframes lnx-robo-digita {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes lnx-pontinho {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+
+@keyframes lnx-zzz {
+  0% { opacity: 0; transform: translate(0, 4px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, -14px); }
+}
+
+@keyframes lnx-tela {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.lnx-robo-respira { animation: lnx-robo-respira 3.2s steps(2, jump-none) infinite; }
+.lnx-robo-digita { animation: lnx-robo-digita 0.5s steps(2, jump-none) infinite; }
+.lnx-robo-olhos { transform-box: fill-box; transform-origin: center; animation: lnx-robo-pisca 4s infinite; }
+.lnx-pontinho { animation: lnx-pontinho 1.2s infinite; }
+.lnx-pontinho:nth-child(2) { animation-delay: 0.2s; }
+.lnx-pontinho:nth-child(3) { animation-delay: 0.4s; }
+.lnx-zzz { animation: lnx-zzz 2.6s steps(6) infinite; }
+.lnx-zzz:nth-child(2) { animation-delay: 1.3s; }
+.lnx-tela { animation: lnx-tela 1.6s steps(2, jump-none) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lnx-robo-respira, .lnx-robo-digita, .lnx-robo-olhos, .lnx-pontinho, .lnx-zzz, .lnx-tela { animation: none; }
+}

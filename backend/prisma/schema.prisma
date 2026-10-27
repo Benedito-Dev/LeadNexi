@@ -468,3 +468,44 @@ model McpToken {
 
   @@map("mcp_tokens")
 }
+
+// Escritório Virtual: agentes que rodam no Claude Code da VPS em horário marcado
+model Agent {
+  id           String     @id @default(uuid())
+  /// Identificador usado pelo agente na VPS ao avisar o LeadNexi, ex.: "criador"
+  slug         String     @unique
+  name         String
+  /// O que ele faz, em uma frase
+  role         String
+  /// Horário diário em Fortaleza ("04:00"); vazio = sem horário fixo
+  scheduleTime String?    @map("schedule_time")
+  /// Personagem em pixel art (desenho e cor) na aba Escritório
+  character    String
+  active       Boolean    @default(true)
+  position     Int        @default(0)
+  runs         AgentRun[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@map("agents")
+}
+
+enum AgentRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+// Uma execução de um agente: começa quando ele acorda, termina com o resultado
+model AgentRun {
+  id         String         @id @default(uuid())
+  agentId    String         @map("agent_id")
+  agent      Agent          @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  status     AgentRunStatus @default(RUNNING)
+  /// O que produziu ou por que falhou, em poucas linhas
+  summary    String?
+  startedAt  DateTime       @default(now()) @map("started_at")
+  finishedAt DateTime?      @map("finished_at")
+
+  @@index([agentId, startedAt])
+  @@map("agent_runs")
+}

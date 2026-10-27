@@ -12,5 +12,7 @@ import { McpController } from './mcp.controller.js';
   imports: [LeadsModule, ResultsModule, ClientsModule, PipelinesModule],
   controllers: [McpTokensController, McpActionsController, McpController],
   providers: [McpTokensService],
+  // Os agentes do Escritório avisam o LeadNexi com a mesma senha do MCP
+  exports: [McpTokensService],
 })
 export class McpModule {}
