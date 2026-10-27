@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Inbox } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import { addToast } from '@/lib/toast'
@@ -72,9 +72,14 @@ export function ConversasPage() {
   const historicoDaAberta = ehDemonstracao(abertaId) ? (HISTORICOS_DE_DEMONSTRACAO[abertaId!] ?? null) : historico?.leadId === abertaId ? historico.dados : null
   const leadDaAberta = lead?.id === abertaId ? lead : null
 
+  // Sobe a cada mudança feita aqui (ex.: "Não é lead"): a lista que saiu antes dela chega velha e é descartada
+  const versaoLocal = useRef(0)
+
   const carregarLista = useCallback(() => {
+    const versao = versaoLocal.current
     listarConversas()
       .then((lista) => {
+        if (versao !== versaoLocal.current) return
         // Demonstração do WhatsApp (só no ambiente local), na ordem pela última mensagem
         const todas = [...lista, ...CONVERSAS_DE_DEMONSTRACAO].sort((a, b) => (b.lastMessage?.createdAt ?? '').localeCompare(a.lastMessage?.createdAt ?? ''))
         setConversas(todas)
@@ -192,7 +197,10 @@ export function ConversasPage() {
                     onMudou={carregarLead}
                     corDaEtapa={(leadDaAberta && cores[leadDaAberta.stage.id]) || '#5C8AF6'}
                     onAbrirFicha={() => setFichaAberta(true)}
-                    onMudouLead={(archived) => setConversas((lista) => lista?.map((c) => (c.id === aberta.id ? { ...c, archived } : c)) ?? null)}
+                    onMudouLead={(archived) => {
+                      versaoLocal.current += 1
+                      setConversas((lista) => lista?.map((c) => (c.id === aberta.id ? { ...c, archived } : c)) ?? null)
+                    }}
                     demonstracao={ehDemonstracao(aberta.id)}
                   />
                 </div>
