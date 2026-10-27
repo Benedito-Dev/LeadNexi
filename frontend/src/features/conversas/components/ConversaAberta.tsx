@@ -30,7 +30,7 @@ function rotuloDoDia(iso: string) {
 const etiqueta = 'inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground'
 
 /**
- * Rola a área até o fim num deslize próprio (~0,4 s, desacelerando no final), igual em qualquer
+ * Rola a área até o fim num deslize próprio (0,4 a 0,7 s, desacelerando no final), igual em qualquer
  * navegador: o "smooth" nativo, numa distância curta, parece um salto. Devolve como cancelar.
  */
 function deslizarAteOFim(area: HTMLElement) {
@@ -39,10 +39,12 @@ function deslizarAteOFim(area: HTMLElement) {
     return
   }
   const inicio = area.scrollTop
+  // Mais longe, um pouco mais devagar: de 0,4 s (uma tela ou menos) até 0,7 s
+  const duracao = Math.min(400 + ((area.scrollHeight - area.clientHeight - inicio) / area.clientHeight) * 150, 700)
   const comeco = performance.now()
   let quadro = 0
   const passo = (agora: number) => {
-    const progresso = Math.min((agora - comeco) / 400, 1)
+    const progresso = Math.min((agora - comeco) / duracao, 1)
     const destino = area.scrollHeight - area.clientHeight
     area.scrollTop = inicio + (destino - inicio) * (1 - Math.pow(1 - progresso, 3))
     if (progresso < 1) quadro = requestAnimationFrame(passo)
@@ -50,6 +52,9 @@ function deslizarAteOFim(area: HTMLElement) {
   quadro = requestAnimationFrame(passo)
   return () => cancelAnimationFrame(quadro)
 }
+
+/** Até quantas alturas da área de distância do fim a conversa desliza (mais longe que isso, salta). */
+const TELAS_PARA_DESLIZAR = 2
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -102,7 +107,7 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
     }
     if (quantas <= anteriores) return
     const distancia = area.scrollHeight - area.clientHeight - area.scrollTop
-    if (distancia < area.clientHeight * 1.2) return deslizarAteOFim(area)
+    if (distancia < area.clientHeight * TELAS_PARA_DESLIZAR) return deslizarAteOFim(area)
     if (ultimaEnviada) area.scrollTop = area.scrollHeight
   }, [quantas, ultimaEnviada])
 
