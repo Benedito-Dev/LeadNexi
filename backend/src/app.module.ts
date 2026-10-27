@@ -9,6 +9,7 @@ import { HealthController } from './health/health.controller.js';
 import { InstagramModule } from './instagram/instagram.module.js';
 import { LeadListsModule } from './lead-lists/lead-lists.module.js';
 import { LeadsModule } from './leads/leads.module.js';
+import { McpModule } from './mcp/mcp.module.js';
 import { PipelinesModule } from './pipelines/pipelines.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ResultsModule } from './results/results.module.js';
@@ -27,6 +28,7 @@ import { StagesModule } from './stages/stages.module.js';
     ResultsModule,
     AiModule,
     ClientsModule,
+    McpModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: PrismaExceptionFilter }],

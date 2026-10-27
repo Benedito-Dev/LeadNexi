@@ -17,5 +17,7 @@ import { LeadsImportService } from './leads-import.service.js';
     LeadAvatarsController,
   ],
   providers: [LeadsService, LeadActivitiesService, LeadsImportService],
+  // O servidor MCP usa os mesmos serviços das telas
+  exports: [LeadsService, LeadActivitiesService],
 })
 export class LeadsModule {}
