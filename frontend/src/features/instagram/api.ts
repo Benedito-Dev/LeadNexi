@@ -1,5 +1,5 @@
 import { api, corpo } from '@/lib/api'
-import type { AppDaMeta, SituacaoDaConta } from './tipos'
+import type { AppDaMeta, PerfilDoInstagram, SituacaoDaConta } from './tipos'
 
 export const buscarConta = () => api<SituacaoDaConta>('/instagram/account')
 
@@ -13,3 +13,6 @@ export const salvarAppDaMeta = (dados: { appId: string; appSecret?: string }) =>
 export const iniciarConexao = () => api<{ url: string }>('/instagram/connect', { method: 'POST' })
 
 export const desconectar = () => api<void>('/instagram/account', { method: 'DELETE' })
+
+/** O perfil como aparece no app (números, bio, últimos posts), lido na hora na Meta. */
+export const buscarPerfil = () => api<PerfilDoInstagram>('/instagram/profile')

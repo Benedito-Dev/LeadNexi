@@ -65,6 +65,27 @@ export interface ProfileMedia {
   oldest: Date | null;
 }
 
+/** O perfil como aparece no app: números, bio e os últimos posts (ver getProfileOverview) */
+export interface ProfileOverview {
+  username: string;
+  name: string | null;
+  biography: string | null;
+  website: string | null;
+  profilePictureUrl: string | null;
+  followers: number | null;
+  following: number | null;
+  posts: number | null;
+  media: {
+    id: string;
+    /** IMAGE, VIDEO (Reels) ou CAROUSEL_ALBUM */
+    type: string;
+    /** Imagem a mostrar (no vídeo, a capa); o link da Meta expira em poucos dias */
+    imageUrl: string | null;
+    permalink: string | null;
+    timestamp: string | null;
+  }[];
+}
+
 export interface InstagramProfile {
   /** ID da conta profissional: é o usado para publicar */
   userId: string;
@@ -139,6 +160,48 @@ export class InstagramApiClient {
       name: optionalString(data.name),
       profilePictureUrl: optionalString(data.profile_picture_url),
       accountType: optionalString(data.account_type),
+    };
+  }
+
+  /** O perfil como aparece no app, na hora: números, bio, link e os últimos `limit` posts. */
+  async getProfileOverview(token: string, limit = 30): Promise<ProfileOverview> {
+    const perfil = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
+    perfil.search = new URLSearchParams({
+      fields: 'username,name,biography,website,profile_picture_url,followers_count,follows_count,media_count',
+      access_token: token,
+    }).toString();
+    const posts = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me/media`);
+    posts.search = new URLSearchParams({
+      fields: 'id,media_type,media_url,thumbnail_url,permalink,timestamp',
+      limit: String(limit),
+      access_token: token,
+    }).toString();
+    const [dados, lista] = await Promise.all([this.request(perfil), this.request(posts)]);
+    const numero = (valor: unknown) => (typeof valor === 'number' ? valor : null);
+    const itens = Array.isArray(lista.data) ? (lista.data as Json[]) : [];
+    return {
+      username: requireString(dados.username, 'username'),
+      name: optionalString(dados.name),
+      biography: optionalString(dados.biography),
+      website: optionalString(dados.website),
+      profilePictureUrl: optionalString(dados.profile_picture_url),
+      followers: numero(dados.followers_count),
+      following: numero(dados.follows_count),
+      posts: numero(dados.media_count),
+      media: itens.flatMap((item) => {
+        const id = optionalString(item.id);
+        if (!id) return [];
+        const type = optionalString(item.media_type) ?? 'IMAGE';
+        return [
+          {
+            id,
+            type,
+            imageUrl: type === 'VIDEO' ? optionalString(item.thumbnail_url) : optionalString(item.media_url),
+            permalink: optionalString(item.permalink),
+            timestamp: optionalString(item.timestamp),
+          },
+        ];
+      }),
     };
   }
 

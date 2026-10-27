@@ -50,6 +50,15 @@ export class InstagramController {
     return this.instagram.getAccount();
   }
 
+  @Get('profile')
+  @ApiOperation({
+    summary: 'Perfil como aparece no app, lido na hora na Meta: números, bio e os últimos posts',
+  })
+  @ApiOkResponse({ description: '{ connected, profile? } · connected: false sem conta válida ou com a Meta fora do ar' })
+  getProfile() {
+    return this.instagram.getProfileOverview();
+  }
+
   @Get('settings')
   @ApiOperation({
     summary: 'Configuração do app da Meta (sem a chave secreta)',

@@ -26,3 +26,31 @@ export type AppDaMeta = {
   webhookUrl: string
   webhookVerifyToken: string | null
 }
+
+/** Post que já está no perfil do Instagram (lido na hora na Meta). */
+export type PostDoPerfil = {
+  id: string
+  /** IMAGE, VIDEO (Reels) ou CAROUSEL_ALBUM */
+  type: string
+  imageUrl: string | null
+  permalink: string | null
+  timestamp: string | null
+}
+
+/** GET /instagram/profile: o perfil como aparece no app. */
+export type PerfilDoInstagram =
+  | { connected: false; reason: string }
+  | {
+      connected: true
+      profile: {
+        username: string
+        name: string | null
+        biography: string | null
+        website: string | null
+        profilePictureUrl: string | null
+        followers: number | null
+        following: number | null
+        posts: number | null
+        media: PostDoPerfil[]
+      }
+    }

@@ -359,4 +359,34 @@ describe('InstagramApiClient', () => {
     expect(error).toBeInstanceOf(InstagramApiError);
     expect((error as InstagramApiError).status).toBe(0);
   });
+  it('lê o perfil com números, bio e os últimos posts (a capa no vídeo)', async () => {
+    reply(200, {
+      username: 'alvodigital.ce',
+      name: 'Alvo digital',
+      biography: 'Gestão de anúncios',
+      website: 'https://wa.me/5585900000000',
+      followers_count: 5,
+      follows_count: 7,
+      media_count: 8,
+    });
+    reply(200, {
+      data: [
+        { id: '1', media_type: 'CAROUSEL_ALBUM', media_url: 'https://cdn/1.jpg', permalink: 'https://ig/p/1', timestamp: '2026-10-20T12:00:00+0000' },
+        { id: '2', media_type: 'VIDEO', media_url: 'https://cdn/2.mp4', thumbnail_url: 'https://cdn/2.jpg' },
+      ],
+    });
+
+    const perfil = await client.getProfileOverview('tok', 12);
+
+    expect(perfil).toMatchObject({ username: 'alvodigital.ce', followers: 5, following: 7, posts: 8, biography: 'Gestão de anúncios' });
+    expect(perfil.media).toEqual([
+      { id: '1', type: 'CAROUSEL_ALBUM', imageUrl: 'https://cdn/1.jpg', permalink: 'https://ig/p/1', timestamp: '2026-10-20T12:00:00+0000' },
+      { id: '2', type: 'VIDEO', imageUrl: 'https://cdn/2.jpg', permalink: null, timestamp: null },
+    ]);
+    const [perfilUrl, postsUrl] = fetchMock.mock.calls.map(([input]) => new URL(input.toString()));
+    expect(perfilUrl.pathname).toBe(`/${GRAPH_VERSION}/me`);
+    expect(perfilUrl.searchParams.get('fields')).toContain('followers_count');
+    expect(postsUrl.pathname).toBe(`/${GRAPH_VERSION}/me/media`);
+    expect(postsUrl.searchParams.get('limit')).toBe('12');
+  });
 });

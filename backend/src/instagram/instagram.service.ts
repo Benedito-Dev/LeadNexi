@@ -82,6 +82,30 @@ export class InstagramService {
     };
   }
 
+  /**
+   * O perfil como aparece no app, lido na hora na Meta (números, bio, últimos posts), para o feed
+   * da tela Conteúdo. Sem conta válida ou com a Meta fora do ar: `connected: false` e o motivo.
+   */
+  async getProfileOverview() {
+    const now = new Date();
+    const account = await this.prisma.instagramAccount.findFirst({
+      where: { tokenInvalidAt: null, tokenExpiresAt: { gt: now } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!account) return { connected: false as const, reason: 'sem conta' };
+    try {
+      const token = decryptSecret(account.accessToken, this.settings.requireKey());
+      return { connected: true as const, profile: await this.api.getProfileOverview(token) };
+    } catch (error) {
+      if (error instanceof InstagramApiError && error.invalidToken) {
+        // A tela passa a mostrar "Conexão expirada" e pedir para conectar de novo
+        await this.prisma.instagramAccount.update({ where: { id: account.id }, data: { tokenInvalidAt: now } });
+      }
+      this.logger.warn(`Perfil do Instagram não lido: ${(error as Error).message}`);
+      return { connected: false as const, reason: 'falha' };
+    }
+  }
+
   /** Desconecta: apaga a conta e o token guardado. */
   async disconnect() {
     await this.prisma.instagramAccount.deleteMany();
