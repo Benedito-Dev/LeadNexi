@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Building2, CalendarClock, ChevronDown, Clock3, Info, LoaderCircle } from 'lucide-react'
+import { Building2, CalendarClock, ChevronDown, Info, LoaderCircle } from 'lucide-react'
 import { ListPageHeader } from '@/components/list-page/ListPageHeader'
 import { cn } from '@/lib/utils'
 import { formatarDataHora } from '../crm/datas'
 import { formatarDecorrido, formatarDiaEHora } from '../hoje/textos'
 import { MensagemDeErro } from '../instagram/components/CartaoAppDaMeta'
 import { listarAgentes, listarExecucoes, type Agente, type Execucao, type SituacaoDaExecucao } from './api'
-import { MesaDoAgente } from './components/MesaDoAgente'
-import { PixelRobo } from './components/PixelRobo'
+import { Personagem } from './components/Personagem'
+import { SalaDoEscritorio } from './components/SalaDoEscritorio'
 import { estadoDoAgente, ROTULO_DO_ESTADO, type Estado } from './estado'
 import './escritorio.css'
 
-/** Os agentes avisam começo e fim; a tela confere de tempos em tempos. */
-const ATUALIZA_A_CADA_MS = 30_000
+/**
+ * Os agentes avisam começo e fim; a tela confere a cada 3 s enquanto está à vista (quase ao vivo:
+ * quem acorda já sai andando). Com a aba escondida, para de conferir e confere de novo ao voltar.
+ */
+const ATUALIZA_A_CADA_MS = 3_000
 
 const TOM_DO_ESTADO: Record<Estado, string> = {
   trabalhando: 'border-leadnexi-cyan/40 bg-leadnexi-cyan/10 text-leadnexi-cyan-texto',
@@ -31,27 +34,10 @@ const ROTULO_DA_EXECUCAO: Record<SituacaoDaExecucao, { texto: string; cor: strin
 /** Hora de Fortaleza, para o relógio da parede. */
 const horaDeFortaleza = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' })
 
-/** Janela da parede: céu claro de dia, escuro com estrelas de noite (horário de Fortaleza). */
-function Janela({ hora }: { hora: string }) {
-  const h = Number(hora.slice(0, 2))
-  const dia = h >= 6 && h < 18
-  return (
-    <span className={cn('relative block h-10 w-16 border-4 border-[hsl(var(--sidebar-bg))]', dia ? 'bg-leadnexi-cyan/35' : 'bg-[hsl(var(--sidebar-bg))]')}>
-      <span className="absolute inset-y-0 left-1/2 w-1 -translate-x-1/2 bg-[hsl(var(--sidebar-bg))]" />
-      {!dia && (
-        <>
-          <span className="absolute left-2 top-1.5 h-0.5 w-0.5 bg-foreground/80" />
-          <span className="absolute right-3 top-3 h-0.5 w-0.5 bg-foreground/60" />
-          <span className="absolute bottom-2 left-4 h-0.5 w-0.5 bg-foreground/70" />
-        </>
-      )}
-    </span>
-  )
-}
-
 /**
- * Escritório: os agentes que trabalham no Claude Code da VPS, cada um na sua mesa em pixel art,
- * e embaixo o que cada um faz, quando roda e o que produziu (docs/produto/MAPA.md, seção 6).
+ * Escritório: os agentes que trabalham no Claude Code da VPS, numa sala em pixel art (mesa quando
+ * trabalham, sofá da copa quando descansam), e embaixo o que cada um faz, quando roda e o que
+ * produziu (docs/produto/MAPA.md, seção 6).
  */
 export function EscritorioPage() {
   const [agentes, setAgentes] = useState<Agente[] | null>(null)
@@ -70,11 +56,18 @@ export function EscritorioPage() {
 
   useEffect(() => {
     carregar()
-    const busca = setInterval(carregar, ATUALIZA_A_CADA_MS)
+    const busca = setInterval(() => {
+      if (document.visibilityState === 'visible') carregar()
+    }, ATUALIZA_A_CADA_MS)
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') carregar()
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
     const relogio = setInterval(() => setHora(horaDeFortaleza()), 15_000)
     return () => {
       clearInterval(busca)
       clearInterval(relogio)
+      document.removeEventListener('visibilitychange', aoVoltar)
     }
   }, [carregar])
 
@@ -104,39 +97,15 @@ export function EscritorioPage() {
         </p>
       )}
 
-      {/* A sala: parede com o relógio e o chão quadriculado, uma mesa por agente */}
-      <section aria-label="Sala dos agentes" className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="flex h-20 items-center justify-between gap-4 border-b-4 border-[hsl(var(--sidebar-bg))] bg-muted px-5">
-          <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">LeadNexi · Escritório</span>
-          <span className="hidden gap-10 sm:flex">
-            <Janela hora={hora} />
-            <Janela hora={hora} />
-          </span>
-          <span className="flex items-center gap-2 border-2 border-[hsl(var(--sidebar-bg))] bg-card px-2 py-0.5 font-mono text-sm font-bold tabular-nums text-foreground">
-            <Clock3 aria-hidden className="h-3.5 w-3.5 text-leadnexi-violet-texto" strokeWidth={2} />
-            {hora}
-          </span>
-        </div>
-        <div
-          className="px-6 pb-8 pt-16"
-          style={{
-            backgroundImage:
-              'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
-          }}
-        >
-          {agentes === null ? (
-            <div className="grid h-56 place-items-center">
-              <LoaderCircle aria-hidden className="h-6 w-6 animate-spin text-muted-foreground" strokeWidth={1.75} />
-            </div>
-          ) : (
-            <div className="grid justify-items-center gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-              {agentes.map((agente) => (
-                <MesaDoAgente key={agente.id} agente={agente} selecionado={selecionado === agente.id} onSelecionar={() => selecionar(agente.id)} />
-              ))}
-            </div>
-          )}
-        </div>
+      <section aria-label="Sala dos agentes" className="flex flex-col gap-2">
+        {agentes === null ? (
+          <div className="grid aspect-[16/10] place-items-center rounded-xl border border-border bg-card">
+            <LoaderCircle aria-hidden className="h-6 w-6 animate-spin text-muted-foreground" strokeWidth={1.75} />
+          </div>
+        ) : (
+          <SalaDoEscritorio agentes={agentes} hora={hora} selecionado={selecionado} onSelecionar={selecionar} />
+        )}
+        <p className="m-0 text-right text-xs font-medium text-muted-foreground">Arte da sala: Pixel Office, de 2dPig (CC0)</p>
       </section>
 
       {agentes && agentes.length > 0 && (
@@ -169,7 +138,7 @@ function CartaoDoAgente({ agente, selecionado }: { agente: Agente; selecionado: 
     >
       <header className="flex items-start gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-muted">
-          <PixelRobo personagem={agente.character} estado={estado} pixel={3} />
+          <Personagem character={agente.character} dormindo={estado === 'dormindo'} altura={36} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

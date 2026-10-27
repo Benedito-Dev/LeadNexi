@@ -211,9 +211,12 @@ LeadNexi (Vercel)                 Conteúdo (rascunhos e agendados), leads, e a 
 Enviar a mensagem sozinho no WhatsApp depende da etapa 7 (WhatsApp no LeadNexi, adiada). Até lá, o
 Prospector deixa as 10 mensagens prontas na tela Hoje e o envio é um clique.
 
-**Aba Escritório** (`/escritorio`, 8º item do menu) — **feita** (rodada 9.2): cada agente como um
-personagem em pixel art na sua mesa, com a situação (dormindo, trabalhando, terminou, falhou), a
-última e a próxima execução e o que produziu. Os agentes avisam o LeadNexi no começo e no fim de
+**Aba Escritório** (`/escritorio`, 8º item do menu) — **feita** (rodada 9.2): uma sala em pixel art vista
+de cima (Pixel Office, de 2dPig, CC0; paleta própria em BRAND.md 4.7) com Estúdio, Estratégia, Comercial e
+Copa. Cada agente é um personagem do pacote (Criador: ruiva; Estrategista: óculos;
+Prospector: moreno; sobram dois para agentes novos) com a plaquinha do nome: trabalhando ou com erro, na cadeira da baia; dormindo
+ou terminado, no sofá da copa, e atravessa a sala quando muda de estado. Embaixo, um cartão por agente com
+a situação, a última e a próxima execução e o que produziu. Os agentes avisam o LeadNexi no começo e no fim de
 cada execução. Servidor: **tem** `GET /agents`, `GET /agents/:id/runs` e, para os agentes (senha do
 MCP no cabeçalho), `POST /agents/runs` `{ agent }` ao acordar e `PATCH /agents/runs/:id` `{ status, summary }`
 ao terminar. Execução aberta há mais de 2 h aparece como "parou sem avisar".
