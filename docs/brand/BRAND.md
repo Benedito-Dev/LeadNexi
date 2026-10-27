@@ -221,18 +221,6 @@ Os tokens mantêm o nome do escuro e trocam só o valor: cada um guarda o **pape
 Fixos nos dois temas: botão primário `#5B4BEA` com texto `on-accent` (`#F8FAFC`, nunca `text-white`, que vira navy no claro) e o fundo de modal `backdrop`.
 Símbolo e logo seguem o tema sozinhos (variante `auto`, que é o padrão): ponte `#22D3EE` e nome `#F8FAFC` no escuro; ponte `#0891B2` e nome `#0B1020` no claro.
 
-### 4.7 Paleta da cena do Escritório (exceção aprovada em 27/10/2026)
-
-Só dentro da sala em pixel art da tela Escritório (`public/escritorio/sala.png`) valem as 16 cores da
-paleta Sweetie 16, a do pacote **Pixel Office, de 2dPig** (CC0; arquivos e licença em
-`frontend/scripts/escritorio/pixel-office-2dpig/`): `1a1c2c` `5d275d` `b13e53` `ef7d57` `ffcd75`
-`a7f070` `38b764` `257179` `29366f` `3b5dc9` `41a6f6` `73eff7` `f4f4f4` `94b0c2` `566c86` `333c57`.
-
-- As cores ficam **dentro da imagem** (montada por `npm run escritorio:sala`); nenhum componente usa esses hex.
-- Os personagens dos agentes também são do pacote (mesma paleta). O que fica por cima da sala segue a marca:
-  plaquinhas com o nome, balões e o relógio usam os tokens.
-- O resto do app não usa essa paleta.
-
 ## 5. Tipografia
 
 | Papel | Fonte | Pesos |

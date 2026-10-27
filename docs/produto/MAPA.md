@@ -14,8 +14,7 @@ Decisões que guiam o mapa (25/10/2026):
 1. **Menu por tarefa, não por canal.** Instagram e WhatsApp não são abas: são conexões que alimentam as telas.
    Mensagens de todos os canais caem em Conversas; posts, em Conteúdo; conectar canais, em Configurações.
    Canal novo = mais uma conexão e mais um filtro, nunca uma aba nova.
-2. **No máximo 8 itens no menu** (era 7; o Escritório entrou como item próprio em 27/10/2026). O que passar disso vira
-   sub-aba de um item que já existe.
+2. **No máximo 7 itens no menu.** O que passar disso vira sub-aba de um item que já existe.
 3. **IA não é aba.** Aparece dentro das ações (gerar mensagem, sugerir resposta, resumir). Em Configurações fica
    só o modelo e a conexão com o Claude.
 4. **Uma peça, um lugar.** Componentes que aparecem em mais de uma tela são feitos uma vez só (seção 4).
@@ -33,7 +32,6 @@ CRM
 Clientes        pós-venda
 Conteúdo        posts do Instagram
 Resultados      placar e metas
-Escritório      agentes 24 h em pixel art (seção 6)
 Configurações
  ├ Perfil
  ├ Canais       Instagram, WhatsApp
@@ -118,8 +116,8 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
 - **Posts:** calendário (arrastar para remarcar), lista e grade; "Novo post" (foto ou carrossel, legenda,
   hashtags salvas, agendar, publicar agora ou guardar como **rascunho**, sem data e sem precisar do Instagram
   conectado). **Reel**: um vídeo MP4/MOV (3 s a 15 min, até 300 MB) no lugar das imagens; a capa é um quadro
-  tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde o
-  agente Criador deixa o que produz e de onde o Estrategista escolhe (seção 6).
+  tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde os
+  agentes da VPS deixam o que produzem, pelo MCP (seção 6).
 
 Fora do plano (decisão de 26/10/2026): banco de provas. O servidor ainda tem `/proofs`, sem tela.
 
@@ -187,47 +185,14 @@ As ferramentas do MCP chamam os mesmos serviços das telas: nenhuma regra de neg
 proporção), `criar_rascunho_de_post`, `listar_rascunhos`, `listar_posts_agendados` e `agendar_post`
 (precisa do Instagram conectado). É o que o Criador e o Estrategista usam.
 
-## 6. Escritório Virtual (agentes 24 h) — planejado em 27/10/2026
+## 6. Escritório Virtual — fora do LeadNexi (decisão de 27/10/2026)
 
-**Para que serve:** agentes que trabalham sozinhos em horário marcado (conteúdo, agenda de posts,
-prospecção) e uma aba no LeadNexi para ver o escritório funcionando, em pixel art.
+Os agentes 24 h (Criador, Estrategista, Prospector), que rodam no Claude Code da VPS em horário marcado, e a
+sala em pixel art para acompanhá-los são um **projeto à parte**. Dentro do LeadNexi encheriam o app e o
+tirariam do foco (CRM: Instagram → lead → venda). A aba Escritório e as tabelas dos agentes saíram.
 
-**Decisão:** os agentes rodam no **Claude Code logado na assinatura** do Benedito, numa **VPS Linux**
-dele. Não usam a API da Anthropic.
-
-**Como funciona:**
-
-```
-VPS Linux (sempre ligada)
- ├ Claude Code (assinatura)       cada agente = uma pasta com o CLAUDE.md dele (papel e regras)
- ├ agendador (cron/systemd)       acorda cada agente no horário: `claude -p "<tarefa>"`
- ├ ferramentas                    Node, ffmpeg, Remotion, Chromium (montar vídeo e carrossel)
- └ MCP do LeadNexi (produção)     um token por agente: tudo entra no histórico "via <agente>"
-          │
-          ▼
-LeadNexi (Vercel)                 Conteúdo (rascunhos e agendados), leads, e a aba Escritório
-```
-
-**Agentes (primeira leva):**
-
-| Agente | Quando | O que faz | Depende de |
-|---|---|---|---|
-| Criador | 04:00 | 2 vídeos e 2 carrosséis, salvos como rascunho em Conteúdo | ferramentas de post no MCP (feitas) |
-| Estrategista | 06:00 | escolhe o melhor vídeo e o melhor carrossel, define o horário do dia e agenda | Criador |
-| Prospector | a definir | pega os 10 próximos leads sem 1ª mensagem e prepara cada uma | — |
-
-Enviar a mensagem sozinho no WhatsApp depende da etapa 7 (WhatsApp no LeadNexi, adiada). Até lá, o
-Prospector deixa as 10 mensagens prontas na tela Hoje e o envio é um clique.
-
-**Aba Escritório** (`/escritorio`, 8º item do menu) — **feita** (rodada 9.2): uma sala em pixel art vista
-de cima (Pixel Office, de 2dPig, CC0; paleta própria em BRAND.md 4.7) com Estúdio, Estratégia, Comercial e
-Copa. Cada agente é um personagem do pacote (Criador: ruiva; Estrategista: óculos;
-Prospector: moreno; sobram dois para agentes novos) com a plaquinha do nome: trabalhando ou com erro, na cadeira da baia; dormindo
-ou terminado, no sofá da copa, e atravessa a sala quando muda de estado. Embaixo, um cartão por agente com
-a situação, a última e a próxima execução e o que produziu. Os agentes avisam o LeadNexi no começo e no fim de
-cada execução. Servidor: **tem** `GET /agents`, `GET /agents/:id/runs` e, para os agentes (senha do
-MCP no cabeçalho), `POST /agents/runs` `{ agent }` ao acordar e `PATCH /agents/runs/:id` `{ status, summary }`
-ao terminar. Execução aberta há mais de 2 h aparece como "parou sem avisar".
+O LeadNexi só oferece o **MCP** (seção 5): os agentes usam as mesmas ferramentas do Claude, com um token
+próprio, e tudo que fazem entra no histórico como "via <agente>". Rascunhos e agendados aparecem em Conteúdo.
 
 ## 7. Ordem de construção
 
@@ -243,7 +208,6 @@ Cada etapa entrega valor sozinha e não refaz a anterior.
 | 6 | **MCP** + Configurações › IA e Claude | o Claude cria um lead e registra um contato |
 | 7 | **WhatsApp não oficial** (adaptador + Canais › WhatsApp + filtro em Conversas) | uma resposta do WhatsApp aparece em Conversas |
 | 8 | **Listas** e gerador de lista | monta uma lista nova pelo Google Maps |
-| 9 | **Escritório Virtual** (seção 6), em rodadas: VPS com Claude Code e um agente de teste · aba Escritório · Criador · Estrategista · Prospector | o Criador deixa 2 vídeos e 2 carrosséis em Conteúdo às 4h, sem ninguém mexer |
 
 A ordem pode trocar entre etapas independentes (3, 4 e 8 não dependem umas das outras).
 As etapas 1 e 2 vêm primeiro porque tudo que é canal depende delas.

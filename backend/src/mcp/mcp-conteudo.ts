@@ -31,7 +31,7 @@ const resumoDoPost = (post: PostDaTela) => ({
 });
 
 /**
- * Ferramentas de Conteúdo (posts do Instagram) para o Claude e os agentes do Escritório: enviar
+ * Ferramentas de Conteúdo (posts do Instagram) para o Claude e os agentes da VPS: enviar
  * imagens e vídeos direto ao armazenamento, guardar como rascunho, ver rascunhos e agendados e
  * agendar. Chamam os mesmos serviços da tela Conteúdo.
  */

@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react'
-import { BarChart3, Building2, CalendarCheck, ChevronDown, Handshake, Images, LogOut, MessagesSquare, Settings, Users } from 'lucide-react'
+import { BarChart3, CalendarCheck, ChevronDown, Handshake, Images, LogOut, MessagesSquare, Settings, Users } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/contexto'
 import { fotoDoUsuario } from '@/auth/foto'
@@ -32,7 +32,6 @@ const MENU: ItemDeMenu[] = [
   { title: 'Clientes', icon: Handshake, to: '/clientes' },
   { title: 'Conteúdo', icon: Images, to: '/conteudo' },
   { title: 'Resultados', icon: BarChart3, to: '/resultados' },
-  { title: 'Escritório', icon: Building2, to: '/escritorio' },
 ]
 
 // Ajustes ficam no pé do menu, junto da conta: em cima o trabalho do dia, embaixo o que se mexe de vez em quando

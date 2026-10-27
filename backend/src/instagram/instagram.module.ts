@@ -42,7 +42,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramApiClient,
     InstagramHashtagsService,
   ],
-  // O servidor MCP (o Claude e os agentes do Escritório) usa os mesmos serviços das telas
+  // O servidor MCP (o Claude e os agentes da VPS) usa os mesmos serviços das telas
   exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService],
 })
 export class InstagramModule {}

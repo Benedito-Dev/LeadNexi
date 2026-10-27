@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
-import { AgentsModule } from './agents/agents.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ClientsModule } from './clients/clients.module.js';
@@ -30,7 +29,6 @@ import { StagesModule } from './stages/stages.module.js';
     AiModule,
     ClientsModule,
     McpModule,
-    AgentsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: PrismaExceptionFilter }],
