@@ -54,10 +54,16 @@ export type DadosLead = Partial<{
   instagramUsername: string | null
   estimatedValue: number | null
   source: string | null
+  /** Fora do funil ("Não é lead" em Conversas) */
+  archived: boolean
 }>
 
 export const atualizarLead = (id: string, dados: DadosLead) =>
   api<Lead>(`/leads/${id}`, { method: 'PATCH', body: corpo(dados) })
+
+/** Lead com a etapa (para abrir a ficha fora do quadro, ex.: Conversas). */
+export const buscarLead = (id: string) =>
+  api<Lead & { stage: { id: string; name: string; stageType: StageType; pipelineId: string } }>(`/leads/${id}`)
 
 export const apagarLead = (id: string) => api<void>(`/leads/${id}`, { method: 'DELETE' })
 

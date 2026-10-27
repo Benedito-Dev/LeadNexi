@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Toaster } from '@/components/ui/sonner'
 import { ClientesPage } from '@/features/clientes/ClientesPage'
 import { ConteudoPage } from '@/features/conteudo/ConteudoPage'
+import { ConversasPage } from '@/features/conversas/ConversasPage'
 import { CrmPage } from '@/features/crm/CrmPage'
 import { PipelinesPage } from '@/features/crm/PipelinesPage'
 import { HojePage } from '@/features/hoje/HojePage'
@@ -41,7 +42,7 @@ export function App() {
               <Route path="/hoje" element={<HojePage />} />
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/crm/pipelines" element={<PipelinesPage />} />
-              <Route path="/conversas" element={<TelaEmBreve tela={T.conversas} />} />
+              <Route path="/conversas" element={<ConversasPage />} />
               <Route path="/crm/listas" element={<TelaEmBreve tela={T.listas} />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/conteudo" element={<ConteudoPage />} />

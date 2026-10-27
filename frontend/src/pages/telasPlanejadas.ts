@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bot, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
+import { Bot, ListChecks, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -13,17 +13,6 @@ export type TelaPlanejada = {
 // TEMPORÁRIO: telas do mapa (docs/produto/MAPA.md) que ainda não foram construídas. Quando uma tela
 // nascer de verdade, a entrada dela sai daqui.
 export const TELAS_PLANEJADAS = {
-  conversas: {
-    icone: MessagesSquare,
-    titulo: 'Conversas',
-    resumo: 'Todas as mensagens num lugar só',
-    etapa: 2,
-    itens: [
-      'Lista de conversas do Instagram e do WhatsApp, com filtro por canal e não lidas',
-      'Conversa aberta com resposta e "Sugerir resposta" com IA',
-      'Resumo do lead ao lado: etapa, próximo contato e "Virar lead"',
-    ],
-  },
   listas: {
     icone: ListChecks,
     titulo: 'Listas',
