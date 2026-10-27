@@ -13,8 +13,9 @@ import { ResultadosPage } from '@/features/resultados/ResultadosPage'
 import { CanaisPage } from '@/features/configuracoes/CanaisPage'
 import { ConfiguracoesLayout } from '@/features/configuracoes/ConfiguracoesLayout'
 import { IaPage } from '@/features/configuracoes/IaPage'
+import { ListasPage } from '@/features/listas/ListasPage'
 import { ProspeccaoPage } from '@/features/configuracoes/ProspeccaoPage'
-import { CartaoEmBreve, TelaEmBreve } from '@/pages/EmBreve'
+import { CartaoEmBreve } from '@/pages/EmBreve'
 import { TELAS_PLANEJADAS as T } from '@/pages/telasPlanejadas'
 import { LoginPage } from '@/pages/LoginPage'
 
@@ -44,7 +45,7 @@ export function App() {
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/crm/pipelines" element={<PipelinesPage />} />
               <Route path="/conversas" element={<ConversasPage />} />
-              <Route path="/crm/listas" element={<TelaEmBreve tela={T.listas} />} />
+              <Route path="/crm/listas" element={<ListasPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/conteudo" element={<ConteudoPage />} />
               <Route path="/resultados" element={<ResultadosPage />} />

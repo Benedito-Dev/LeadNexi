@@ -107,6 +107,6 @@ export type ResultadoImportacao = {
   rows: { index: number; status: 'ready' | 'created' | 'updated' | 'duplicate' | 'invalid'; reason?: string }[]
 }
 
-/** Importa até 1.000 linhas por chamada; os importados ganham a origem "Planilha". */
-export const importarLeads = (leads: LinhaImportacao[], duplicateMode: ModoDuplicado) =>
-  api<ResultadoImportacao>('/leads/import', { method: 'POST', body: corpo({ leads, duplicateMode }) })
+/** Importa até 1.000 linhas por chamada; os importados ganham a origem "Planilha". Sem lista, vão para "Sem lista". */
+export const importarLeads = (leads: LinhaImportacao[], duplicateMode: ModoDuplicado, listId?: string) =>
+  api<ResultadoImportacao>('/leads/import', { method: 'POST', body: corpo({ leads, duplicateMode, listId }) })

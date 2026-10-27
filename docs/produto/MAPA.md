@@ -92,10 +92,11 @@ todo envio sai de um clique, um por vez (mesma regra de hoje).
 
 - **Leads** — pronto (quadro, ficha, importar planilha).
 - **Pipelines** — pronto.
-- **Listas** (nova): nichos e listas de prospecção, quantos leads em cada, quantos contatados e responderam
-  (a regra "30 contatados, menos de 2 respostas = trocar nicho ou mensagem"). "Importar planilha" sai do quadro
-  e mora aqui também. Futuro: gerador de lista pelo Google Maps.
-  Servidor: **tem** `GET/POST/PATCH /lead-lists`; gerador **falta**.
+- **Listas** — pronto: nichos e listas de prospecção, quantos leads em cada, quantos contatados e responderam
+  (a regra "30 contatados, menos de 2 respostas = trocar nicho ou mensagem"), meta de contatos, arquivar e
+  "Importar planilha nesta lista" (o quadro continua com o Importar dele). Contatado = recebeu mensagem ou já
+  saiu de "A contatar"; respondeu = mensagem do lead ou etapa de Respondeu em diante.
+  Servidor: **tem** `GET/POST/PATCH /lead-lists` (com o placar); gerador pelo Google Maps **falta**.
 
 ### 3.4 Clientes
 

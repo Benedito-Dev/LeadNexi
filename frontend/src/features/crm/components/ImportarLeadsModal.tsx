@@ -63,13 +63,15 @@ type ImportarLeadsModalProps = {
   pipelineAtual?: string
   /** Terminou de importar: o quadro recarrega para os leads novos aparecerem. */
   aoConcluir: () => void
+  /** Lista de prospecção que recebe os leads (aberto pela tela Listas). */
+  lista?: { id: string; name: string }
 }
 
 /**
  * Importação de leads por planilha, no formato da janela do Rizar. A planilha é lida no navegador
  * (o arquivo não sai do computador); só as linhas vão para o servidor, em partes de 1.000.
  */
-export function ImportarLeadsModal({ aberto, aoFechar, pipelineAtual, aoConcluir }: ImportarLeadsModalProps) {
+export function ImportarLeadsModal({ aberto, aoFechar, pipelineAtual, aoConcluir, lista }: ImportarLeadsModalProps) {
   const [passo, setPasso] = useState<'arquivo' | 'conferencia' | 'resultado'>('arquivo')
   const [nomeArquivo, setNomeArquivo] = useState('')
   const [planilha, setPlanilha] = useState<Sheet | null>(null)
@@ -194,6 +196,7 @@ export function ImportarLeadsModal({ aberto, aoFechar, pipelineAtual, aoConcluir
         const resposta = await importarLeads(
           parte.map((l) => l.dados),
           modoDuplicado,
+          lista?.id,
         )
         for (const r of resposta.rows) {
           if (r.status === 'created') parcial.criados += 1
@@ -223,7 +226,7 @@ export function ImportarLeadsModal({ aberto, aoFechar, pipelineAtual, aoConcluir
       open={aberto}
       onOpenChange={fechar}
       title="Importar leads"
-      description="Traga os leads de uma planilha (.xlsx, .csv ou .ods)"
+      description={lista ? `Traga os leads de uma planilha para a lista "${lista.name}"` : 'Traga os leads de uma planilha (.xlsx, .csv ou .ods)'}
     >
       <MutaseDialog.Body>
         {passo === 'arquivo' && (

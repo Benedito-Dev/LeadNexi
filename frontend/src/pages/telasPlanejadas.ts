@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { ListChecks, UserRound } from 'lucide-react'
+import { UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -13,17 +13,6 @@ export type TelaPlanejada = {
 // TEMPORÁRIO: telas do mapa (docs/produto/MAPA.md) que ainda não foram construídas. Quando uma tela
 // nascer de verdade, a entrada dela sai daqui.
 export const TELAS_PLANEJADAS = {
-  listas: {
-    icone: ListChecks,
-    titulo: 'Listas',
-    resumo: 'Nichos e listas de prospecção',
-    etapa: 8,
-    itens: [
-      'Quantos leads em cada lista, quantos contatados e quantos responderam',
-      'Aviso da regra: 30 contatados e menos de 2 respostas, troque o nicho ou a mensagem',
-      'Importar planilha e, no futuro, gerar lista pelo Google Maps',
-    ],
-  },
   perfil: {
     icone: UserRound,
     titulo: 'Perfil',
