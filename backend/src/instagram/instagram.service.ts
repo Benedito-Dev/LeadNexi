@@ -95,7 +95,13 @@ export class InstagramService {
     if (!account) return { connected: false as const, reason: 'sem conta' };
     try {
       const token = decryptSecret(account.accessToken, this.settings.requireKey());
-      return { connected: true as const, profile: await this.api.getProfileOverview(token) };
+      const profile = await this.api.getProfileOverview(token);
+      // O link da foto da Meta expira em poucos dias: aproveita a leitura para guardar o atual
+      const { username, name, profilePictureUrl } = profile;
+      if (username !== account.username || name !== account.name || profilePictureUrl !== account.profilePictureUrl) {
+        await this.prisma.instagramAccount.update({ where: { id: account.id }, data: { username, name, profilePictureUrl } });
+      }
+      return { connected: true as const, profile };
     } catch (error) {
       if (error instanceof InstagramApiError && error.invalidToken) {
         // A tela passa a mostrar "Conexão expirada" e pedir para conectar de novo

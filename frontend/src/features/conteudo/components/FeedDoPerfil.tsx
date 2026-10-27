@@ -21,6 +21,7 @@ import {
   Wifi,
 } from 'lucide-react'
 import { Link } from 'react-router'
+import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { cn } from '@/lib/utils'
 import { buscarConta, buscarPerfil } from '../../instagram/api'
 import type { PerfilDoInstagram, SituacaoDaConta } from '../../instagram/tipos'
@@ -128,9 +129,7 @@ export function FeedDoPerfil({ posts, onAbrir }: { posts: Post[] | null; onAbrir
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
             {/* Foto e números */}
             <div className="flex items-center gap-6 px-4 pt-2">
-              <span className="grid h-[86px] w-[86px] shrink-0 place-items-center overflow-hidden rounded-full bg-neutral-800 text-3xl font-bold text-neutral-300">
-                {foto ? <img src={foto} alt="" className="h-full w-full object-cover" /> : usuario.charAt(0).toUpperCase()}
-              </span>
+              <FotoRedonda src={foto} nome={usuario} className="h-[86px] w-[86px] bg-neutral-800 text-3xl text-neutral-300" />
               <div className="flex flex-1 flex-col gap-1">
                 {nome && <span className="text-sm font-semibold">{nome}</span>}
                 <div className="grid grid-cols-3 gap-2">
@@ -200,9 +199,7 @@ export function FeedDoPerfil({ posts, onAbrir }: { posts: Post[] | null; onAbrir
             {[House, Search, SquarePlay, Send].map((Icone, i) => (
               <Icone key={i} aria-hidden className="h-6 w-6" strokeWidth={1.75} />
             ))}
-            <span className="grid h-6 w-6 place-items-center overflow-hidden rounded-full border border-neutral-50 bg-neutral-800 text-[10px] font-bold">
-              {foto ? <img src={foto} alt="" className="h-full w-full object-cover" /> : usuario.charAt(0).toUpperCase()}
-            </span>
+            <FotoRedonda src={foto} nome={usuario} className="h-6 w-6 border border-neutral-50 bg-neutral-800 text-[10px]" />
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { CircleAlert, LoaderCircle, LogOut, MessageCircle } from 'lucide-react'
 import { InstagramIcon } from '@/brand/icons'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
+import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { desconectar } from '../api'
@@ -33,13 +34,7 @@ export function CartaoConta({ conta, onDesconectado }: { conta: ContaDoInstagram
   return (
     <section aria-label="Conta do Instagram" className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-4">
-        {conta.profilePictureUrl ? (
-          <img src={conta.profilePictureUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
-        ) : (
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-leadnexi-violet/15 text-leadnexi-violet-texto">
-            <InstagramIcon aria-hidden size={22} />
-          </span>
-        )}
+        <FotoRedonda src={conta.profilePictureUrl} nome={conta.username} className="h-12 w-12 bg-leadnexi-violet/15 text-lg text-leadnexi-violet-texto" />
         <div className="min-w-0 flex-1">
           <p className="m-0 truncate text-[15px] font-bold text-foreground">@{conta.username}</p>
           <p className="m-0 mt-0.5 flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
