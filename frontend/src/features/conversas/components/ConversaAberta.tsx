@@ -29,6 +29,28 @@ function rotuloDoDia(iso: string) {
 /** Etiqueta do topo da conversa (canal, etapa, prazo). */
 const etiqueta = 'inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground'
 
+/**
+ * Rola a área até o fim num deslize próprio (~0,4 s, desacelerando no final), igual em qualquer
+ * navegador: o "smooth" nativo, numa distância curta, parece um salto. Devolve como cancelar.
+ */
+function deslizarAteOFim(area: HTMLElement) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    area.scrollTop = area.scrollHeight
+    return
+  }
+  const inicio = area.scrollTop
+  const comeco = performance.now()
+  let quadro = 0
+  const passo = (agora: number) => {
+    const progresso = Math.min((agora - comeco) / 400, 1)
+    const destino = area.scrollHeight - area.clientHeight
+    area.scrollTop = inicio + (destino - inicio) * (1 - Math.pow(1 - progresso, 3))
+    if (progresso < 1) quadro = requestAnimationFrame(passo)
+  }
+  quadro = requestAnimationFrame(passo)
+  return () => cancelAnimationFrame(quadro)
+}
+
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
 const MOTIVOS: Record<NonNullable<Historico['blocked']>, string> = {
@@ -62,6 +84,8 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
   const areaRef = useRef<HTMLDivElement>(null)
   // Quantas mensagens já estavam na tela na última rolagem (0 = acabou de abrir)
   const vistasRef = useRef(0)
+  // Mensagens que chegam (ou que você manda) depois de abrir a conversa entram animadas
+  const [abertaEm] = useState(() => Date.now())
   const quantas = historico?.messages.length ?? 0
   const ultimaEnviada = historico?.messages.at(-1)?.direction === 'sent'
 
@@ -78,9 +102,8 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
     }
     if (quantas <= anteriores) return
     const distancia = area.scrollHeight - area.clientHeight - area.scrollTop
-    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (distancia < area.clientHeight * 1.2) area.scrollTo({ top: area.scrollHeight, behavior: suave ? 'smooth' : 'auto' })
-    else if (ultimaEnviada) area.scrollTop = area.scrollHeight
+    if (distancia < area.clientHeight * 1.2) return deslizarAteOFim(area)
+    if (ultimaEnviada) area.scrollTop = area.scrollHeight
   }, [quantas, ultimaEnviada])
 
   if (!conversa) {
@@ -208,7 +231,14 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                   const enviada = mensagem.direction === 'sent'
                   const seguida = grupo.mensagens[i + 1]?.direction === mensagem.direction
                   return (
-                    <div key={mensagem.id} className={cn('flex', enviada ? 'justify-end' : 'justify-start')}>
+                    <div
+                      key={mensagem.id}
+                      className={cn(
+                        'flex',
+                        enviada ? 'justify-end' : 'justify-start',
+                        new Date(mensagem.createdAt).getTime() > abertaEm && 'duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-3',
+                      )}
+                    >
                       <div
                         className={cn(
                           'max-w-[80%] rounded-xl px-4 py-2.5 text-[15px] leading-6 shadow-sm',
