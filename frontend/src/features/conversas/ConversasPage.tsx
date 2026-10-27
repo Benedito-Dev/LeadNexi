@@ -183,6 +183,7 @@ export function ConversasPage() {
               onMover={(etapa) => void mover(etapa)}
               fichaVisivel={fichaVisivel}
               onAlternarFicha={alternarFicha}
+              onNotaSalva={carregarLead}
             />
             {/* A ficha desliza da direita: a coluna abre a largura e o conteúdo entra com um esmaecimento */}
             {aberta && (

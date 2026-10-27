@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, CheckCheck, ChevronDown, Clock3, Columns3, IdCard, Lock, LoaderCircle, MessagesSquare, Send } from 'lucide-react'
+import { ArrowLeft, CheckCheck, ChevronDown, Clock3, Columns3, Copy, IdCard, Lock, LoaderCircle, MessagesSquare, MoreHorizontal, NotebookPen, Send } from 'lucide-react'
 import { Link } from 'react-router'
 import { InstagramIcon, WhatsAppLogo } from '@/brand/icons'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -7,6 +7,7 @@ import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { ErroDeApi } from '@/lib/api'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
+import { adicionarNota } from '../../crm/api'
 import { enviarMensagem, fotoDoLead } from '../api'
 import type { Etapa } from '../../crm/types'
 import type { Conversa, Historico, Mensagem } from '../tipos'
@@ -80,10 +81,12 @@ type Props = {
   /** Ficha à direita aberta ou recolhida */
   fichaVisivel: boolean
   onAlternarFicha: () => void
+  /** Trecho salvo nas anotações do lead: o painel recarrega */
+  onNotaSalva: () => void
 }
 
 /** Coluna do meio: a conversa aberta, separada por dia, e o campo de resposta. */
-export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha }: Props) {
+export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha, onNotaSalva }: Props) {
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const areaRef = useRef<HTMLDivElement>(null)
@@ -239,8 +242,8 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                     <div
                       key={mensagem.id}
                       className={cn(
-                        'flex',
-                        enviada ? 'justify-end' : 'justify-start',
+                        'group flex items-center gap-1',
+                        enviada ? 'flex-row-reverse' : 'flex-row',
                         new Date(mensagem.createdAt).getTime() > abertaEm && 'duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-3',
                       )}
                     >
@@ -259,6 +262,7 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                           {enviada && <CheckCheck aria-label="Enviada" className={cn('h-3.5 w-3.5', whatsapp ? 'text-chat-wa-tick-read' : 'text-leadnexi-violet-texto')} strokeWidth={2} />}
                         </span>
                       </div>
+                      {mensagem.text && <MenuDaMensagem mensagem={mensagem} leadId={conversa.id} podeAnotar={historico.blocked !== 'demo'} onNotaSalva={onNotaSalva} />}
                     </div>
                   )
                 })}
@@ -317,5 +321,53 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
         </form>
       )}
     </section>
+  )
+}
+
+/** Os 3 pontinhos de uma mensagem (aparecem ao passar o mouse): copiar o texto ou guardar nas anotações do lead. */
+function MenuDaMensagem({ mensagem, leadId, podeAnotar, onNotaSalva }: { mensagem: Mensagem; leadId: string; podeAnotar: boolean; onNotaSalva: () => void }) {
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(mensagem.text)
+      addToast('success', 'Texto copiado')
+    } catch {
+      addToast('error', 'Não foi possível copiar', 'Selecione o texto e copie à mão.')
+    }
+  }
+
+  const anotar = async () => {
+    try {
+      await adicionarNota(leadId, `Do direct: ${mensagem.text}`)
+      addToast('success', 'Salvo nas anotações')
+      onNotaSalva()
+    } catch {
+      addToast('error', 'Não foi possível salvar', 'Tente de novo.')
+    }
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Ações da mensagem"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:bg-accent data-[state=open]:opacity-100"
+        >
+          <MoreHorizontal aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={mensagem.direction === 'sent' ? 'end' : 'start'} className="font-marca">
+        <DropdownMenuItem onSelect={() => void copiar()} className="gap-2">
+          <Copy aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+          Copiar
+        </DropdownMenuItem>
+        {podeAnotar && (
+          <DropdownMenuItem onSelect={() => void anotar()} className="gap-2">
+            <NotebookPen aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+            Salvar nas anotações
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
