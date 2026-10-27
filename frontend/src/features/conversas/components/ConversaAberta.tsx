@@ -59,13 +59,29 @@ type Props = {
 export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa, etapas, cores, onMover, fichaVisivel, onAlternarFicha }: Props) {
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const fimRef = useRef<HTMLDivElement>(null)
+  const areaRef = useRef<HTMLDivElement>(null)
+  // Quantas mensagens já estavam na tela na última rolagem (0 = acabou de abrir)
+  const vistasRef = useRef(0)
   const quantas = historico?.messages.length ?? 0
+  const ultimaEnviada = historico?.messages.at(-1)?.direction === 'sent'
 
-  // Sempre mostra a mensagem mais nova (ao abrir e a cada mensagem nova)
+  // Rola até o fundo de verdade: ao abrir, direto; com mensagem nova e perto do fim, deslizando;
+  // longe do fim, só salta se a mensagem nova foi sua (a dele não tira você de onde está lendo)
   useLayoutEffect(() => {
-    fimRef.current?.scrollIntoView({ block: 'end' })
-  }, [conversa?.id, quantas])
+    const area = areaRef.current
+    if (!area || quantas === 0) return
+    const anteriores = vistasRef.current
+    vistasRef.current = quantas
+    if (anteriores === 0) {
+      area.scrollTop = area.scrollHeight
+      return
+    }
+    if (quantas <= anteriores) return
+    const distancia = area.scrollHeight - area.clientHeight - area.scrollTop
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (distancia < area.clientHeight * 1.2) area.scrollTo({ top: area.scrollHeight, behavior: suave ? 'smooth' : 'auto' })
+    else if (ultimaEnviada) area.scrollTop = area.scrollHeight
+  }, [quantas, ultimaEnviada])
 
   if (!conversa) {
     return (
@@ -174,7 +190,7 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
         </button>
       </header>
 
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-muted/50 px-5 py-4">
+      <div ref={areaRef} className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-muted/50 px-5 py-4">
         {historico === null ? (
           <div aria-busy="true" aria-label="Carregando mensagens" className="flex flex-col gap-3">
             {['w-2/3', 'ml-auto w-1/2', 'w-3/5', 'ml-auto w-2/5'].map((classe) => (
@@ -215,7 +231,6 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
             ))}
           </div>
         )}
-        <div ref={fimRef} />
       </div>
 
       {historico && !historico.canReply && historico.blocked ? (
