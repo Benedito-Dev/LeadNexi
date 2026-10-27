@@ -197,7 +197,7 @@ export function RotinaDoDia({ painel, fila, coresDasEtapas, onAbrir, onMudou }: 
 function LinhaDaRotina({ numero, missao, corDaEtapa, onAbrir, onMudou }: { numero: number; missao: Missao; corDaEtapa: string } & AcoesDaMissao) {
   const { tipo, lead } = missao
   const { acao, detalhe } = descreverMissao(lead, tipo)
-  const mensagem = mensagemSugerida(lead, tipo)
+  const mensagem = mensagemSugerida(missao)
   const { feita, ocupado, podeMarcar, concluir, marcarFeita } = useConcluirMissao(lead, tipo, onMudou)
   const { Icone, cor } = iconeDaOrigem(lead.source ?? '')
 

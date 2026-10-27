@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UpdateProspectingSettingsDto } from './dto/update-prospecting-settings.dto.js';
+import { MESSAGE_TEMPLATE_KEYS, messageTemplates } from './message-templates.js';
 
 const DEFAULT_SETTINGS = {
   dailyTarget: 5,
@@ -41,9 +42,14 @@ export class ResultsService {
 
   async updateSettings(dto: UpdateProspectingSettingsDto) {
     const values = Object.fromEntries(
-      Object.entries(dto).filter(([, value]) => value !== undefined),
+      Object.entries(dto)
+        .filter(([, value]) => value !== undefined)
+        // Modelo vazio volta ao texto padrão (null no banco)
+        .map(([key, value]) =>
+          (MESSAGE_TEMPLATE_KEYS as string[]).includes(key) ? [key, (value as string).trim() || null] : [key, value],
+        ),
     );
-    if (Object.keys(values).length === 0) throw new BadRequestException('Informe pelo menos uma meta.');
+    if (Object.keys(values).length === 0) throw new BadRequestException('Informe pelo menos uma configuração.');
     const row = await this.prisma.prospectingSettings.upsert({
       where: { id: 1 },
       create: { id: 1, ...values },
@@ -100,8 +106,12 @@ function normalizeSettings(row: {
   dailyLimit: number;
   decisionContacts: number;
   decisionMinReplies: number;
+  messageFirst: string | null;
+  messageFollowUp: string | null;
+  messageLast: string | null;
 } | null) {
   return {
+    ...messageTemplates(row),
     dailyTarget: row?.dailyTarget ?? DEFAULT_SETTINGS.dailyTarget,
     weeklyTarget: row?.weeklyTarget ?? DEFAULT_SETTINGS.weeklyTarget,
     monthlyRevenueGoal: Number(row?.monthlyRevenueGoal ?? DEFAULT_SETTINGS.monthlyRevenueGoal),

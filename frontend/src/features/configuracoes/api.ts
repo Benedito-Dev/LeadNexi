@@ -9,6 +9,12 @@ export type Metas = {
   decisionMinReplies: number
 }
 
-export const buscarMetas = () => api<Metas>('/results/settings')
+/** Textos prontos da cadência. Vazio volta ao texto padrão; marcadores {saudacao}, {loja} e {data}. */
+export type TextosProntos = { messageFirst: string; messageFollowUp: string; messageLast: string }
 
-export const salvarMetas = (metas: Metas) => api<Metas>('/results/settings', { method: 'PATCH', body: corpo(metas) })
+/** Tudo o que Configurações › Prospecção edita (GET/PATCH /results/settings). */
+export type Prospeccao = Metas & TextosProntos
+
+export const buscarProspeccao = () => api<Prospeccao>('/results/settings')
+
+export const salvarProspeccao = (valores: Prospeccao) => api<Prospeccao>('/results/settings', { method: 'PATCH', body: corpo(valores) })

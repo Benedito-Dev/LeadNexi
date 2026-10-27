@@ -28,7 +28,7 @@ type MissaoEmFocoProps = {
 export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, onProxima, onAbrir, onMudou }: MissaoEmFocoProps) {
   const { tipo, lead } = missao
   const contexto = contextoDaMissao(lead, tipo)
-  const [mensagem, setMensagem] = useState(() => mensagemSugerida(lead, tipo))
+  const [mensagem, setMensagem] = useState(() => mensagemSugerida(missao))
   const { feita, ocupado, podeMarcar, concluir, marcarFeita } = useConcluirMissao(lead, tipo, onMudou)
   const temMensagem = tipo === 'new' || tipo === 'follow-up'
   const ia = useMensagemDaIA(lead.id)
@@ -124,7 +124,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
             </label>
             <div className="flex flex-wrap items-center gap-1.5">
               <ModelosDeMensagem
-                lead={lead}
+                missao={missao}
                 mensagem={mensagem}
                 onEscolher={(texto) => {
                   setMensagem(texto)

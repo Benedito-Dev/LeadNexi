@@ -23,10 +23,16 @@ export function linkDoWhatsApp(telefone: string, mensagem?: string): string | nu
   return `https://wa.me/${completo}${mensagem ? `?text=${encodeURIComponent(mensagem)}` : ''}`
 }
 
-/** Primeira mensagem da prospecção. */
-export function mensagemPadrao(nome: string, agora = new Date()): string {
+/**
+ * Texto pronto a partir de um modelo da cadência: {saudacao} vira "Bom dia" / "Boa tarde" /
+ * "Boa noite", {loja} o nome do lead e {data} o dia da última mensagem ("Hoje", "qui., 02/10").
+ */
+export function preencherModelo(modelo: string, lead: { name: string; updatedAt: string }, agora = new Date()): string {
   const saudacao = agora.getHours() < 12 ? 'Bom dia' : agora.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
-  return `Oi, ${saudacao}! Tudo bem? Me chamo Benedito, sou da Alvo Digital, aqui de Fortaleza. Trabalho com anúncios no Instagram pra lojas de celular e gostaria de apresentar meu trabalho pro responsável da ${nome}.\n\nVocê consegue me dizer qual o melhor jeito de falar com ele? Obrigado!`
+  return modelo
+    .replaceAll('{saudacao}', saudacao)
+    .replaceAll('{loja}', lead.name)
+    .replaceAll('{data}', formatarDia(new Date(lead.updatedAt), agora))
 }
 
 const mesmoDia = (a: Date, b: Date) =>

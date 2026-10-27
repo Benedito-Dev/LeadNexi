@@ -15,11 +15,15 @@ export type LeadDoPainel = Lead & {
   instagramUserId: string | null
 }
 
+/** Textos da cadência (Configurações › Prospecção), com os marcadores {saudacao}, {loja} e {data}. */
+export type TextosDaCadencia = { messageFirst: string; messageFollowUp: string; messageLast: string }
+
 /** Resposta de `GET /leads/today`. */
 export type PainelDeHoje = {
   dailyTarget: number
   weeklyTarget: number
   monthlyGoal: number
+  messageTemplates: TextosDaCadencia
   /** Mensagens enviadas e contatos marcados como feitos hoje (horário de Fortaleza). */
   actionsDoneToday: number
   /** 1ªs mensagens por dia, de segunda a domingo da semana atual. */

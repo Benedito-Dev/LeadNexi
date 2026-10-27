@@ -4,13 +4,13 @@ import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-p
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { registrarWhatsAppEnviado, type OrigemDaMensagem } from '../api'
-import { linkDoWhatsApp, mensagemPadrao } from '../textos'
+import { linkDoWhatsApp } from '../textos'
 import type { LeadDoPainel } from '../tipos'
 import { useAbrirWhatsApp } from '../useAbrirWhatsApp'
 
 type BotaoWhatsAppProps = {
   lead: LeadDoPainel
-  mensagem?: string
+  mensagem: string
   /** De onde veio a mensagem (IA), gravado junto com o envio. */
   origem?: OrigemDaMensagem | null
   className?: string
@@ -24,13 +24,12 @@ type BotaoWhatsAppProps = {
  * Abre o WhatsApp com a mensagem pronta (do LeadNexi antigo). O envio é manual no WhatsApp; ao
  * voltar para a aba, a pessoa confirma e o envio é registrado.
  */
-export function BotaoWhatsApp({ lead, mensagem, origem = null, className, rotulo = 'Abrir no WhatsApp', onEnviado }: BotaoWhatsAppProps) {
+export function BotaoWhatsApp({ lead, mensagem: texto, origem = null, className, rotulo = 'Abrir no WhatsApp', onEnviado }: BotaoWhatsAppProps) {
   const { abrindo, voltou: confirmando, setVoltou: setConfirmando, abrir: abrirLink } = useAbrirWhatsApp()
   const [registrando, setRegistrando] = useState(false)
   const [erro, setErro] = useState(false)
   const [enviada, setEnviada] = useState<{ texto: string; origem: OrigemDaMensagem | null }>({ texto: '', origem: null })
 
-  const texto = mensagem ?? mensagemPadrao(lead.name)
   const link = lead.phone ? linkDoWhatsApp(lead.phone, texto) : null
   if (!link) return null
 

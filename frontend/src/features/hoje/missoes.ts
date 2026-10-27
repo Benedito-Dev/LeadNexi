@@ -1,8 +1,9 @@
-import { formatarDecorrido, formatarDia, formatarDiaEHora, mensagemPadrao } from './textos'
-import type { LeadDoPainel, PainelDeHoje } from './tipos'
+import { formatarDecorrido, formatarDiaEHora, preencherModelo } from './textos'
+import type { LeadDoPainel, PainelDeHoje, TextosDaCadencia } from './tipos'
 
 export type TipoMissao = 'response' | 'follow-up' | 'new' | 'meeting'
-export type Missao = { tipo: TipoMissao; lead: LeadDoPainel }
+/** `textos`: os modelos da cadência salvos em Configurações › Prospecção. */
+export type Missao = { tipo: TipoMissao; lead: LeadDoPainel; textos: TextosDaCadencia }
 
 // Cada tipo de missão tem um tom; destaque por cor sólida, sem brilho.
 export const TIPOS: Record<TipoMissao, { titulo: string; ponto: string; faixa: string }> = {
@@ -25,35 +26,31 @@ const inicioDeHoje = () => {
 export function montarFila(painel: PainelDeHoje): Missao[] {
   const fimDeHoje = new Date()
   fimDeHoje.setHours(23, 59, 59, 999)
-  const respostas = painel.responses.map((lead) => ({ tipo: 'response' as const, lead }))
+  const textos = painel.messageTemplates
+  const respostas = painel.responses.map((lead) => ({ tipo: 'response' as const, lead, textos }))
   const followUps = painel.followUps
     .filter((lead) => lead.followUpAt && new Date(lead.followUpAt).getTime() <= fimDeHoje.getTime() && lead.stage.stageType !== 'RESPONDED')
-    .map((lead) => ({ tipo: 'follow-up' as const, lead }))
-  const novas = painel.newContacts.map((lead) => ({ tipo: 'new' as const, lead }))
-  const compromissos = painel.meetings.map((lead) => ({ tipo: 'meeting' as const, lead }))
+    .map((lead) => ({ tipo: 'follow-up' as const, lead, textos }))
+  const novas = painel.newContacts.map((lead) => ({ tipo: 'new' as const, lead, textos }))
+  const compromissos = painel.meetings.map((lead) => ({ tipo: 'meeting' as const, lead, textos }))
   // Cada lead aparece uma vez só, na missão mais urgente (a ordem acima é a prioridade)
   const vistos = new Set<string>()
   return [...respostas, ...followUps, ...novas, ...compromissos].filter(({ lead }) => !vistos.has(lead.id) && Boolean(vistos.add(lead.id)))
 }
 
-/** Os três textos da cadência, para trocar com um clique (1ª mensagem, retomada e a última). */
-export function modelosDeMensagem(lead: LeadDoPainel): { rotulo: string; texto: string }[] {
+/** Os três textos da cadência já preenchidos para o lead, para trocar com um clique. */
+export function modelosDeMensagem({ lead, textos }: Missao): { rotulo: string; texto: string }[] {
   return [
-    { rotulo: '1ª mensagem', texto: mensagemPadrao(lead.name) },
-    {
-      rotulo: 'Retomada',
-      texto: `Oi! Só retomando a mensagem de ${formatarDia(new Date(lead.updatedAt))}. Se fizer sentido, te mando um exemplo de anúncio pra ${lead.name}, sem compromisso. Se não for o momento, tudo bem também.`,
-    },
-    {
-      rotulo: 'Última',
-      texto: `Última mensagem pra não te incomodar 🙂 Se um dia quiser uma análise grátis dos anúncios da ${lead.name}, é só me chamar aqui.`,
-    },
+    { rotulo: '1ª mensagem', texto: preencherModelo(textos.messageFirst, lead) },
+    { rotulo: 'Retomada', texto: preencherModelo(textos.messageFollowUp, lead) },
+    { rotulo: 'Última', texto: preencherModelo(textos.messageLast, lead) },
   ]
 }
 
 /** O texto que a missão já abre: o passo da cadência em que o lead está. */
-export function mensagemSugerida(lead: LeadDoPainel, tipo: TipoMissao): string {
-  const [primeira, retomada, ultima] = modelosDeMensagem(lead)
+export function mensagemSugerida(missao: Missao): string {
+  const { lead, tipo } = missao
+  const [primeira, retomada, ultima] = modelosDeMensagem(missao)
   if (tipo === 'follow-up' && lead.cadenceStep === 1) return retomada.texto
   if (tipo === 'follow-up' && lead.cadenceStep === 2) return ultima.texto
   return primeira.texto

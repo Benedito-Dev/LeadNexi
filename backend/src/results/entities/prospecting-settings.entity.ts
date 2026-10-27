@@ -11,4 +11,9 @@ export class ProspectingSettingsEntity {
   dailyLimit: number;
   decisionContacts: number;
   decisionMinReplies: number;
+
+  /** Modelos de mensagem da cadência (o salvo ou o padrão), com os marcadores {saudacao}, {loja} e {data} */
+  messageFirst: string;
+  messageFollowUp: string;
+  messageLast: string;
 }

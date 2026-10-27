@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { ScheduleFollowUpDto } from './dto/schedule-follow-up.dto.js';
 import { DAY_MS, SENT_TYPES, STREAK_WINDOW_DAYS, scoreboard } from './scoreboard.js';
+import { messageTemplates } from '../results/message-templates.js';
 
 const stageSummary = {
   select: { id: true, name: true, pipelineId: true, stageType: true },
@@ -127,6 +128,7 @@ export class LeadActivitiesService {
       ...placar,
       weeklyTarget: settings?.weeklyTarget ?? 30,
       monthlyGoal: Number(settings?.monthlyRevenueGoal ?? 300),
+      messageTemplates: messageTemplates(settings),
       followUps,
       responses,
       newContacts,

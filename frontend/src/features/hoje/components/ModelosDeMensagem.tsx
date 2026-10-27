@@ -1,12 +1,11 @@
 import { cn } from '@/lib/utils'
-import { modelosDeMensagem } from '../missoes'
-import type { LeadDoPainel } from '../tipos'
+import { modelosDeMensagem, type Missao } from '../missoes'
 
 /** Botões que trocam o texto da mensagem pelos modelos da cadência, com um clique. */
-export function ModelosDeMensagem({ lead, mensagem, onEscolher }: { lead: LeadDoPainel; mensagem: string; onEscolher: (texto: string) => void }) {
+export function ModelosDeMensagem({ missao, mensagem, onEscolher }: { missao: Missao; mensagem: string; onEscolher: (texto: string) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Modelos de mensagem">
-      {modelosDeMensagem(lead).map((modelo) => {
+      {modelosDeMensagem(missao).map((modelo) => {
         const escolhido = modelo.texto === mensagem
         return (
           <button

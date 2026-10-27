@@ -192,6 +192,10 @@ model ProspectingSettings {
   dailyLimit         Int      @default(8) @map("daily_limit")
   decisionContacts   Int      @default(30) @map("decision_contacts")
   decisionMinReplies Int      @default(2) @map("decision_min_replies")
+  /// Modelos de mensagem da cadência (vazio = o texto padrão); marcadores {saudacao}, {loja} e {data}
+  messageFirst       String?  @map("message_first")
+  messageFollowUp    String?  @map("message_follow_up")
+  messageLast        String?  @map("message_last")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 

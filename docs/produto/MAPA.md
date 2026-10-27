@@ -137,8 +137,8 @@ Uma tela com sub-abas à esquerda (no celular, uma lista que abre cada uma).
     `/instagram`; muda para cá). Servidor: **tem**.
   - WhatsApp: ler o QR code do aparelho, situação da sessão, desconectar. Servidor: **falta** (etapa 7).
 - **Prospecção:** meta diária e semanal, meta de faturamento, dias da cadência, modelos de mensagem
-  (hoje fixos no código em `hoje/missoes.ts`). Servidor: **tem** `GET/PATCH /results/settings`;
-  modelos de mensagem **faltam**.
+  (1ª mensagem, Retomada e Última, com os marcadores `{saudacao}`, `{loja}` e `{data}`; vazio = texto padrão).
+  Servidor: **tem** `GET/PATCH /results/settings` (metas e modelos); dias da cadência **faltam**.
 - **IA e Claude:**
   - IA: se está configurada e qual modelo. Servidor: **tem** `GET /ai/status`.
   - MCP: endereço do servidor MCP, gerar e revogar o token do Claude, últimas ações feitas pelo Claude.
