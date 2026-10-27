@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/contexto'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Toaster } from '@/components/ui/sonner'
 import { ClientesPage } from '@/features/clientes/ClientesPage'
+import { ConteudoPage } from '@/features/conteudo/ConteudoPage'
 import { CrmPage } from '@/features/crm/CrmPage'
 import { PipelinesPage } from '@/features/crm/PipelinesPage'
 import { HojePage } from '@/features/hoje/HojePage'
@@ -43,7 +44,7 @@ export function App() {
               <Route path="/conversas" element={<TelaEmBreve tela={T.conversas} />} />
               <Route path="/crm/listas" element={<TelaEmBreve tela={T.listas} />} />
               <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/conteudo" element={<TelaEmBreve tela={T.conteudo} />} />
+              <Route path="/conteudo" element={<ConteudoPage />} />
               <Route path="/resultados" element={<ResultadosPage />} />
               <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
                 <Route index element={<Navigate to="canais" replace />} />

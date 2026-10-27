@@ -30,7 +30,7 @@ CRM
  ├ Listas       nichos e listas de prospecção, importar, gerar
  └ Pipelines    funis e etapas                                  pronto
 Clientes        pós-venda
-Conteúdo        posts e banco de provas
+Conteúdo        posts do Instagram
 Resultados      placar e metas
 Configurações
  ├ Perfil
@@ -110,14 +110,14 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
 
 ### 3.5 Conteúdo
 
-**Para que serve:** publicar no Instagram e guardar o que serve de prova na prospecção.
+**Para que serve:** publicar no Instagram sem sair do LeadNexi.
 
 - **Posts:** calendário (arrastar para remarcar), lista e grade; "Novo post" (foto ou carrossel, legenda,
   hashtags salvas, agendar ou publicar agora).
-- **Banco de provas:** resultados reais que a IA pode citar e que o follow-up pode anexar
-  ("te mando um exemplo"). Um post publicado pode virar prova.
 
-Servidor: **tem** `/instagram/posts`, `/instagram/media`, `/instagram/hashtag-sets`, `/proofs`.
+Fora do plano (decisão de 26/10/2026): banco de provas. O servidor ainda tem `/proofs`, sem tela.
+
+Servidor: **tem** `/instagram/posts`, `/instagram/media`, `/instagram/hashtag-sets`.
 O front antigo (branch `backup/main-2026-10-23`) tem o calendário e o editor de post para reaproveitar.
 
 ### 3.6 Resultados
@@ -183,7 +183,7 @@ Cada etapa entrega valor sozinha e não refaz a anterior.
 |---|---|---|
 | 1 | **Configurações** (casca com sub-abas) + Canais › Instagram + Prospecção (metas) | conecta o Instagram em produção pela tela nova |
 | 2 | **Conversas** com o Instagram (servidor da caixa única + peça Conversa) | responde um direct de dentro do LeadNexi |
-| 3 | **Conteúdo** (posts + banco de provas) | agenda e publica um post pela tela nova |
+| 3 | **Conteúdo** (posts do Instagram) | agenda e publica um post pela tela nova |
 | 4 | **Clientes** e **Resultados** | lança um relatório e vê o placar da semana |
 | 5 | **IA dentro das ações** + modelos de mensagem em Prospecção | gera a mensagem do lead em foco na tela Hoje |
 | 6 | **MCP** + Configurações › IA e Claude | o Claude cria um lead e registra um contato |

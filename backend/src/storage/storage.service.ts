@@ -6,6 +6,9 @@ import {
 } from '@aws-sdk/client-s3';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createReadStream } from 'node:fs';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 
 /** O DeleteObjects da API S3 aceita no máximo 1.000 chaves por chamada */
@@ -16,11 +19,15 @@ const DELETE_BATCH = 1000;
  * Só as operações básicas (gravar, ler, apagar), suportadas por qualquer provedor e região:
  * trocar de provedor é trocar as variáveis STORAGE_*. O bucket fica privado; quem mostra os
  * arquivos é a API, com links assinados (ver InstagramPostsService.signedMediaUrl).
+ *
+ * Só no desenvolvimento: sem as chaves do S3 e com STORAGE_LOCAL_DIR definido, os arquivos ficam
+ * nessa pasta da máquina (para ver imagens de post e fotos de lead sem acesso à nuvem).
  */
 @Injectable()
 export class StorageService {
   private readonly client: S3Client | null;
   private readonly bucket: string;
+  private readonly localDir: string | null;
 
   constructor(config: ConfigService) {
     const endpoint = config.get<string>('STORAGE_ENDPOINT');
@@ -43,13 +50,21 @@ export class StorageService {
           responseChecksumValidation: 'WHEN_REQUIRED',
         })
       : null;
+    const localDir = config.get<string>('STORAGE_LOCAL_DIR');
+    this.localDir = !this.client && localDir ? resolve(localDir) : null;
   }
 
   get configured() {
-    return this.client !== null;
+    return this.client !== null || this.localDir !== null;
   }
 
   async put(key: string, body: Buffer, contentType: string) {
+    if (this.localDir) {
+      const path = this.localPath(key);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, body);
+      return;
+    }
     await this.requireClient().send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -62,6 +77,7 @@ export class StorageService {
 
   /** Conteúdo do arquivo como stream (para repassar na resposta sem carregar tudo na memória). */
   async get(key: string): Promise<Readable> {
+    if (this.localDir) return createReadStream(this.localPath(key));
     const result = await this.requireClient().send(
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
     );
@@ -72,6 +88,10 @@ export class StorageService {
   }
 
   async deleteMany(keys: string[]) {
+    if (this.localDir) {
+      await Promise.all(keys.map((key) => rm(this.localPath(key), { force: true })));
+      return;
+    }
     for (let start = 0; start < keys.length; start += DELETE_BATCH) {
       const batch = keys.slice(start, start + DELETE_BATCH);
       await this.requireClient().send(
@@ -81,6 +101,13 @@ export class StorageService {
         }),
       );
     }
+  }
+
+  /** Caminho do arquivo na pasta local, sem deixar a chave sair dela (ex.: "../"). */
+  private localPath(key: string) {
+    const path = resolve(this.localDir!, key);
+    if (!path.startsWith(this.localDir! + sep)) throw new Error(`Chave inválida: ${key}`);
+    return path;
   }
 
   private requireClient(): S3Client {

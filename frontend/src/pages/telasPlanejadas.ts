@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bot, Images, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
+import { Bot, ListChecks, MessagesSquare, UserRound } from 'lucide-react'
 
 export type TelaPlanejada = {
   icone: ComponentType<{ className?: string; strokeWidth?: number }>
@@ -33,17 +33,6 @@ export const TELAS_PLANEJADAS = {
       'Quantos leads em cada lista, quantos contatados e quantos responderam',
       'Aviso da regra: 30 contatados e menos de 2 respostas, troque o nicho ou a mensagem',
       'Importar planilha e, no futuro, gerar lista pelo Google Maps',
-    ],
-  },
-  conteudo: {
-    icone: Images,
-    titulo: 'Conteúdo',
-    resumo: 'Posts do Instagram e banco de provas',
-    etapa: 3,
-    itens: [
-      'Calendário de posts: arrastar para remarcar, lista e grade',
-      'Novo post: foto ou carrossel, legenda, hashtags salvas, agendar ou publicar agora',
-      'Banco de provas: resultados reais que a IA cita e o follow-up anexa',
     ],
   },
   perfil: {
