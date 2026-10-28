@@ -32,7 +32,7 @@ export interface GuardrailWarning {
 
 /**
  * Confere um texto gerado. `allowedSource` é tudo de onde um número pode vir (contexto enviado ao
- * modelo: dados do lead, histórico, banco de provas e a oferta).
+ * modelo: dados do lead, histórico e a oferta).
  */
 export function checkGuardrails(text: string, allowedSource: string): GuardrailWarning[] {
   const allowed = new Set([...extractNumbers(allowedSource), '500']);
@@ -45,7 +45,7 @@ export function checkGuardrails(text: string, allowedSource: string): GuardrailW
   if (unknown.length) {
     warnings.push({
       kind: 'number',
-      detail: `Número fora do banco de provas e dos dados do lead: ${unknown.join(', ')}. Confira antes de enviar.`,
+      detail: `Número fora dos dados do lead: ${unknown.join(', ')}. Confira antes de enviar.`,
     });
   }
 

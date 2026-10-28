@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ErroDeApi } from '@/lib/api'
-import { gerarMensagem, registrarOpcaoUsada, type MensagemGerada } from '../ia/api'
+import { gerarMensagem, type MensagemGerada } from '../ia/api'
 import { useStatusDaIA } from '../ia/useStatusDaIA'
 import type { OrigemDaMensagem } from './api'
 
@@ -18,9 +18,6 @@ export function useMensagemDaIA(leadId: string) {
   const escolher = (indice: number) => {
     if (!sugestao) return null
     setEscolhida(indice)
-    void registrarOpcaoUsada(sugestao.suggestionId, indice).catch(() => {
-      // Só alimenta a medição do que funciona: falhar aqui não atrapalha o envio
-    })
     return sugestao.options[indice].text
   }
 

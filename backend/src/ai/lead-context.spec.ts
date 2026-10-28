@@ -26,7 +26,7 @@ describe('contexto do lead para a IA', () => {
     expect(greetingAt(new Date('2026-10-16T22:00:00Z'))).toBe('boa noite'); // 19h
   });
 
-  it('traz os dados da loja, o histórico em ordem e o banco de provas', () => {
+  it('traz os dados da loja e o histórico em ordem', () => {
     const context = buildLeadContext({
       lead: LEAD,
       now: new Date('2026-10-16T13:00:00Z'),
@@ -50,7 +50,6 @@ describe('contexto do lead para a IA', () => {
           createdAt: new Date('2026-10-15T12:00:00Z'),
         },
       ],
-      proofs: [{ text: 'R$ 2,26 por conversa', source: 'Gerenciador de Anúncios', referenceDate: 'out/2026', canNameClient: false }],
     });
 
     expect(context).toContain('Loja: Mikkis Tech');
@@ -60,12 +59,10 @@ describe('contexto do lead para a IA', () => {
     expect(context).toContain('Saudação: bom dia');
     // Mais antigo primeiro: a mensagem do Benedito vem antes da resposta
     expect(context.indexOf('BENEDITO no WhatsApp')).toBeLessThan(context.indexOf('LEAD no WhatsApp'));
-    expect(context).toContain('não citar o nome da loja');
   });
 
-  it('avisa a IA quando o banco de provas está vazio', () => {
-    const context = buildLeadContext({ lead: LEAD, activities: [], proofs: [], now: new Date() });
-    expect(context).toContain('(vazio: não cite nenhum resultado)');
+  it('avisa a IA quando o histórico está vazio', () => {
+    const context = buildLeadContext({ lead: LEAD, activities: [], now: new Date() });
     expect(context).toContain('(nada registrado ainda)');
   });
 });

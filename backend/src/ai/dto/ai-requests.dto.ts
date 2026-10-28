@@ -28,17 +28,3 @@ export class SuggestReplyDto {
   @MaxLength(5000)
   message?: string;
 }
-
-export class SuggestionFeedbackDto {
-  /** Opção usada (0 = primeira) */
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(5)
-  chosenIndex?: number;
-
-  /** 1 = gostou, -1 = não gostou, 0 = tirar a avaliação */
-  @IsOptional()
-  @IsIn([1, 0, -1])
-  feedback?: number;
-}

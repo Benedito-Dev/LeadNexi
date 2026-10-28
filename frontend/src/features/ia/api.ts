@@ -9,20 +9,15 @@ export type AvisoDaIA = { kind: 'number' | 'promise'; detail: string }
 export type OpcaoDeMensagem = { label: string; text: string; template: string; warnings: AvisoDaIA[] }
 
 /** `POST /leads/:id/ai/message`: 1 mensagem principal + 2 variações. Nada é enviado. */
-export type MensagemGerada = { suggestionId: string; model: string; step: number | null; options: OpcaoDeMensagem[] }
+export type MensagemGerada = { model: string; step: number | null; options: OpcaoDeMensagem[] }
 
 export const buscarStatusDaIA = () => api<StatusDaIA>('/ai/status')
 
 export const gerarMensagem = (leadId: string, canal: 'whatsapp' | 'instagram' = 'whatsapp') =>
   api<MensagemGerada>(`/leads/${leadId}/ai/message`, { method: 'POST', body: corpo({ channel: canal }) })
 
-/** Guarda qual opção foi usada (mede o que funciona). */
-export const registrarOpcaoUsada = (suggestionId: string, chosenIndex: number) =>
-  api<unknown>(`/ai/suggestions/${suggestionId}`, { method: 'PATCH', body: corpo({ chosenIndex }) })
-
 /** `POST /leads/:id/ai/reply`: a intenção da última mensagem do lead e 2 respostas sugeridas. */
 export type RespostaSugerida = {
-  suggestionId: string
   intent: 'interested' | 'price' | 'objection' | 'forwarded' | 'auto_reply' | 'not_interested' | 'other'
   objection: string | null
   /** Aviso para você (ex.: "Parece resposta automática"). */

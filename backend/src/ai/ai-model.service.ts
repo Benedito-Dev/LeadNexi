@@ -43,7 +43,7 @@ export class AiModelService {
     images = [],
   }: {
     system: string;
-    /** Dados do lead, histórico e banco de provas (ver lead-context.ts) */
+    /** Dados do lead e histórico (ver lead-context.ts) */
     context: string;
     /** O pedido do momento, ex.: "Escreva a 1ª mensagem pelo WhatsApp" */
     task: string;

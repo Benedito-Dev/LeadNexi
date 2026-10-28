@@ -232,40 +232,7 @@ export class InstagramPostsService {
         throw new ConflictException('Esse post já foi enviado ao Instagram.');
       }
     }
-
-    if (dto.isProof !== undefined || dto.proofNote !== undefined) {
-      const { count } = await this.prisma.instagramPost.updateMany({
-        where: { id, status: 'PUBLISHED' },
-        data: {
-          ...(dto.isProof !== undefined ? { isProof: dto.isProof } : {}),
-          ...(dto.proofNote !== undefined ? { proofNote: dto.proofNote?.trim() || null } : {}),
-        },
-      });
-      if (count === 0) {
-        throw new ConflictException('Só um post publicado pode virar exemplo.');
-      }
-    }
     return this.findOne(id);
-  }
-
-  /** Posts publicados marcados como exemplo (para anexar no follow-up), o mais recente primeiro. */
-  async proofs() {
-    const posts = await this.prisma.instagramPost.findMany({
-      where: { isProof: true, status: 'PUBLISHED', permalink: { not: null } },
-      orderBy: { publishedAt: 'desc' },
-      take: 20,
-      include: { images: { orderBy: { position: 'asc' }, take: 1 } },
-    });
-    return Promise.all(
-      posts.map(async (post) => ({
-        id: post.id,
-        permalink: post.permalink!,
-        proofNote: post.proofNote,
-        caption: post.caption.slice(0, 140),
-        publishedAt: post.publishedAt,
-        coverUrl: post.images[0] ? await this.thumbnailUrl(post.images[0]) : null,
-      })),
-    );
   }
 
   /**
@@ -410,8 +377,6 @@ export class InstagramPostsService {
     error: string | null;
     publishedAt: Date | null;
     permalink: string | null;
-    isProof: boolean;
-    proofNote: string | null;
     createdAt: Date;
     images: MediaRow[];
   }) {
@@ -424,8 +389,6 @@ export class InstagramPostsService {
       error: post.status === 'FAILED' ? post.error : null,
       publishedAt: post.publishedAt,
       permalink: post.permalink,
-      isProof: post.isProof,
-      proofNote: post.proofNote,
       createdAt: post.createdAt,
       images: await Promise.all(
         post.images.map(async (media) => ({

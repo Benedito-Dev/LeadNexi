@@ -125,7 +125,6 @@ model Lead {
   aiSummary              Json?          @map("ai_summary")
   aiSummaryAt            DateTime?      @map("ai_summary_at")
   activities             LeadActivity[]
-  aiSuggestions          AiSuggestion[]
   /// Ficha de cliente, criada quando o lead vai para "Fechou"
   client                 Client?
   createdAt              DateTime       @default(now()) @map("created_at")
@@ -213,60 +212,6 @@ model ProspectingSettings {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("prospecting_settings")
-}
-
-// Banco de provas: resultados reais (com fonte e data) que a IA pode citar. Nada fora daqui.
-model Proof {
-  id            String   @id @default(uuid())
-  /// Frase pronta para citar, ex.: "Loja de celular em Fortaleza: R$ 2,26 por conversa..."
-  text          String
-  /// Número em destaque, ex.: "R$ 2,26 por conversa"
-  highlight     String?
-  /// De onde saiu o número, ex.: "Gerenciador de Anúncios"
-  source        String
-  /// Período ou data do resultado, ex.: "out/2026"
-  referenceDate String?  @map("reference_date")
-  /// O cliente autorizou citar o nome da loja?
-  canNameClient Boolean  @default(false) @map("can_name_client")
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@map("proofs")
-}
-
-enum AiFeature {
-  /// Gerar mensagem (1ª mensagem e follow-ups)
-  MESSAGE
-  /// Sugerir resposta a uma mensagem do lead
-  REPLY
-  /// Resumir conversa (com próximo passo sugerido)
-  SUMMARY
-  /// Textos da análise grátis
-  ANALYSIS
-}
-
-// Cada resposta da IA: o que foi pedido, o que voltou e o que o usuário fez com ela
-model AiSuggestion {
-  id            String    @id @default(uuid())
-  leadId        String    @map("lead_id")
-  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  feature       AiFeature
-  /// Versão do prompt de sistema usado (ex.: "message-v1")
-  promptVersion String    @map("prompt_version")
-  model         String
-  /// Contexto enviado ao modelo (para depurar)
-  input         Json
-  /// Resposta estruturada do modelo
-  output        Json
-  /// Opção escolhida pelo usuário (0, 1, 2), quando houver
-  chosenIndex   Int?      @map("chosen_index")
-  /// 1 = gostou, -1 = não gostou
-  feedback      Int?
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  @@index([leadId, createdAt])
-  @@map("ai_suggestions")
 }
 
 enum ClientStatus {
@@ -420,16 +365,11 @@ model InstagramPost {
   /// ID do post no Instagram e o link público dele
   igMediaId           String?             @map("ig_media_id")
   permalink           String?
-  /// Post publicado usado como exemplo no follow-up ("Te mando um exemplo do que fizemos")
-  isProof             Boolean             @default(false) @map("is_proof")
-  /// Do que é o exemplo, ex.: "Case da loja de celular"
-  proofNote           String?             @map("proof_note")
   images              InstagramMedia[]
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
   @@index([status, scheduledAt])
-  @@index([isProof])
   @@map("instagram_posts")
 }
 

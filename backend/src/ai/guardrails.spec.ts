@@ -1,16 +1,15 @@
 import { checkGuardrails, extractNumbers } from './guardrails.js';
 
 const CONTEXT = `Google: nota 4,8 com 312 avaliações
-- Loja de celular em Fortaleza: R$ 2,26 por conversa no WhatsApp na melhor campanha (209 conversas, R$ 472,93 investidos).
-- Mesma loja: 1.200 conversas no WhatsApp em 3 campanhas, R$ 4.554,71 investidos.`;
+Observações: gastou R$ 2,26 por conversa e R$ 4.554,71 no total com outra agência; 1.200 conversas.`;
 
 describe('regras de ouro da IA', () => {
   it('normaliza números com milhar e decimal brasileiros', () => {
     expect(extractNumbers('R$ 4.554,71 e 1.200 conversas, nota 4,8.')).toEqual(['4554,71', '1200', '4,8']);
   });
 
-  it('aceita números do lead, do banco de provas e o preço da oferta', () => {
-    const text = 'Vi a nota 4,8 com 312 avaliações. Uma loja daqui pagou R$ 2,26 por conversa. O 1º mês sai por R$ 500.';
+  it('aceita números do lead e o preço da oferta', () => {
+    const text = 'Vi a nota 4,8 com 312 avaliações. Você pagava R$ 2,26 por conversa. O 1º mês sai por R$ 500.';
     expect(checkGuardrails(text, CONTEXT)).toEqual([]);
   });
 

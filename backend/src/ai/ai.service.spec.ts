@@ -35,8 +35,6 @@ const LEAD = {
 function setup(output: unknown) {
   const prisma = {
     lead: { findUnique: vi.fn().mockResolvedValue(LEAD), update: vi.fn().mockResolvedValue({}) },
-    proof: { findMany: vi.fn().mockResolvedValue([]) },
-    aiSuggestion: { create: vi.fn().mockResolvedValue({ id: 'sug-1' }) },
   };
   const model = { model: 'claude-opus-5-5', configured: true, generate: vi.fn().mockResolvedValue(output) };
   const service = new AiService(prisma as unknown as PrismaService, model as unknown as AiModelService);
@@ -60,9 +58,6 @@ describe('AiService', () => {
     expect(result.options).toHaveLength(3);
     expect(result.options[0].warnings).toEqual([]);
     expect(result.options[1].warnings.map((warning) => warning.kind)).toEqual(['number', 'promise']);
-    expect(prisma.aiSuggestion.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ feature: 'MESSAGE', promptVersion: 'message-v1' }) }),
-    );
   });
 
   it('sugere resposta para a última mensagem recebida do lead', async () => {
@@ -109,9 +104,9 @@ describe('AiService', () => {
 
     const result = await service.summarize('lead-1');
 
-    expect(result).toMatchObject({ ...summary, suggestionId: 'sug-1' });
+    expect(result).toMatchObject(summary);
     expect(prisma.lead.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'lead-1' }, data: expect.objectContaining({ aiSummary: { ...summary, suggestionId: 'sug-1' } }) }),
+      expect.objectContaining({ where: { id: 'lead-1' }, data: expect.objectContaining({ aiSummary: summary }) }),
     );
   });
 
@@ -125,7 +120,6 @@ describe('AiService', () => {
     expect(model.generate.mock.calls[0][0].task).toContain('carrossel de 2 imagens');
     expect(result.caption).toContain('#AlvoDigital');
     expect(result.warnings.map((warning) => warning.kind)).toEqual(['promise']);
-    expect(prisma.aiSuggestion.create).not.toHaveBeenCalled();
   });
 
   it('recusa legenda sem imagem ou com imagem fora do JPEG', async () => {

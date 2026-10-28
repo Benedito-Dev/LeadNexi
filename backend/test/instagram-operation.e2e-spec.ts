@@ -105,33 +105,6 @@ describe('Operação do Instagram (e2e)', () => {
     });
   });
 
-  describe('post como exemplo', () => {
-    it('marca um publicado como exemplo e ele aparece para anexar no follow-up', async () => {
-      const published = await post({ status: 'PUBLISHED', scheduledAt: new Date(), publishedAt: new Date() });
-
-      const res = await api()
-        .patch(`/instagram/posts/${published.id}`)
-        .send({ isProof: true, proofNote: '  Case da loja de celular ' })
-        .set(auth)
-        .expect(200);
-      expect(res.body).toMatchObject({ isProof: true, proofNote: 'Case da loja de celular' });
-
-      const proofs = await api().get('/instagram/posts/proofs').set(auth).expect(200);
-      expect(proofs.body).toEqual([
-        expect.objectContaining({
-          id: published.id,
-          permalink: 'https://www.instagram.com/p/teste/',
-          proofNote: 'Case da loja de celular',
-        }),
-      ]);
-    });
-
-    it('post ainda não publicado não vira exemplo', async () => {
-      const scheduled = await post({ scheduledAt: new Date(Date.now() + DAY) });
-      await api().patch(`/instagram/posts/${scheduled.id}`).send({ isProof: true }).set(auth).expect(409);
-    });
-  });
-
   it('salva grupos de hashtags sem repetir e com # em todas', async () => {
     const res = await api()
       .post('/instagram/hashtag-sets')

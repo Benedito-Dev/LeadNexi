@@ -49,11 +49,3 @@ export const CaptionOutput = z.object({
 });
 export type CaptionOutput = z.infer<typeof CaptionOutput>;
 
-export const AnalysisOutput = z.object({
-  headline: z.string(),
-  findings: z.array(z.string()),
-  opportunities: z.array(z.string()).describe('Exatamente 3 oportunidades'),
-  reference: z.object({ text: z.string(), source: z.string() }).nullable(),
-  invitation: z.string(),
-});
-export type AnalysisOutput = z.infer<typeof AnalysisOutput>;

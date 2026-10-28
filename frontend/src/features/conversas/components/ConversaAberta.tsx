@@ -11,7 +11,7 @@ import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { adicionarNota } from '../../crm/api'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
-import { registrarOpcaoUsada, sugerirResposta, type RespostaSugerida } from '../../ia/api'
+import { sugerirResposta, type RespostaSugerida } from '../../ia/api'
 import { dicaDaIA, useStatusDaIA } from '../../ia/useStatusDaIA'
 import { enviarMensagem, fotoDoLead, reagir } from '../api'
 import type { Etapa } from '../../crm/types'
@@ -178,9 +178,6 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
     if (!sugestao) return
     setSugestao({ ...sugestao, escolhida: indice })
     setTexto(sugestao.resposta.options[indice].text)
-    void registrarOpcaoUsada(sugestao.resposta.suggestionId, indice).catch(() => {
-      // Só alimenta a medição do que funciona
-    })
   }
 
   const responder = (mensagem: Mensagem) => {

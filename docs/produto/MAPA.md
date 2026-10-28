@@ -119,7 +119,7 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
   tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde os
   agentes da VPS deixam o que produzem, pelo MCP (seção 6).
 
-Fora do plano (decisão de 26/10/2026): banco de provas. O servidor ainda tem `/proofs`, sem tela.
+Fora do plano: banco de provas (decisão de 26/10/2026; tabela removida em 27/10/2026). A IA não cita resultado de outros clientes.
 
 Servidor: **tem** `/instagram/posts`, `/instagram/media`, `/instagram/hashtag-sets`.
 O front antigo (branch `backup/main-2026-10-23`) tem o calendário e o editor de post para reaproveitar.

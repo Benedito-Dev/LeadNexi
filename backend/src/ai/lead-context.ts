@@ -1,4 +1,4 @@
-// Monta o contexto que vai para o modelo: dados do lead, histórico, banco de provas e o momento
+// Monta o contexto que vai para o modelo: dados do lead, histórico e o momento
 // (saudação no horário de Fortaleza). Função pura, sem banco, para dar para testar.
 
 export const TIME_ZONE = 'America/Fortaleza';
@@ -33,13 +33,6 @@ export interface ContextActivity {
   channel: string | null;
   cadenceStep: number | null;
   createdAt: Date;
-}
-
-export interface ContextProof {
-  text: string;
-  source: string;
-  referenceDate: string | null;
-  canNameClient: boolean;
 }
 
 /** "Bom dia" até 12h, "Boa tarde" até 18h, depois "Boa noite" (horário de Fortaleza). */
@@ -110,24 +103,13 @@ export function historyLines(activities: ContextActivity[]): string[] {
     });
 }
 
-export function proofLines(proofs: ContextProof[]): string[] {
-  return proofs.map(
-    (proof) =>
-      `- ${proof.text} (fonte: ${proof.source}${proof.referenceDate ? `, ${proof.referenceDate}` : ''}; ${
-        proof.canNameClient ? 'pode citar o nome da loja' : 'não citar o nome da loja'
-      })`,
-  );
-}
-
 export function buildLeadContext({
   lead,
   activities,
-  proofs,
   now,
 }: {
   lead: ContextLead;
   activities: ContextActivity[];
-  proofs: ContextProof[];
   now: Date;
 }): string {
   const google =
@@ -153,7 +135,6 @@ export function buildLeadContext({
     ['Observações', lead.notes],
   ];
   const history = historyLines(activities);
-  const proofList = proofLines(proofs);
 
   return [
     `<agora>${formatWhen(now)} (Fortaleza). Saudação: ${greetingAt(now)}.</agora>`,
@@ -163,8 +144,5 @@ export function buildLeadContext({
     '<historico>',
     ...(history.length ? history : ['(nada registrado ainda)']),
     '</historico>',
-    '<banco_de_provas>',
-    ...(proofList.length ? proofList : ['(vazio: não cite nenhum resultado)']),
-    '</banco_de_provas>',
   ].join('\n');
 }

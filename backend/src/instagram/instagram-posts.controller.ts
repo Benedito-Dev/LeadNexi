@@ -166,15 +166,6 @@ export class InstagramPostsController {
     return this.posts.drafts();
   }
 
-  @Get('posts/proofs')
-  @ApiOperation({
-    summary:
-      'Posts publicados marcados como exemplo, para anexar no follow-up (o mais recente primeiro)',
-  })
-  proofs() {
-    return this.posts.proofs();
-  }
-
   @Patch('posts/:id')
   @ApiOperation({
     summary:
