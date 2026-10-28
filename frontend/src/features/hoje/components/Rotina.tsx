@@ -169,7 +169,7 @@ export function RotinaDoDia({ painel, fila, coresDasEtapas, onAbrir, onMudou }: 
 
       {/* O lead em foco por cima da tela: WhatsApp, feito, adiar e pular, um de cada vez */}
       <Dialog open={focoAberto && Boolean(f.emFoco)} onOpenChange={setFocoAberto}>
-        <DialogContent className="max-w-3xl border-0 bg-transparent p-0 shadow-none sm:max-w-3xl [&>button]:right-5 [&>button]:top-5">
+        <DialogContent className="max-w-3xl border-0 bg-transparent p-0 shadow-none sm:max-w-3xl [&>button]:right-6 [&>button]:top-6">
           <DialogTitle className="sr-only">Uma conversa de cada vez</DialogTitle>
           <DialogDescription className="sr-only">O lead em foco e as ações dele</DialogDescription>
           {f.emFoco && (

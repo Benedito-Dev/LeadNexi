@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Phone, SkipForward } from 'lucide-react'
+import { SkipForward } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
-import { formatPhoneBR } from '@/lib/phone'
 import { cn } from '@/lib/utils'
-import { iconeDaOrigem } from '../../crm/origens'
-import { contextoDaMissao, mensagemSugerida, TIPOS, type Missao } from '../missoes'
+import { ICONE_DA_ETAPA } from '../../crm/etapas'
+import { contextoDaMissao, mensagemSugerida, type Missao } from '../missoes'
 import { useConcluirMissao } from '../useConcluirMissao'
 import { useMensagemDaIA } from '../useMensagemDaIA'
 import { BotaoConversa } from './BotaoConversa'
 import { BotaoWhatsApp } from './BotaoWhatsApp'
 import { BotaoGerarMensagem, OpcoesDaIA } from './MensagemDaIA'
 import { ModelosDeMensagem } from './ModelosDeMensagem'
-import { CirculoConcluir, etiqueta, EtiquetaDaEtapa, EtiquetasDoLead, MenuAdiar, type AcoesDaMissao } from './pecas'
+import { CirculoConcluir, EtiquetasDoLead, MenuAdiar, type AcoesDaMissao } from './pecas'
 
 type MissaoEmFocoProps = {
   missao: Missao
@@ -24,7 +23,10 @@ type MissaoEmFocoProps = {
   onProxima: () => void
 } & AcoesDaMissao
 
-/** A missão em destaque (aberta por "Começar próxima ação"): tudo para agir sem abrir a ficha. */
+/**
+ * A missão em destaque (aberta por "Começar próxima ação"): quem é, por que agora e o que fazer,
+ * cada coisa uma vez só. Origem, telefone e o resto do lead ficam na ficha (clique no nome ou Enter).
+ */
 export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, onProxima, onAbrir, onMudou }: MissaoEmFocoProps) {
   const { tipo, lead } = missao
   const contexto = contextoDaMissao(lead, tipo)
@@ -32,10 +34,10 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
   const { feita, ocupado, podeMarcar, concluir, marcarFeita } = useConcluirMissao(lead, tipo, onMudou)
   const temMensagem = tipo === 'new' || tipo === 'follow-up'
   const ia = useMensagemDaIA(lead.id)
-  const origem = lead.source ? { nome: lead.source, ...iconeDaOrigem(lead.source) } : null
+  const IconeDaEtapa = ICONE_DA_ETAPA[lead.stage.stageType]
 
-  // Atalhos: ← → navega, F marca como feito, Enter abre a ficha. Não disparam enquanto se digita
-  // nem com outra janela aberta (a ficha do lead, por exemplo).
+  // Atalhos: ← → navega, F marca como feito, Enter abre a ficha (aparecem no title dos botões). Não
+  // disparam enquanto se digita nem com outra janela aberta (a ficha do lead, por exemplo).
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       const alvo = e.target as HTMLElement | null
@@ -54,66 +56,43 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
   }, [onAnterior, onProxima, onAbrir, lead, podeMarcar, concluir, mensagem, ia.origem])
 
   return (
-    <section
-      className={cn('flex flex-col gap-5 rounded-2xl border border-t-[3px] border-border bg-card p-6 transition-opacity', TIPOS[tipo].faixa, feita && 'opacity-45')}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-[13px] font-bold text-muted-foreground">
-          <span aria-hidden className={cn('h-2.5 w-2.5 rounded-full', TIPOS[tipo].ponto)} />
-          {TIPOS[tipo].titulo}
-        </span>
-        <div className="flex items-center gap-1">
-          <span className="mr-1 text-[13px] font-bold tabular-nums text-muted-foreground">
-            {posicao} de {total}
-          </span>
-          <button
-            type="button"
-            onClick={onAnterior}
-            disabled={posicao <= 1}
-            aria-label="Missão anterior"
-            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            onClick={onProxima}
-            disabled={posicao >= total}
-            aria-label="Próxima missão"
-            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-          >
-            <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
-          </button>
+    <section className={cn('flex flex-col gap-5 rounded-2xl border border-border bg-card p-6 transition-opacity', feita && 'opacity-45')}>
+      {/* Onde estou na fila; o X do Dialog fica à direita desta linha */}
+      <div className="flex items-center gap-3 pr-8">
+        <div
+          role="progressbar"
+          aria-valuenow={posicao}
+          aria-valuemin={1}
+          aria-valuemax={total}
+          aria-label="Posição na fila"
+          className="h-1 flex-1 overflow-hidden rounded-full bg-muted"
+        >
+          <div className="h-full rounded-full bg-flow transition-[width]" style={{ width: `${(posicao / total) * 100}%` }} />
         </div>
+        <span className="text-[13px] font-bold tabular-nums text-muted-foreground">
+          {posicao} de {total}
+        </span>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => onAbrir(lead)}
+            title="Abrir ficha (Enter)"
             className={cn('cursor-pointer text-left text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-foreground hover:underline', feita && 'line-through')}
           >
             {lead.name}
           </button>
           <EtiquetasDoLead lead={lead} />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <EtiquetaDaEtapa lead={lead} cor={corDaEtapa} />
-          {origem && (
-            <span className={cn(etiqueta, 'border-border bg-muted/50 text-foreground')} title="Origem">
-              <origem.Icone aria-hidden strokeWidth={1.75} className={cn('h-4 w-4', origem.cor)} />
-              {origem.nome}
-            </span>
-          )}
-          {lead.phone && (
-            <span className={cn(etiqueta, 'border-border bg-muted/50 tabular-nums text-foreground')} title="Telefone">
-              <Phone aria-hidden className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-              {formatPhoneBR(lead.phone)}
-            </span>
-          )}
-        </div>
-        <span className={cn('text-sm font-bold', contexto.cor)}>{contexto.texto}</span>
+        {/* Por que agora: o ícone da etapa na cor da coluna diz onde o lead está no funil */}
+        <p className={cn('m-0 flex items-center gap-2 text-sm font-semibold', contexto.atrasado ? 'text-warn-foreground' : 'text-foreground')}>
+          <span title={`Etapa: ${lead.stage.name}`} className="inline-flex">
+            <IconeDaEtapa className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: corDaEtapa }} aria-hidden />
+          </span>
+          {contexto.texto}
+        </p>
       </div>
 
       {temMensagem && (
@@ -153,7 +132,7 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
         )}
         {tipo === 'meeting' && (
           <Button variant="outline" className={cn(botaoSecundarioDoTopo, 'h-11')} onClick={() => onAbrir(lead)}>
-            Abrir
+            Abrir ficha
           </Button>
         )}
         {podeMarcar && (
@@ -169,19 +148,17 @@ export function MissaoEmFoco({ missao, posicao, total, corDaEtapa, onAnterior, o
             className="inline-flex h-11 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground hover:bg-accent"
           />
         )}
-        <Button variant="ghost" className="ml-auto h-11 gap-2 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={onProxima} disabled={posicao >= total}>
+        <Button
+          variant="ghost"
+          className="ml-auto h-11 gap-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+          onClick={onProxima}
+          disabled={posicao >= total}
+          title="Pular (→) · ← volta"
+        >
           Pular
           <SkipForward aria-hidden className="h-4 w-4" strokeWidth={1.75} />
         </Button>
       </div>
-      <p className="-mt-2 mb-0 text-xs font-medium text-muted-foreground">
-        <Tecla>←</Tecla> <Tecla>→</Tecla> navega · {podeMarcar && (<><Tecla>F</Tecla> feito · </>)}
-        <Tecla>Enter</Tecla> abre a ficha
-      </p>
     </section>
   )
-}
-
-function Tecla({ children }: { children: string }) {
-  return <kbd className="rounded border border-border bg-muted px-1.5 py-px font-marca text-[11px] font-bold text-foreground">{children}</kbd>
 }

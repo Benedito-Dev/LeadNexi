@@ -1,17 +1,9 @@
-import { formatarDecorrido, formatarDiaEHora, preencherModelo } from './textos'
+import { formatarDecorrido, formatarDia, formatarDiaEHora, preencherModelo } from './textos'
 import type { LeadDoPainel, PainelDeHoje, TextosDaCadencia } from './tipos'
 
 export type TipoMissao = 'response' | 'follow-up' | 'new' | 'meeting'
 /** `textos`: os modelos da cadência salvos em Configurações › Prospecção. */
 export type Missao = { tipo: TipoMissao; lead: LeadDoPainel; textos: TextosDaCadencia }
-
-// Cada tipo de missão tem um tom; destaque por cor sólida, sem brilho.
-export const TIPOS: Record<TipoMissao, { titulo: string; ponto: string; faixa: string }> = {
-  response: { titulo: 'Sua vez', ponto: 'bg-leadnexi-cyan', faixa: 'border-t-leadnexi-cyan' },
-  'follow-up': { titulo: 'Follow-ups', ponto: 'bg-warn-foreground', faixa: 'border-t-warn-foreground' },
-  new: { titulo: 'Novas lojas', ponto: 'bg-leadnexi-violet', faixa: 'border-t-leadnexi-violet' },
-  meeting: { titulo: 'Compromissos', ponto: 'bg-muted-foreground', faixa: 'border-t-muted-foreground' },
-}
 
 /** Missões que contam na meta do dia (compromissos não se "marcam como feitos"). */
 export const TIPOS_DE_ACAO: TipoMissao[] = ['response', 'follow-up', 'new']
@@ -56,13 +48,16 @@ export function mensagemSugerida(missao: Missao): string {
   return primeira.texto
 }
 
-/** Linha de contexto da missão ("Respondeu há 24 min", "Follow-up 1 · venceu há 2 d") e a cor dela. */
-export function contextoDaMissao(lead: LeadDoPainel, tipo: TipoMissao): { texto: string; cor: string; atrasado: boolean } {
+/**
+ * Por que o lead está na fila agora, numa linha ("Respondeu há 24 min", "Follow-up 1 · venceu há 2 d").
+ * `atrasado`: follow-up vencido antes de hoje (a linha fica em alerta).
+ */
+export function contextoDaMissao(lead: LeadDoPainel, tipo: TipoMissao): { texto: string; atrasado: boolean } {
   const atrasado = tipo === 'follow-up' && lead.followUpAt !== null && new Date(lead.followUpAt) < inicioDeHoje()
   const texto =
     tipo === 'response'
       ? lead.followUpAt
-        ? 'Retomar conversa · retorno combinado'
+        ? `Respondeu · retorno combinado para ${formatarDia(new Date(lead.followUpAt)).toLowerCase()}`
         : `Respondeu há ${formatarDecorrido(lead.updatedAt)}`
       : tipo === 'follow-up'
         ? `${lead.cadenceStep === 2 ? 'Follow-up final' : 'Follow-up 1'} · ${atrasado && lead.followUpAt ? `venceu há ${formatarDecorrido(lead.followUpAt)}` : 'hoje'}`
@@ -75,13 +70,5 @@ export function contextoDaMissao(lead: LeadDoPainel, tipo: TipoMissao): { texto:
             ]
               .filter(Boolean)
               .join(' · ')
-  const cor =
-    tipo === 'response'
-      ? 'text-leadnexi-cyan-texto'
-      : atrasado
-        ? 'text-warn-foreground'
-        : tipo === 'new'
-          ? 'text-leadnexi-violet-texto'
-          : 'text-muted-foreground'
-  return { texto, cor, atrasado }
+  return { texto, atrasado }
 }
