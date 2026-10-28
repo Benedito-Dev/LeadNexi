@@ -30,3 +30,41 @@ export type Post = {
   /** Na ordem do carrossel: a primeira é a capa */
   images: ImagemDoPost[]
 }
+
+/** Um número da conta no período escolhido e no período anterior, do mesmo tamanho */
+export type NumeroDoPeriodo = { current: number | null; previous: number | null }
+
+/** Post do perfil com as estatísticas (null: a Meta não informou) */
+export type PostComNumeros = {
+  id: string
+  /** IMAGE, VIDEO (Reels) ou CAROUSEL_ALBUM */
+  type: string
+  caption: string | null
+  /** Link da Meta (expira em poucos dias) */
+  imageUrl: string | null
+  permalink: string | null
+  timestamp: string | null
+  likes: number | null
+  comments: number | null
+  views: number | null
+  reach: number | null
+  saved: number | null
+  shares: number | null
+  interactions: number | null
+  /** Só Reel, em milissegundos */
+  avgWatchMs: number | null
+}
+
+/** GET /instagram/insights. sem-permissao: conta conectada antes da permissão de estatísticas */
+export type Desempenho =
+  | { status: 'sem-conta' }
+  | { status: 'sem-permissao' }
+  | { status: 'falha' }
+  | {
+      status: 'ok'
+      days: 7 | 30
+      followers: number | null
+      account: Record<'reach' | 'views' | 'accounts_engaged' | 'total_interactions' | 'profile_views' | 'website_clicks', NumeroDoPeriodo>
+      follows: { follows: number | null; unfollows: number | null } | null
+      posts: PostComNumeros[]
+    }

@@ -6,6 +6,7 @@ import { InstagramCronController } from './instagram-cron.controller.js';
 import { InstagramDirectController } from './instagram-direct.controller.js';
 import { InstagramHashtagsService } from './instagram-hashtags.service.js';
 import { InstagramInboxService } from './instagram-inbox.service.js';
+import { InstagramInsightsService } from './instagram-insights.service.js';
 import { InstagramMessagesController } from './instagram-messages.controller.js';
 import { InstagramMessagesService } from './instagram-messages.service.js';
 import { InstagramPostsController } from './instagram-posts.controller.js';
@@ -41,6 +42,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramMessagesService,
     InstagramApiClient,
     InstagramHashtagsService,
+    InstagramInsightsService,
   ],
   // O servidor MCP (o Claude e os agentes da VPS) usa os mesmos serviços das telas
   exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService],

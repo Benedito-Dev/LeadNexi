@@ -420,4 +420,67 @@ describe('InstagramApiClient', () => {
     expect(postsUrl.pathname).toBe(`/${GRAPH_VERSION}/me/media`);
     expect(postsUrl.searchParams.get('limit')).toBe('12');
   });
+  it('lê os posts com legenda, curtidas e comentários (no vídeo, a capa)', async () => {
+    reply(200, {
+      data: [
+        { id: '1', media_type: 'IMAGE', media_url: 'https://cdn/1.jpg', caption: 'Oi', like_count: 10, comments_count: 2, permalink: 'https://ig/p/1', timestamp: '2026-10-20T12:00:00+0000' },
+        { id: '2', media_type: 'VIDEO', media_url: 'https://cdn/2.mp4', thumbnail_url: 'https://cdn/2.jpg' },
+      ],
+    });
+    const posts = await client.listMediaWithCounts('token', 24);
+    expect(posts[0]).toMatchObject({ id: '1', caption: 'Oi', likes: 10, comments: 2, imageUrl: 'https://cdn/1.jpg' });
+    expect(posts[1]).toMatchObject({ id: '2', type: 'VIDEO', imageUrl: 'https://cdn/2.jpg', likes: null, comments: null });
+    const { url } = lastCall();
+    expect(url.pathname).toBe(`/${GRAPH_VERSION}/me/media`);
+    expect(url.searchParams.get('fields')).toContain('like_count');
+    expect(url.searchParams.get('limit')).toBe('24');
+  });
+
+  it('lê as estatísticas de um post pelo nome de cada métrica', async () => {
+    reply(200, {
+      data: [
+        { name: 'views', period: 'lifetime', values: [{ value: 1200 }] },
+        { name: 'reach', period: 'lifetime', values: [{ value: 800 }] },
+      ],
+    });
+    expect(await client.getMediaInsights('99', 'token', ['views', 'reach'])).toEqual({ views: 1200, reach: 800 });
+    const { url } = lastCall();
+    expect(url.pathname).toBe(`/${GRAPH_VERSION}/99/insights`);
+    expect(url.searchParams.get('metric')).toBe('views,reach');
+  });
+
+  it('lê o total de uma métrica da conta no período', async () => {
+    reply(200, { data: [{ name: 'reach', period: 'day', total_value: { value: 4321 } }] });
+    const since = new Date('2026-10-01T00:00:00Z');
+    const until = new Date('2026-10-08T00:00:00Z');
+    expect(await client.getAccountInsight('token', 'reach', since, until)).toBe(4321);
+    const { url } = lastCall();
+    expect(url.pathname).toBe(`/${GRAPH_VERSION}/me/insights`);
+    expect(url.searchParams.get('metric_type')).toBe('total_value');
+    expect(url.searchParams.get('since')).toBe(String(since.getTime() / 1000));
+    expect(url.searchParams.get('until')).toBe(String(until.getTime() / 1000));
+  });
+
+  it('separa seguidores ganhos e perdidos no período', async () => {
+    reply(200, {
+      data: [
+        {
+          name: 'follows_and_unfollows',
+          total_value: {
+            breakdowns: [
+              {
+                dimension_keys: ['follow_type'],
+                results: [
+                  { dimension_values: ['FOLLOWER'], value: 15 },
+                  { dimension_values: ['NON_FOLLOWER'], value: 4 },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(await client.getFollowsInPeriod('token', new Date(), new Date())).toEqual({ follows: 15, unfollows: 4 });
+    expect(lastCall().url.searchParams.get('breakdown')).toBe('follow_type');
+  });
 });

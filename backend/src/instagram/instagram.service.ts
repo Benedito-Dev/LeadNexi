@@ -8,11 +8,12 @@ import {
 } from './instagram-api.client.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
-/** Permissões pedidas no login: ler o perfil, publicar conteúdo e receber o direct */
+/** Permissões pedidas no login: ler o perfil, publicar conteúdo, receber o direct e ler as estatísticas */
 const SCOPES = [
   'instagram_business_basic',
   'instagram_business_content_publish',
   'instagram_business_manage_messages',
+  'instagram_business_manage_insights',
 ];
 
 /** Audiência do JWT usado como `state` do OAuth (não serve como token de acesso) */

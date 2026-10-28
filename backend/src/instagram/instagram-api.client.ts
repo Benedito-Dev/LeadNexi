@@ -86,6 +86,26 @@ export interface ProfileOverview {
   }[];
 }
 
+/** Post do perfil com os contadores públicos (ver listMediaWithCounts) */
+export interface MediaWithCounts {
+  id: string;
+  /** IMAGE, VIDEO (Reels) ou CAROUSEL_ALBUM */
+  type: string;
+  caption: string | null;
+  /** Imagem a mostrar (no vídeo, a capa); o link da Meta expira em poucos dias */
+  imageUrl: string | null;
+  permalink: string | null;
+  timestamp: string | null;
+  likes: number | null;
+  comments: number | null;
+}
+
+/** Seguidores ganhos e perdidos num período (follows_and_unfollows) */
+export interface FollowsInPeriod {
+  follows: number | null;
+  unfollows: number | null;
+}
+
 export interface InstagramProfile {
   /** ID da conta profissional: é o usado para publicar */
   userId: string;
@@ -462,6 +482,135 @@ export class InstagramApiClient {
     return { ids, complete: next === null, oldest };
   }
 
+  /** Os últimos `limit` posts do perfil, com legenda, curtidas e comentários. */
+  async listMediaWithCounts(
+    token: string,
+    limit: number,
+  ): Promise<MediaWithCounts[]> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/media`,
+    );
+    url.search = new URLSearchParams({
+      fields:
+        'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
+      limit: String(limit),
+      access_token: token,
+    }).toString();
+    const body = await this.request(url);
+    const items = Array.isArray(body.data) ? (body.data as Json[]) : [];
+    return items.flatMap((item) => {
+      const id = optionalString(item.id);
+      if (!id) return [];
+      const type = optionalString(item.media_type) ?? 'IMAGE';
+      return [
+        {
+          id,
+          type,
+          caption: optionalString(item.caption),
+          imageUrl:
+            type === 'VIDEO'
+              ? optionalString(item.thumbnail_url)
+              : optionalString(item.media_url),
+          permalink: optionalString(item.permalink),
+          timestamp: optionalString(item.timestamp),
+          likes: optionalNumber(item.like_count),
+          comments: optionalNumber(item.comments_count),
+        },
+      ];
+    });
+  }
+
+  /**
+   * Estatísticas de um post (permissão instagram_business_manage_insights). Devolve o valor de
+   * cada métrica pedida que a Meta respondeu; métrica que não vale para o tipo de post faz a
+   * Meta recusar a chamada inteira, então quem chama pede só as que servem.
+   */
+  async getMediaInsights(
+    mediaId: string,
+    token: string,
+    metrics: string[],
+  ): Promise<Record<string, number>> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${mediaId}/insights`,
+    );
+    url.search = new URLSearchParams({
+      metric: metrics.join(','),
+      access_token: token,
+    }).toString();
+    const body = await this.request(url);
+    const items = Array.isArray(body.data) ? (body.data as Json[]) : [];
+    const values: Record<string, number> = {};
+    for (const item of items) {
+      const name = optionalString(item.name);
+      const first = Array.isArray(item.values)
+        ? (item.values[0] as Json | undefined)
+        : undefined;
+      const value = optionalNumber(first?.value);
+      if (name && value !== null) values[name] = value;
+    }
+    return values;
+  }
+
+  /** Total de uma métrica da conta entre `since` e `until` (no máximo 30 dias, regra da Meta). */
+  async getAccountInsight(
+    token: string,
+    metric: string,
+    since: Date,
+    until: Date,
+  ): Promise<number | null> {
+    const body = await this.request(this.accountInsightsUrl(token, metric, since, until));
+    const item = Array.isArray(body.data) ? (body.data[0] as Json | undefined) : undefined;
+    const total = item?.total_value as Json | undefined;
+    return optionalNumber(total?.value);
+  }
+
+  /** Seguidores ganhos e perdidos no período (a Meta separa por follow_type). */
+  async getFollowsInPeriod(
+    token: string,
+    since: Date,
+    until: Date,
+  ): Promise<FollowsInPeriod> {
+    const url = this.accountInsightsUrl(token, 'follows_and_unfollows', since, until);
+    url.searchParams.set('breakdown', 'follow_type');
+    const body = await this.request(url);
+    const item = Array.isArray(body.data) ? (body.data[0] as Json | undefined) : undefined;
+    const total = item?.total_value as Json | undefined;
+    const breakdown = Array.isArray(total?.breakdowns)
+      ? (total.breakdowns[0] as Json | undefined)
+      : undefined;
+    const results = Array.isArray(breakdown?.results)
+      ? (breakdown.results as Json[])
+      : [];
+    const of = (type: string) => {
+      const row = results.find(
+        (r) => Array.isArray(r.dimension_values) && r.dimension_values[0] === type,
+      );
+      return row ? optionalNumber(row.value) : null;
+    };
+    // FOLLOWER: quem passou a seguir · NON_FOLLOWER: quem deixou de seguir
+    return { follows: of('FOLLOWER'), unfollows: of('NON_FOLLOWER') };
+  }
+
+  private accountInsightsUrl(
+    token: string,
+    metric: string,
+    since: Date,
+    until: Date,
+  ) {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/insights`,
+    );
+    url.search = new URLSearchParams({
+      metric,
+      period: 'day',
+      metric_type: 'total_value',
+      since: String(Math.floor(since.getTime() / 1000)),
+      until: String(Math.floor(until.getTime() / 1000)),
+      access_token: token,
+    }).toString();
+    return url;
+  }
+
   /** POST na Graph API que devolve `{ id }` */
   private async post(
     path: string,
@@ -539,4 +688,8 @@ function requireString(value: unknown, field: string): string {
 
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null;
+}
+
+function optionalNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }

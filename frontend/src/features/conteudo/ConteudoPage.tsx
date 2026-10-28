@@ -11,6 +11,7 @@ import type { SituacaoDaConta } from '../instagram/tipos'
 import { buscarPublicacao, listarPosts, listarRascunhos, listarTodosOsPosts, sincronizarPosts, type PostCriado } from './api'
 import { BandejaDeRascunhos } from './components/BandejaDeRascunhos'
 import { CalendarioDePosts } from './components/CalendarioDePosts'
+import { DesempenhoDoPerfil } from './components/DesempenhoDoPerfil'
 import { DetalhesDoPost } from './components/DetalhesDoPost'
 import { FeedDoPerfil } from './components/FeedDoPerfil'
 import { NovoPost } from './components/NovoPost'
@@ -18,23 +19,25 @@ import { chaveDoDia, diasVisiveis, somarDias, type Modo } from './datas'
 import { dataDoPost } from './situacoes'
 import type { Post } from './tipos'
 
-type Visao = Modo | 'feed'
+type Visao = Modo | 'feed' | 'desempenho'
 
 const VISOES: [Visao, string][] = [
   ['mes', 'Mês'],
   ['semana', 'Semana'],
   ['feed', 'Feed'],
+  ['desempenho', 'Desempenho'],
 ]
 
-/** Conteúdo: os posts do Instagram no calendário (mês ou semana) ou no feed do perfil, e os detalhes. */
+/** Conteúdo: os posts do Instagram no calendário (mês ou semana), no feed do perfil ou com as estatísticas, e os detalhes. */
 export function ConteudoPage() {
   const [visao, setVisao] = useState<Visao>('mes')
-  // O feed não tem período; o calendário guarda o último modo para voltar a ele
-  const modo: Modo = visao === 'feed' ? 'mes' : visao
+  // Feed e Desempenho não têm o período do calendário: trazem todos os posts
+  const semPeriodo = visao === 'feed' || visao === 'desempenho'
+  const modo: Modo = visao === 'semana' ? 'semana' : 'mes'
   const [ancora, setAncora] = useState(() => new Date())
   const dias = useMemo(() => diasVisiveis(modo, ancora), [modo, ancora])
-  const de = visao === 'feed' ? 'todos' : dias[0].toISOString()
-  const ate = visao === 'feed' ? 'todos' : somarDias(dias[dias.length - 1], 1).toISOString()
+  const de = semPeriodo ? 'todos' : dias[0].toISOString()
+  const ate = semPeriodo ? 'todos' : somarDias(dias[dias.length - 1], 1).toISOString()
   // Posts guardados com o período: trocar de semana/mês mostra o carregando até chegar o novo
   const [carregados, setCarregados] = useState<{ periodo: string; posts: Post[] } | null>(null)
   const [erro, setErro] = useState(false)
@@ -110,7 +113,7 @@ export function ConteudoPage() {
         title="Conteúdo"
         summary={
           posts
-            ? `${agendados} ${agendados === 1 ? 'agendado' : 'agendados'} · ${publicados} ${publicados === 1 ? 'publicado' : 'publicados'}${visao === 'feed' ? '' : ' no período'}`
+            ? `${agendados} ${agendados === 1 ? 'agendado' : 'agendados'} · ${publicados} ${publicados === 1 ? 'publicado' : 'publicados'}${semPeriodo ? '' : ' no período'}`
             : 'Posts do Instagram'
         }
         actions={
@@ -174,9 +177,11 @@ export function ConteudoPage() {
         </p>
       )}
 
-      <BandejaDeRascunhos rascunhos={rascunhos} onAbrir={(post) => setAbertoId(post.id)} />
+      {visao !== 'desempenho' && <BandejaDeRascunhos rascunhos={rascunhos} onAbrir={(post) => setAbertoId(post.id)} />}
 
-      {visao === 'feed' ? (
+      {visao === 'desempenho' ? (
+        <DesempenhoDoPerfil />
+      ) : visao === 'feed' ? (
         <FeedDoPerfil posts={posts} onAbrir={(post) => setAbertoId(post.id)} />
       ) : (
         <CalendarioDePosts modo={modo} ancora={ancora} onAncora={setAncora} dias={dias} posts={posts} onAbrir={(post) => setAbertoId(post.id)}

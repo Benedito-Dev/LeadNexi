@@ -25,7 +25,9 @@ import type { AuthenticatedUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { publicOrigin } from '../common/utils/public-origin.js';
+import { QueryInsightsDto } from './dto/query-insights.dto.js';
 import { SaveInstagramSettingsDto } from './dto/save-instagram-settings.dto.js';
+import { InstagramInsightsService } from './instagram-insights.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 import { InstagramService } from './instagram.service.js';
 
@@ -36,6 +38,7 @@ export class InstagramController {
   constructor(
     private readonly instagram: InstagramService,
     private readonly settings: InstagramSettingsService,
+    private readonly insights: InstagramInsightsService,
   ) {}
 
   @Get('account')
@@ -57,6 +60,17 @@ export class InstagramController {
   @ApiOkResponse({ description: '{ connected, profile? } · connected: false sem conta válida ou com a Meta fora do ar' })
   getProfile() {
     return this.instagram.getProfileOverview();
+  }
+
+  @Get('insights')
+  @ApiOperation({
+    summary: 'Estatísticas do perfil (últimos 7 ou 30 dias, comparando com o período anterior) e dos últimos posts, lidas na hora na Meta',
+  })
+  @ApiOkResponse({
+    description: '{ status: ok, days, followers, account, follows, posts } · sem-conta, sem-permissao (conectar de novo) ou falha',
+  })
+  getInsights(@Query() { days }: QueryInsightsDto) {
+    return this.insights.getInsights(days ?? 7);
   }
 
   @Get('settings')

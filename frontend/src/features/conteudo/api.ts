@@ -1,5 +1,5 @@
 import { api, corpo } from '@/lib/api'
-import type { Post } from './tipos'
+import type { Desempenho, Post } from './tipos'
 
 /** Posts do período (calendário): `de` e `ate` em ISO. */
 export const listarPosts = (de: string, ate: string) => api<Post[]>(`/instagram/posts?${new URLSearchParams({ from: de, to: ate })}`)
@@ -61,3 +61,6 @@ export const enviarCapaDoVideo = (id: string, capa: Blob) => {
 
 /** O vídeo terminou de subir: o servidor confere o arquivo e libera para entrar num post. */
 export const confirmarVideo = (id: string) => api<{ id: string }>(`/instagram/media/${id}/complete`, { method: 'POST' })
+
+/** Estatísticas do perfil (últimos 7 ou 30 dias) e dos últimos posts, lidas na hora na Meta. */
+export const buscarDesempenho = (dias: 7 | 30) => api<Desempenho>(`/instagram/insights?days=${dias}`)
