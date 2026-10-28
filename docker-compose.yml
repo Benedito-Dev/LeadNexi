@@ -16,6 +16,30 @@ services:
       timeout: 5s
       retries: 30
 
+  # Ponte do WhatsApp não oficial (Evolution API), só com `docker compose --profile whatsapp up -d`.
+  # Guarda a sessão no banco "evolution" do mesmo Postgres. Em produção ela roda numa VPS.
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: leadnexi-evolution
+    profiles: ["whatsapp"]
+    environment:
+      SERVER_URL: http://localhost:8081
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-leadnexi-evolution-local}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://leadnexi:leadnexi@postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: leadnexi
+      CACHE_REDIS_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
+      LOG_LEVEL: ERROR,WARN
+    ports:
+      - "8081:8080"
+    volumes:
+      - leadnexi-evolution:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   backend:
     # Os Dockerfiles ficam em docker/: dentro de frontend/ ou backend/ a Vercel os confunde com o
     # framework do serviço ("Multiple frameworks detected") e o deploy falha.
@@ -46,3 +70,4 @@ services:
 
 volumes:
   leadnexi-pgdata:
+  leadnexi-evolution:

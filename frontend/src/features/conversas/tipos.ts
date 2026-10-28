@@ -1,7 +1,7 @@
-/** Canal da conversa. Hoje só o direct do Instagram; o WhatsApp entra como mais um (etapa 7 do mapa). */
+/** Canal da conversa: o direct do Instagram ou o WhatsApp (não oficial, conectado pelo QR code). */
 export type Canal = 'instagram' | 'whatsapp'
 
-/** GET /instagram/inbox: uma conversa, com a última mensagem. Toda pessoa que mandou direct é um lead. */
+/** GET /instagram/inbox e /whatsapp/inbox: uma conversa, com a última mensagem. Toda pessoa que escreveu é um lead. */
 export type Conversa = {
   /** ID do lead */
   id: string
@@ -14,7 +14,7 @@ export type Conversa = {
   /** "Não é lead": fora do funil (arquivado) */
   archived: boolean
   stageName: string
-  /** Ainda dá para responder (janela de 24 h do Instagram) */
+  /** Ainda dá para responder (janela de 24 h do Instagram; no WhatsApp, sempre) */
   canReply: boolean
   lastMessage: { text: string; direction: 'received' | 'sent'; createdAt: string } | null
 }
@@ -31,11 +31,11 @@ export type Mensagem = {
   createdAt: string
 }
 
-/** GET /leads/:id/instagram/conversation */
+/** GET /leads/:id/instagram/conversation e /leads/:id/whatsapp/conversation */
 export type Historico = {
   canReply: boolean
-  /** Por que não dá: nunca mandou direct, passaram 24 h ou a conexão expirou */
-  blocked: 'no-direct' | 'window-closed' | 'reconnect' | 'demo' | null
+  /** Por que não dá. Instagram: nunca mandou direct, passaram 24 h ou a conexão expirou. WhatsApp: sem conversa ou desconectado */
+  blocked: 'no-direct' | 'window-closed' | 'reconnect' | 'no-whatsapp' | 'disconnected' | null
   replyUntil: string | null
   /** Mais antiga primeiro */
   messages: Mensagem[]

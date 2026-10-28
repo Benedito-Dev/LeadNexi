@@ -119,6 +119,10 @@ model Lead {
   avatarUpdatedAt        DateTime?      @map("avatar_updated_at")
   /// Última mensagem que o lead mandou no direct: a janela de 24 h para responder conta daqui
   instagramLastMessageAt DateTime?      @map("instagram_last_message_at")
+  /// Conversa no WhatsApp (JID, ex.: 5585988124471@s.whatsapp.net): liga as mensagens ao lead
+  whatsappJid            String?        @unique @map("whatsapp_jid")
+  /// Última mensagem trocada no WhatsApp (ordena as conversas)
+  whatsappLastMessageAt  DateTime?      @map("whatsapp_last_message_at")
   /// Nome de quem decide na loja (o "responsável"), quando já se sabe
   responsibleName        String?        @map("responsible_name")
   /// Resumo da conversa gerado pela IA: { situation, wants, nextStep, nextStepDays }

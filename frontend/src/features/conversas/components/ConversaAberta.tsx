@@ -20,6 +20,8 @@ import type { Conversa, Historico, Mensagem } from '../tipos'
 /** O Instagram aceita até 1.000 bytes por mensagem (acento e emoji ocupam mais de 1). */
 const LIMITE_EM_BYTES = 1000
 const bytes = (texto: string) => new TextEncoder().encode(texto).length
+/** No WhatsApp o limite do LeadNexi é de caracteres */
+const LIMITE_DO_WHATSAPP = 4096
 
 /** "Hoje", "Ontem" ou "qui., 23 de out." */
 function rotuloDoDia(iso: string) {
@@ -68,7 +70,8 @@ const MOTIVOS: Record<NonNullable<Historico['blocked']>, string> = {
   'no-direct': 'Esta pessoa nunca mandou direct: o Instagram só deixa responder quem escreveu primeiro.',
   'window-closed': 'Passaram 24 h da última mensagem dela: o Instagram só deixa responder dentro desse prazo.',
   reconnect: 'A conexão com o Instagram expirou. Conecte de novo para responder.',
-  demo: 'Demonstração: assim fica uma conversa do WhatsApp. O canal entra na etapa 7 do mapa.',
+  'no-whatsapp': 'Este lead ainda não conversou pelo WhatsApp conectado.',
+  disconnected: 'O WhatsApp não está conectado. Leia o QR code para responder por aqui.',
 }
 
 type Props = {
@@ -135,25 +138,27 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
           <MessagesSquare aria-hidden className="h-8 w-8" strokeWidth={1.75} />
         </span>
         <p className="m-0 text-base font-extrabold text-foreground">Escolha uma conversa</p>
-        <p className="m-0 max-w-xs text-sm font-medium text-muted-foreground">As mensagens do direct aparecem aqui. Você responde sem abrir o Instagram.</p>
+        <p className="m-0 max-w-xs text-sm font-medium text-muted-foreground">As mensagens do direct e do WhatsApp aparecem aqui. Você responde sem abrir o celular.</p>
       </section>
     )
   }
 
-  const tamanho = bytes(texto)
   const whatsapp = conversa.canal === 'whatsapp'
-  const podeEnviar = Boolean(historico?.canReply) && texto.trim().length > 0 && tamanho <= LIMITE_EM_BYTES && !enviando
+  // Instagram conta bytes; WhatsApp, caracteres
+  const tamanho = whatsapp ? texto.length : bytes(texto)
+  const limite = whatsapp ? LIMITE_DO_WHATSAPP : LIMITE_EM_BYTES
+  const podeEnviar = Boolean(historico?.canReply) && texto.trim().length > 0 && tamanho <= limite && !enviando
 
   const enviar = async (evento?: FormEvent) => {
     evento?.preventDefault()
     if (!podeEnviar) return
     setEnviando(true)
     try {
-      onEnviada(await enviarMensagem(conversa.id, texto.trim(), respondendo))
+      onEnviada(await enviarMensagem(conversa.id, conversa.canal, texto.trim(), whatsapp ? null : respondendo))
       setTexto('')
       setRespondendo(null)
     } catch (e) {
-      addToast('error', 'Mensagem não enviada', e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : 'O Instagram não respondeu. Tente de novo.', 6000)
+      addToast('error', 'Mensagem não enviada', e instanceof ErroDeApi && e.status !== null && e.status < 500 ? e.message : whatsapp ? 'O WhatsApp não respondeu. Tente de novo.' : 'O Instagram não respondeu. Tente de novo.', 6000)
     } finally {
       setEnviando(false)
     }
@@ -342,7 +347,7 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                       <MenuDaMensagem
                         mensagem={mensagem}
                         leadId={conversa.id}
-                        podeAnotar={historico.blocked !== 'demo'}
+                        podeAnotar
                         instagram={!whatsapp}
                         podeAgir={historico.canReply}
                         onResponder={() => responder(mensagem)}
@@ -363,9 +368,9 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
           <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
           <span>
             {MOTIVOS[historico.blocked]}{' '}
-            {historico.blocked === 'reconnect' && (
+            {(historico.blocked === 'reconnect' || historico.blocked === 'disconnected') && (
               <Link to="/configuracoes/canais" className="font-bold text-leadnexi-cyan-texto no-underline hover:underline">
-                Conectar de novo
+                {historico.blocked === 'disconnected' ? 'Conectar WhatsApp' : 'Conectar de novo'}
               </Link>
             )}
           </span>
@@ -425,9 +430,9 @@ export function ConversaAberta({ conversa, historico, onEnviada, onVoltar, etapa
                 aria-label="Resposta"
                 className="block max-h-36 min-h-12 w-full resize-none rounded-3xl border border-input bg-background px-5 py-3 text-sm leading-6 text-foreground outline-none [field-sizing:content] placeholder:text-muted-foreground focus:border-leadnexi-violet/60"
               />
-              {tamanho > LIMITE_EM_BYTES * 0.8 && (
-                <span className={cn('absolute -top-5 right-1 text-[11px] font-semibold tabular-nums', tamanho > LIMITE_EM_BYTES ? 'text-leadnexi-danger' : 'text-muted-foreground')}>
-                  {tamanho}/{LIMITE_EM_BYTES}
+              {tamanho > limite * 0.8 && (
+                <span className={cn('absolute -top-5 right-1 text-[11px] font-semibold tabular-nums', tamanho > limite ? 'text-leadnexi-danger' : 'text-muted-foreground')}>
+                  {tamanho}/{limite}
                 </span>
               )}
             </div>

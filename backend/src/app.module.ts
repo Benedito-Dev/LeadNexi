@@ -14,6 +14,7 @@ import { PipelinesModule } from './pipelines/pipelines.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ResultsModule } from './results/results.module.js';
 import { StagesModule } from './stages/stages.module.js';
+import { WhatsAppModule } from './whatsapp/whatsapp.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { StagesModule } from './stages/stages.module.js';
     AiModule,
     ClientsModule,
     McpModule,
+    WhatsAppModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: PrismaExceptionFilter }],

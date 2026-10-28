@@ -46,6 +46,20 @@ npm install
 npm run dev                # http://localhost:5173
 ```
 
+### WhatsApp não oficial (no Mac)
+
+A ponte do WhatsApp (Evolution API) roda no Docker, ao lado do Postgres, e guarda a sessão no banco `evolution`:
+
+```bash
+docker exec leadnexi-postgres psql -U leadnexi -c "CREATE DATABASE evolution"   # só na 1ª vez
+docker compose --profile whatsapp up -d    # ponte em http://localhost:8081
+```
+
+No `backend/.env`: `EVOLUTION_URL=http://localhost:8081`, `EVOLUTION_API_KEY=leadnexi-evolution-local` e
+`WHATSAPP_WEBHOOK_URL=http://host.docker.internal:3000/api/whatsapp/webhook` (a ponte, dentro do Docker, chega ao
+backend por esse endereço). Depois, em Configurações › Canais › WhatsApp, "Conectar WhatsApp" mostra o QR code.
+Use um chip só para prospecção: pela via não oficial, o WhatsApp pode bloquear o número.
+
 ### Tudo no Docker
 
 ```bash

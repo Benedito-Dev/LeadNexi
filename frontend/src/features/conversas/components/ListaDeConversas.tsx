@@ -2,7 +2,7 @@ import { Columns3, MessagesSquare, RefreshCw, Search } from 'lucide-react'
 import { FotoRedonda } from '@/components/ui/foto-redonda'
 import { cn } from '@/lib/utils'
 import { formatarDecorrido } from '../../hoje/textos'
-import { fotoDoLead } from '../api'
+import { chaveDaConversa, fotoDoLead } from '../api'
 import { SeloDoCanal } from './SeloDoCanal'
 import { esperandoVoce, FILTROS, type Filtro } from '../filtros'
 import type { Conversa } from '../tipos'
@@ -13,13 +13,14 @@ type Props = {
   onFiltro: (filtro: Filtro) => void
   busca: string
   onBusca: (busca: string) => void
-  abertaId: string | null
+  /** Chave da conversa aberta (canal + lead) */
+  abertaChave: string | null
   onAbrir: (conversa: Conversa) => void
   onAtualizar: () => void
 }
 
 /** Coluna da esquerda: busca, filtros em pílulas e as conversas (a mais recente em cima). */
-export function ListaDeConversas({ conversas, filtro, onFiltro, busca, onBusca, abertaId, onAbrir, onAtualizar }: Props) {
+export function ListaDeConversas({ conversas, filtro, onFiltro, busca, onBusca, abertaChave, onAbrir, onAtualizar }: Props) {
   const termo = busca.trim().toLowerCase()
   const visiveis = (conversas ?? []).filter((c) => {
     if (filtro === 'sua-vez' && !esperandoVoce(c)) return false
@@ -98,7 +99,7 @@ export function ListaDeConversas({ conversas, filtro, onFiltro, busca, onBusca, 
         ) : (
           <ul className="m-0 flex flex-col p-0">
             {visiveis.map((conversa) => (
-              <ItemDaLista key={conversa.id} conversa={conversa} aberta={conversa.id === abertaId} onAbrir={() => onAbrir(conversa)} />
+              <ItemDaLista key={chaveDaConversa(conversa)} conversa={conversa} aberta={chaveDaConversa(conversa) === abertaChave} onAbrir={() => onAbrir(conversa)} />
             ))}
           </ul>
         )}

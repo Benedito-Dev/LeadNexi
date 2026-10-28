@@ -6,7 +6,8 @@ Toda tela nova parte daqui; se o plano mudar, este arquivo muda antes do código
 Decisões que guiam o mapa (25/10/2026):
 
 - **Uso de uma pessoa só** (o Benedito). Sem contas separadas, planos ou permissões.
-- **WhatsApp por API não oficial**, entrando na caixa de Conversas no futuro. Hoje continua pelo link `wa.me`.
+- **WhatsApp por API não oficial** (Evolution API, conectado pelo QR code) na caixa de Conversas. O 1º contato da
+  cadência continua pelo link `wa.me`, que abre o WhatsApp com a mensagem pronta.
 - **MCP para o Claude consultar e agir** (ler leads e resultados, criar lead, registrar contato, agendar post).
 
 ## 1. Princípios
@@ -72,7 +73,12 @@ Ainda entra aqui (pequeno, sem tela nova):
 - Instagram: **tem** `GET /instagram/inbox`, `GET /leads/:id/instagram/conversation`, `POST /leads/:id/instagram/messages`.
 - Caixa única: **falta** `GET /conversations` (todas, com canal) e `GET /conversations/:leadId` (as mensagens
   dos dois canais em ordem). As mensagens já ficam em `LeadActivity` com `channel`; é juntar, não criar tabela.
-- WhatsApp: **falta** (etapa 7).
+- WhatsApp: **tem** `GET /whatsapp/inbox`, `GET /leads/:id/whatsapp/conversation`, `POST /leads/:id/whatsapp/messages`.
+  A tela junta as duas caixas numa lista só (`?lead=...&canal=...`). Cada mensagem chega pelo aviso da Evolution
+  (`POST /whatsapp/webhook?token=...`) e vai para o lead da conversa, achado pelo telefone (com ou sem 55 e o 9);
+  quem não é lead e escreve vira um (origem "WhatsApp"). As mensagens do próprio número (celular, WhatsApp Web
+  ou LeadNexi) entram como enviadas com `cadenceStep: 0`, sem contar como 1º contato. Sem janela de 24 h:
+  responde enquanto o número estiver conectado. Falta o filtro por canal na lista.
 
 **Arquitetura dos canais:** cada canal é um *adaptador* no servidor com o mesmo contrato:
 receber mensagem (webhook) → gravar no histórico do lead; enviar mensagem → registrar no histórico.
@@ -146,7 +152,9 @@ Uma tela com sub-abas à esquerda (no celular, uma lista que abre cada uma).
 - **Canais:** um cartão por canal, no mesmo formato (situação, conectar, desconectar, o que falta configurar).
   - Instagram: app da Meta, conectar a conta, conta conectada. Tela **feita** (ainda não commitada como
     `/instagram`; muda para cá). Servidor: **tem**.
-  - WhatsApp: ler o QR code do aparelho, situação da sessão, desconectar. Servidor: **falta** (etapa 7).
+  - WhatsApp: ler o QR code do aparelho (renova a cada 30 s), situação da sessão, desconectar. Servidor: **tem**
+    `GET /whatsapp/status`, `POST /whatsapp/connect`, `DELETE /whatsapp/session`. A ponte (Evolution API) precisa
+    de uma máquina sempre ligada: hoje o teste é no Mac (Docker); para produção, uma VPS.
 - **Prospecção:** meta diária e semanal, meta de faturamento, dias da cadência, modelos de mensagem
   (1ª mensagem, Retomada e Última, com os marcadores `{saudacao}`, `{loja}` e `{data}`; vazio = texto padrão).
   Servidor: **tem** `GET/PATCH /results/settings` (metas e modelos); dias da cadência **faltam**.
@@ -213,7 +221,7 @@ Cada etapa entrega valor sozinha e não refaz a anterior.
 | 4 | **Clientes** e **Resultados** | lança um relatório e vê o placar da semana |
 | 5 | **IA dentro das ações** + modelos de mensagem em Prospecção | gera a mensagem do lead em foco na tela Hoje |
 | 6 | **MCP** + Configurações › IA e Claude | o Claude cria um lead e registra um contato |
-| 7 | **WhatsApp não oficial** (adaptador + Canais › WhatsApp + filtro em Conversas) | uma resposta do WhatsApp aparece em Conversas |
+| 7 | **WhatsApp não oficial** (adaptador + Canais › WhatsApp + filtro em Conversas) | uma resposta do WhatsApp aparece em Conversas · **feita no Mac** (28/10/2026); falta a VPS e o filtro por canal |
 | 8 | **Listas** e gerador de lista | monta uma lista nova pelo Google Maps |
 
 A ordem pode trocar entre etapas independentes (3, 4 e 8 não dependem umas das outras).

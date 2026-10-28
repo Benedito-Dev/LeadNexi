@@ -7,15 +7,14 @@ import { buscarLead, listarPipelines, moverLead } from '../crm/api'
 import { LeadModal } from '../crm/components/LeadModal'
 import { corDaEtapa } from '../crm/etapas'
 import type { Etapa, PipelineResumo, StageType } from '../crm/types'
-import { buscarHistorico, listarConversas } from './api'
+import { buscarHistorico, chaveDaConversa, listarConversas } from './api'
 import { ConversaAberta } from './components/ConversaAberta'
 import { ListaDeConversas } from './components/ListaDeConversas'
 import { ResumoDoLead, type LeadDoPainel } from './components/ResumoDoLead'
-import { CONVERSAS_DE_DEMONSTRACAO, ehDemonstracao, HISTORICOS_DE_DEMONSTRACAO } from './demonstracao'
 import { esperandoVoce, type Filtro } from './filtros'
-import type { Conversa, Historico, Mensagem } from './tipos'
+import type { Canal, Conversa, Historico, Mensagem } from './tipos'
 
-/** De quanto em quanto tempo a lista e a conversa aberta buscam mensagens novas (o direct chega sozinho). */
+/** De quanto em quanto tempo a lista e a conversa aberta buscam mensagens novas (direct e WhatsApp chegam sozinhos). */
 const ATUALIZA_LISTA_MS = 20_000
 const ATUALIZA_CONVERSA_MS = 8_000
 
@@ -33,9 +32,9 @@ function useRepetir(tarefa: () => void, ms: number, ativo = true) {
 }
 
 /**
- * Conversas: a caixa de entrada do direct do Instagram dentro do LeadNexi. Lista à esquerda, a
- * conversa aberta no meio (com resposta) e o resumo do lead à direita. A conversa aberta fica no
- * endereço (?lead=...), para dar para voltar nela.
+ * Conversas: a caixa de entrada do direct do Instagram e do WhatsApp dentro do LeadNexi. Lista à
+ * esquerda, a conversa aberta no meio (com resposta) e o resumo do lead à direita. A conversa aberta
+ * fica no endereço (?lead=...&canal=...), para dar para voltar nela.
  */
 export function ConversasPage() {
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
@@ -44,7 +43,10 @@ export function ConversasPage() {
   const [busca, setBusca] = useState('')
   const [params, setParams] = useSearchParams()
   const abertaId = params.get('lead')
-  const [historico, setHistorico] = useState<{ leadId: string; dados: Historico } | null>(null)
+  // O mesmo lead pode conversar pelos dois canais; endereço antigo, sem canal, é do Instagram
+  const canalAberto: Canal = params.get('canal') === 'whatsapp' ? 'whatsapp' : 'instagram'
+  const chaveAberta = abertaId ? chaveDaConversa({ id: abertaId, canal: canalAberto }) : null
+  const [historico, setHistorico] = useState<{ chave: string; dados: Historico } | null>(null)
   const [lead, setLead] = useState<LeadComEtapa | null>(null)
   const [fichaAberta, setFichaAberta] = useState(false)
   const [cores, setCores] = useState<Record<string, string>>({})
@@ -67,9 +69,8 @@ export function ConversasPage() {
       return !visivel
     })
 
-  const aberta = conversas?.find((c) => c.id === abertaId) ?? null
-  // A demonstração do WhatsApp não vem do servidor: o histórico dela é fixo
-  const historicoDaAberta = ehDemonstracao(abertaId) ? (HISTORICOS_DE_DEMONSTRACAO[abertaId!] ?? null) : historico?.leadId === abertaId ? historico.dados : null
+  const aberta = conversas?.find((c) => chaveDaConversa(c) === chaveAberta) ?? null
+  const historicoDaAberta = historico?.chave === chaveAberta ? historico.dados : null
   const leadDaAberta = lead?.id === abertaId ? lead : null
 
   // Sobe a cada mudança feita aqui (ex.: "Não é lead"): a lista que saiu antes dela chega velha e é descartada
@@ -80,21 +81,18 @@ export function ConversasPage() {
     listarConversas()
       .then((lista) => {
         if (versao !== versaoLocal.current) return
-        // Demonstração do WhatsApp (só no ambiente local), na ordem pela última mensagem
-        const todas = [...lista, ...CONVERSAS_DE_DEMONSTRACAO].sort((a, b) => (b.lastMessage?.createdAt ?? '').localeCompare(a.lastMessage?.createdAt ?? ''))
-        setConversas(todas)
+        setConversas(lista)
         setErro(false)
       })
       .catch(() => setErro(true))
   }, [])
 
   const carregarConversa = useCallback(() => {
-    if (!abertaId) return
-    if (ehDemonstracao(abertaId)) return
-    buscarHistorico(abertaId)
-      .then((dados) => setHistorico({ leadId: abertaId, dados }))
+    if (!abertaId || !chaveAberta) return
+    buscarHistorico(abertaId, canalAberto)
+      .then((dados) => setHistorico({ chave: chaveAberta, dados }))
       .catch(() => undefined)
-  }, [abertaId, setHistorico])
+  }, [abertaId, canalAberto, chaveAberta, setHistorico])
 
   useEffect(() => {
     carregarLista()
@@ -110,7 +108,7 @@ export function ConversasPage() {
   }, [carregarLista])
 
   const carregarLead = useCallback(() => {
-    if (!abertaId || ehDemonstracao(abertaId)) return
+    if (!abertaId) return
     buscarLead(abertaId)
       .then((encontrado) => setLead(encontrado))
       .catch(() => undefined)
@@ -136,11 +134,11 @@ export function ConversasPage() {
   useRepetir(carregarLista, ATUALIZA_LISTA_MS)
   useRepetir(carregarConversa, ATUALIZA_CONVERSA_MS, Boolean(abertaId))
 
-  const abrir = (conversa: Conversa) => setParams({ lead: conversa.id }, { replace: true })
+  const abrir = (conversa: Conversa) => setParams({ lead: conversa.id, canal: conversa.canal }, { replace: true })
 
   const enviada = (mensagem: Mensagem) => {
-    setHistorico((h) => (h && h.leadId === abertaId ? { ...h, dados: { ...h.dados, messages: [...h.dados.messages, mensagem] } } : h))
-    setConversas((lista) => lista?.map((c) => (c.id === abertaId ? { ...c, lastMessage: { text: mensagem.text, direction: 'sent', createdAt: mensagem.createdAt } } : c)) ?? null)
+    setHistorico((h) => (h && h.chave === chaveAberta ? { ...h, dados: { ...h.dados, messages: [...h.dados.messages, mensagem] } } : h))
+    setConversas((lista) => lista?.map((c) => (chaveDaConversa(c) === chaveAberta ? { ...c, lastMessage: { text: mensagem.text, direction: 'sent', createdAt: mensagem.createdAt } } : c)) ?? null)
   }
 
   const suaVez = (conversas ?? []).filter(esperandoVoce).length
@@ -167,12 +165,12 @@ export function ConversasPage() {
         <div className="grid h-[calc(100dvh-11rem)] min-h-[520px] overflow-hidden rounded-xl border border-border bg-card md:grid-cols-[340px_minmax(0,1fr)]">
           {/* No celular, uma coluna por vez: a lista ou a conversa */}
           <div className={cn('min-h-0', abertaId ? 'hidden md:flex md:flex-col' : 'flex flex-col')}>
-            <ListaDeConversas conversas={conversas} filtro={filtro} onFiltro={setFiltro} busca={busca} onBusca={setBusca} abertaId={abertaId} onAbrir={abrir} onAtualizar={carregarLista} />
+            <ListaDeConversas conversas={conversas} filtro={filtro} onFiltro={setFiltro} busca={busca} onBusca={setBusca} abertaChave={chaveAberta} onAbrir={abrir} onAtualizar={carregarLista} />
           </div>
           <div className={cn('min-h-0 min-w-0', abertaId ? 'flex' : 'hidden md:flex')}>
             {/* A chave zera o rascunho ao trocar de conversa */}
             <ConversaAberta
-              key={aberta?.id ?? 'nenhuma'}
+              key={aberta ? chaveDaConversa(aberta) : 'nenhuma'}
               conversa={aberta}
               historico={historicoDaAberta}
               onEnviada={enviada}
@@ -185,7 +183,7 @@ export function ConversasPage() {
               onAlternarFicha={alternarFicha}
               onNotaSalva={carregarLead}
               onReagiu={(id, reaction) =>
-                setHistorico((h) => (h && h.leadId === abertaId ? { ...h, dados: { ...h.dados, messages: h.dados.messages.map((m) => (m.id === id ? { ...m, reaction } : m)) } } : h))
+                setHistorico((h) => (h && h.chave === chaveAberta ? { ...h, dados: { ...h.dados, messages: h.dados.messages.map((m) => (m.id === id ? { ...m, reaction } : m)) } } : h))
               }
             />
             {/* A ficha desliza da direita: a coluna abre a largura e o conteúdo entra com um esmaecimento */}
@@ -203,9 +201,9 @@ export function ConversasPage() {
                     onAbrirFicha={() => setFichaAberta(true)}
                     onMudouLead={(archived) => {
                       versaoLocal.current += 1
+                      // O lead é o mesmo nos dois canais
                       setConversas((lista) => lista?.map((c) => (c.id === aberta.id ? { ...c, archived } : c)) ?? null)
                     }}
-                    demonstracao={ehDemonstracao(aberta.id)}
                   />
                 </div>
               </div>
