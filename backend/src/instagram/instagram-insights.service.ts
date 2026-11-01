@@ -124,7 +124,7 @@ export class InstagramInsightsService {
         });
         return { status: 'sem-conta' };
       }
-      if (isMissingPermission(error)) return { status: 'sem-permissao' };
+      if (error instanceof InstagramApiError && error.missingPermission) return { status: 'sem-permissao' };
       this.logger.warn(`Estatísticas do Instagram não lidas: ${(error as Error).message}`);
       return { status: 'falha' };
     }
@@ -163,12 +163,4 @@ export class InstagramInsightsService {
       avgWatchMs: of('ig_reels_avg_watch_time'),
     };
   }
-}
-
-/** A Meta recusou por falta de permissão (10 e 200 são os códigos de permissão da Graph API). */
-function isMissingPermission(error: unknown) {
-  return (
-    error instanceof InstagramApiError &&
-    (error.code === 10 || error.code === 200 || /permission/i.test(error.message))
-  );
 }

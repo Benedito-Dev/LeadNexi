@@ -3,13 +3,22 @@ import * as z from 'zod/v4';
 import { CAPTION_LIMIT, MAX_IMAGES } from '../instagram/dto/create-instagram-post.dto.js';
 import { MAX_DIRECT_IMAGE_BYTES, MAX_VIDEO_BYTES, MAX_VIDEO_MS, MIN_VIDEO_MS } from '../instagram/dto/video-upload.dto.js';
 import type { InstagramDirectUploadService } from '../instagram/instagram-direct-upload.service.js';
+import {
+  DEFAULT_PERFORMANCE_DAYS,
+  DEFAULT_PERFORMANCE_LIMIT,
+  type InstagramPostPerformanceService,
+  MAX_PERFORMANCE_DAYS,
+  MAX_PERFORMANCE_LIMIT,
+} from '../instagram/instagram-post-performance.service.js';
 import type { InstagramPostsService } from '../instagram/instagram-posts.service.js';
+import { PERFORMANCE_SORTS, PERFORMANCE_TYPES } from '../instagram/post-performance.metrics.js';
 import type { InstagramPublisherService } from '../instagram/instagram-publisher.service.js';
 
 export type McpConteudoDeps = {
   posts: InstagramPostsService;
   publisher: InstagramPublisherService;
   envio: InstagramDirectUploadService;
+  desempenho: InstagramPostPerformanceService;
   /** Endereço público do site: os links de envio locais (desenvolvimento) viram completos */
   origin: string;
 };
@@ -35,7 +44,7 @@ const resumoDoPost = (post: PostDaTela) => ({
  * imagens e vídeos direto ao armazenamento, guardar como rascunho, ver rascunhos e agendados e
  * agendar. Chamam os mesmos serviços da tela Conteúdo.
  */
-export function registrarConteudo(server: McpServer, { posts, publisher, envio, origin }: McpConteudoDeps) {
+export function registrarConteudo(server: McpServer, { posts, publisher, envio, desempenho, origin }: McpConteudoDeps) {
   const completo = (url: string) => (url.startsWith('/') ? `${origin}${url}` : url);
 
   server.registerTool(
@@ -154,6 +163,30 @@ export function registrarConteudo(server: McpServer, { posts, publisher, envio, 
     async ({ id, quando }) => {
       const post = await publisher.update(id, { scheduledAt: quando }, origin);
       return resposta({ scheduled: true, ...resumoDoPost(post), automaticPublishingOff: 'alarmFailed' in post ? post.alarmFailed : undefined });
+    },
+  );
+
+  server.registerTool(
+    'ver_desempenho_posts',
+    {
+      title: 'Ver desempenho dos posts',
+      description:
+        'Ranking de desempenho dos posts e Reels do Instagram conectado ao LeadNexi, com views, alcance, compartilhamentos, salvamentos, retenção e taxa de pulo. Use para descobrir qual conteúdo viralizou e por quê.',
+      inputSchema: {
+        dias: z.number().int().min(1).max(MAX_PERFORMANCE_DAYS).optional().describe(`Posts publicados nos últimos N dias (padrão ${DEFAULT_PERFORMANCE_DAYS})`),
+        tipo: z.enum(PERFORMANCE_TYPES).optional().describe('REELS, FEED (foto e carrossel) ou TODOS (padrão)'),
+        ordenar_por: z
+          .enum(PERFORMANCE_SORTS)
+          .optional()
+          .describe('Critério do ranking (padrão views). taxa_compartilhamento é o melhor sinal de viralização; reels_skip_rate ordena da menor para a maior'),
+        limite: z.number().int().min(1).max(MAX_PERFORMANCE_LIMIT).optional().describe(`Quantos posts no ranking (padrão ${DEFAULT_PERFORMANCE_LIMIT})`),
+        forcar_atualizacao: z.boolean().optional().describe('true: lê de novo na Meta mesmo com coleta de menos de 6 h'),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ dias, tipo, ordenar_por, limite, forcar_atualizacao }) => {
+      const { status, ...relatorio } = await desempenho.getReport({ days: dias, type: tipo, sortBy: ordenar_por, limit: limite, refresh: forcar_atualizacao });
+      return resposta(status === 'ok' ? relatorio : { status, ...relatorio });
     },
   );
 }

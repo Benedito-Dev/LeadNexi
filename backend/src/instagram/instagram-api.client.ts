@@ -5,6 +5,8 @@ export const GRAPH_VERSION = 'v25.0';
 
 /** Código da Meta para token recusado (expirado, revogado ou inválido) */
 const INVALID_TOKEN_CODE = 190;
+/** Códigos de limite de chamadas da Graph API (app, usuário, caso de uso de negócio) */
+const RATE_LIMIT_CODES = new Set([4, 17, 32, 613, 80002]);
 
 type Json = Record<string, unknown>;
 
@@ -24,6 +26,16 @@ export class InstagramApiError extends Error {
   /** O token não vale mais: só reconectando a conta resolve */
   get invalidToken() {
     return this.code === INVALID_TOKEN_CODE;
+  }
+
+  /** Falta permissão no token (10 e 200 são os códigos de permissão da Graph API) */
+  get missingPermission() {
+    return this.code === 10 || this.code === 200 || /permission/i.test(this.message);
+  }
+
+  /** A Meta pediu para esperar: limite de chamadas atingido */
+  get rateLimited() {
+    return this.code !== undefined && RATE_LIMIT_CODES.has(this.code);
   }
 }
 
@@ -98,6 +110,27 @@ export interface MediaWithCounts {
   timestamp: string | null;
   likes: number | null;
   comments: number | null;
+}
+
+/** Post do perfil para o ranking de desempenho (ver listMediaSince) */
+export interface MediaForPerformance {
+  id: string;
+  /** IMAGE, VIDEO ou CAROUSEL_ALBUM */
+  mediaType: string;
+  /** FEED ou REELS (STORY não vem em /me/media) */
+  productType: string;
+  caption: string | null;
+  permalink: string | null;
+  timestamp: Date;
+  likes: number | null;
+  comments: number | null;
+}
+
+/** Valores de estatística de um post e o uso do limite de chamadas na resposta */
+export interface MediaInsightsReading {
+  values: Record<string, number>;
+  /** Maior percentual de uso informado pela Meta (0–100), ou null sem o cabeçalho */
+  usagePercent: number | null;
 }
 
 /** Seguidores ganhos e perdidos num período (follows_and_unfollows) */
@@ -530,6 +563,19 @@ export class InstagramApiClient {
     token: string,
     metrics: string[],
   ): Promise<Record<string, number>> {
+    return (await this.readMediaInsights(mediaId, token, metrics)).values;
+  }
+
+  /**
+   * Como getMediaInsights, mas também devolve o uso do limite de chamadas (cabeçalhos
+   * X-App-Usage / X-Business-Use-Case-Usage), para quem faz muitas chamadas seguidas frear.
+   * Métrica sem dado vem ausente de `values` (a Meta manda conjunto vazio, não 0).
+   */
+  async readMediaInsights(
+    mediaId: string,
+    token: string,
+    metrics: string[],
+  ): Promise<MediaInsightsReading> {
     const url = new URL(
       `https://graph.instagram.com/${GRAPH_VERSION}/${mediaId}/insights`,
     );
@@ -537,7 +583,7 @@ export class InstagramApiClient {
       metric: metrics.join(','),
       access_token: token,
     }).toString();
-    const body = await this.request(url);
+    const { body, headers } = await this.requestWithHeaders(url);
     const items = Array.isArray(body.data) ? (body.data as Json[]) : [];
     const values: Record<string, number> = {};
     for (const item of items) {
@@ -548,7 +594,55 @@ export class InstagramApiClient {
       const value = optionalNumber(first?.value);
       if (name && value !== null) values[name] = value;
     }
-    return values;
+    return { values, usagePercent: usagePercent(headers) };
+  }
+
+  /**
+   * Posts publicados desde `since`, do mais recente ao mais antigo, seguindo a paginação
+   * (no máximo `maxPages` páginas de 50). Itens de carrossel não vêm soltos: só o álbum.
+   */
+  async listMediaSince(
+    token: string,
+    since: Date,
+    maxPages = 10,
+  ): Promise<{ media: MediaForPerformance[]; complete: boolean }> {
+    const url = new URL(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/media`,
+    );
+    url.search = new URLSearchParams({
+      fields:
+        'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count',
+      limit: '50',
+      since: String(Math.floor(since.getTime() / 1000)),
+      access_token: token,
+    }).toString();
+
+    const media: MediaForPerformance[] = [];
+    let next: string | null = url.toString();
+    for (let page = 0; next && page < maxPages; page++) {
+      const body = await this.request(next);
+      const items = Array.isArray(body.data) ? (body.data as Json[]) : [];
+      for (const item of items) {
+        const id = optionalString(item.id);
+        const timestamp = new Date(String(item.timestamp));
+        if (!id || Number.isNaN(timestamp.getTime())) continue;
+        // Garantia caso a Meta ignore o `since`: a lista vem do mais novo para o mais antigo
+        if (timestamp < since) return { media, complete: true };
+        media.push({
+          id,
+          mediaType: optionalString(item.media_type) ?? 'IMAGE',
+          productType: optionalString(item.media_product_type) ?? 'FEED',
+          caption: optionalString(item.caption),
+          permalink: optionalString(item.permalink),
+          timestamp,
+          likes: optionalNumber(item.like_count),
+          comments: optionalNumber(item.comments_count),
+        });
+      }
+      const paging = body.paging as Json | undefined;
+      next = paging ? optionalString(paging.next) : null;
+    }
+    return { media, complete: next === null };
   }
 
   /** Total de uma métrica da conta entre `since` e `until` (no máximo 30 dias, regra da Meta). */
@@ -628,6 +722,13 @@ export class InstagramApiClient {
   }
 
   private async request(url: string | URL, init?: RequestInit): Promise<Json> {
+    return (await this.requestWithHeaders(url, init)).body;
+  }
+
+  private async requestWithHeaders(
+    url: string | URL,
+    init?: RequestInit,
+  ): Promise<{ body: Json; headers: Headers }> {
     let res: Response;
     try {
       res = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
@@ -636,8 +737,41 @@ export class InstagramApiClient {
     }
     const body = (await res.json().catch(() => ({}))) as Json;
     if (!res.ok || body.error !== undefined) throw toApiError(res.status, body);
-    return body;
+    return { body, headers: res.headers };
   }
+}
+
+/**
+ * Maior percentual de uso do limite de chamadas nos cabeçalhos da Meta. X-App-Usage traz
+ * `{ call_count, total_cputime, total_time }`; X-Business-Use-Case-Usage traz, por conta,
+ * uma lista com os mesmos campos. Cabeçalho ausente ou ilegível: null.
+ */
+export function usagePercent(headers: Headers): number | null {
+  const values: number[] = [];
+  const collect = (entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return;
+    for (const field of ['call_count', 'total_cputime', 'total_time']) {
+      const value = (entry as Json)[field];
+      if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
+    }
+  };
+  const parse = (name: string) => {
+    const raw = headers.get(name);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  };
+  collect(parse('x-app-usage'));
+  const business = parse('x-business-use-case-usage');
+  if (business && typeof business === 'object') {
+    for (const list of Object.values(business as Json)) {
+      if (Array.isArray(list)) list.forEach(collect);
+    }
+  }
+  return values.length ? Math.max(...values) : null;
 }
 
 /** Algumas respostas vêm dentro de `data: [...]` (conforme a documentação), outras soltas. */

@@ -339,6 +339,46 @@ model InstagramAppSettings {
   @@map("instagram_app_settings")
 }
 
+// Retrato dos números de um post do Instagram num momento (ferramenta ver_desempenho_posts).
+// Cada coleta grava uma linha nova, nunca sobrescreve: a sequência mostra a curva do post.
+// Métrica que a Meta não deu fica null (não 0) e o nome dela vai em `unavailable`.
+model PostMetric {
+  id                 String   @id @default(uuid())
+  /// Conta do Instagram dona do post (igUserId)
+  igUserId           String   @map("ig_user_id")
+  /// ID do post na Meta
+  mediaId            String   @map("media_id")
+  collectedAt        DateTime @default(now()) @map("collected_at")
+  /// IMAGE, VIDEO ou CAROUSEL_ALBUM
+  mediaType          String   @map("media_type")
+  /// FEED ou REELS
+  productType        String   @map("product_type")
+  caption            String?
+  permalink          String?
+  publishedAt        DateTime @map("published_at")
+  views              Int?
+  reach              Int?
+  likes              Int?
+  comments           Int?
+  shares             Int?
+  saved              Int?
+  totalInteractions  Int?     @map("total_interactions")
+  reposts            Int?
+  /// Só Reels: tempo médio assistido, em milissegundos
+  avgWatchTimeMs     Int?     @map("avg_watch_time_ms")
+  /// Só Reels: tempo total assistido, em milissegundos (passa do limite de Int em Reel grande)
+  viewTotalTimeMs    Float?   @map("view_total_time_ms")
+  /// Só Reels: % de quem pulou nos primeiros segundos (estimativa da Meta)
+  skipRate           Float?   @map("skip_rate")
+  /// Métricas pedidas que vieram vazias ou foram recusadas pela Meta
+  unavailable        String[] @default([])
+
+  @@index([mediaId, collectedAt(sort: Desc)])
+  @@index([igUserId, publishedAt])
+  @@index([collectedAt])
+  @@map("post_metrics")
+}
+
 enum InstagramPostStatus {
   /// Guardado sem data: espera alguém (a pessoa ou o agente Estrategista) escolher quando sai
   DRAFT

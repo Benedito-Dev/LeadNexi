@@ -26,8 +26,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { publicOrigin } from '../common/utils/public-origin.js';
 import { QueryInsightsDto } from './dto/query-insights.dto.js';
+import { QueryPostPerformanceDto } from './dto/query-post-performance.dto.js';
 import { SaveInstagramSettingsDto } from './dto/save-instagram-settings.dto.js';
 import { InstagramInsightsService } from './instagram-insights.service.js';
+import { InstagramPostPerformanceService } from './instagram-post-performance.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 import { InstagramService } from './instagram.service.js';
 
@@ -39,6 +41,7 @@ export class InstagramController {
     private readonly instagram: InstagramService,
     private readonly settings: InstagramSettingsService,
     private readonly insights: InstagramInsightsService,
+    private readonly performance: InstagramPostPerformanceService,
   ) {}
 
   @Get('account')
@@ -71,6 +74,17 @@ export class InstagramController {
   })
   getInsights(@Query() { days }: QueryInsightsDto) {
     return this.insights.getInsights(days ?? 7);
+  }
+
+  @Get('insights/posts')
+  @ApiOperation({
+    summary: 'Ranking de desempenho dos posts e Reels (views, alcance, compartilhamentos, salvamentos, retenção), com histórico em post_metrics',
+  })
+  @ApiOkResponse({
+    description: '{ status, resumo, ranking, avisos } · coleta na Meta no máximo a cada 6 h (refresh=true força)',
+  })
+  getPostPerformance(@Query() query: QueryPostPerformanceDto) {
+    return this.performance.getReport(query);
   }
 
   @Get('settings')

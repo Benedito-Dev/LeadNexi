@@ -17,6 +17,7 @@ function setup() {
       start: vi.fn().mockResolvedValue({ id: 'm-2', uploadUrl: 'https://bucket/video?sig', headers: {}, posterUploadUrl: 'https://bucket/capa?sig', posterHeaders: {} }),
       complete: vi.fn().mockResolvedValue({ id: 'm-1', sizeBytes: 10 }),
     },
+    desempenho: { getReport: vi.fn().mockResolvedValue({ status: 'ok', resumo: { total_posts: 0 }, ranking: [], avisos: [] }) },
     origin: 'https://leadnexi.vercel.app',
   };
   registrarConteudo(server as unknown as McpServer, deps as unknown as McpConteudoDeps);
@@ -45,5 +46,15 @@ describe('Ferramentas de Conteúdo do MCP', () => {
     const { deps, chamar } = setup();
     await chamar('agendar_post', { id: 'post-1', quando: '2026-10-30T19:30:00-03:00' });
     expect(deps.publisher.update).toHaveBeenCalledWith('post-1', { scheduledAt: '2026-10-30T19:30:00-03:00' }, 'https://leadnexi.vercel.app');
+  });
+
+  it('ver_desempenho_posts traduz os parâmetros e só mostra o status quando não é ok', async () => {
+    const { deps, chamar } = setup();
+    const ok = await chamar('ver_desempenho_posts', { dias: 7, tipo: 'REELS', ordenar_por: 'shares', limite: 5, forcar_atualizacao: true });
+    expect(deps.desempenho.getReport).toHaveBeenCalledWith({ days: 7, type: 'REELS', sortBy: 'shares', limit: 5, refresh: true });
+    expect(ok).toEqual({ resumo: { total_posts: 0 }, ranking: [], avisos: [] });
+
+    deps.desempenho.getReport.mockResolvedValue({ status: 'sem-permissao', resumo: null, ranking: [], avisos: ['x'] });
+    expect((await chamar('ver_desempenho_posts')).status).toBe('sem-permissao');
   });
 });

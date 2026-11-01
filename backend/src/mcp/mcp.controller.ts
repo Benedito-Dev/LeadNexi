@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { stableOrigin } from '../common/utils/public-origin.js';
 import { InstagramDirectUploadService } from '../instagram/instagram-direct-upload.service.js';
+import { InstagramPostPerformanceService } from '../instagram/instagram-post-performance.service.js';
 import { InstagramPostsService } from '../instagram/instagram-posts.service.js';
 import { InstagramPublisherService } from '../instagram/instagram-publisher.service.js';
 import { ClientsService } from '../clients/clients.service.js';
@@ -39,6 +40,7 @@ export class McpController {
     private readonly posts: InstagramPostsService,
     private readonly publisher: InstagramPublisherService,
     private readonly envio: InstagramDirectUploadService,
+    private readonly desempenho: InstagramPostPerformanceService,
   ) {}
 
   @Post()
@@ -52,7 +54,7 @@ export class McpController {
     const deps: McpDeps = { leads: this.leads, activities: this.activities, results: this.results, clients: this.clients, pipelines: this.pipelines };
     registrarFerramentas(server, deps);
     registrarAcoes(server, deps);
-    registrarConteudo(server, { posts: this.posts, publisher: this.publisher, envio: this.envio, origin: stableOrigin(req) });
+    registrarConteudo(server, { posts: this.posts, publisher: this.publisher, envio: this.envio, desempenho: this.desempenho, origin: stableOrigin(req) });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => {
       void transport.close();
