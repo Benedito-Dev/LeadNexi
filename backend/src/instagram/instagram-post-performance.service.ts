@@ -125,8 +125,9 @@ export class InstagramPostPerformanceService {
         }
         if (error instanceof InstagramApiError && error.missingPermission) return failure('sem-permissao', NO_PERMISSION);
         this.logger.warn(`Desempenho dos posts não coletado: ${(error as Error).message}`);
-        if (!last) return failure('falha', 'A Meta não respondeu e ainda não há coleta guardada. Tente de novo em alguns minutos.');
-        avisos.push(`A Meta não respondeu agora; números da última coleta, de ${formatFortaleza(last.collectedAt)}.`);
+        const motivo = (error as Error).message;
+        if (!last) return failure('falha', `Não deu para coletar os números agora (${motivo}) e ainda não há coleta guardada. Tente de novo em alguns minutos.`);
+        avisos.push(`Não deu para coletar agora (${motivo}); números da última coleta, de ${formatFortaleza(last.collectedAt)}.`);
       }
     }
 

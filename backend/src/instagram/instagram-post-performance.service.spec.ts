@@ -121,7 +121,7 @@ describe('InstagramPostPerformanceService', () => {
     api.listMediaSince.mockRejectedValue(new InstagramApiError('Sem resposta da Meta', 0));
     const r = await service().getReport({}, NOW, wait);
     expect(r.status).toBe('ok');
-    expect(r.avisos[0]).toMatch(/A Meta não respondeu agora/);
+    expect(r.avisos[0]).toMatch(/Não deu para coletar agora \(Sem resposta da Meta\)/);
   });
 
   it('filtra o banco pelo período e pelo tipo, com o último retrato de cada post', async () => {
