@@ -120,8 +120,8 @@ export class InstagramPublisherService {
   }
 
   /**
-   * Remarca (arrastar no calendário) e/ou marca como exemplo. Novo horário arma o despertador; o
-   * antigo, se tocar antes, não acha nada vencido e remarca o próximo sozinho.
+   * Remarca (arrastar no calendário ou novo horário) ou volta para rascunho. Novo horário arma o
+   * despertador; o antigo, se tocar antes, não acha nada vencido e remarca o próximo sozinho.
    */
   async update(id: string, dto: UpdateInstagramPostDto, origin: string) {
     const post = await this.posts.update(id, dto);

@@ -122,7 +122,9 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
 - **Posts:** calendário (arrastar para remarcar), lista e grade; "Novo post" (foto ou carrossel, legenda,
   hashtags salvas, agendar, publicar agora ou guardar como **rascunho**, sem data e sem precisar do Instagram
   conectado). **Reel**: um vídeo MP4/MOV (3 s a 15 min, até 300 MB) no lugar das imagens; a capa é um quadro
-  tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. É onde os
+  tirado no navegador e o vídeo vai direto para o armazenamento (passa do limite de 4,5 MB da Vercel). Rascunhos ficam numa faixa acima do calendário; abrir um deixa agendar ou apagar. Agendado (ou com falha)
+  ainda não publicado: nos detalhes, "Remarcar" (novo dia e hora), "Publicar agora", "Voltar para rascunho" (sai da
+  agenda sem apagar nada e vai para a faixa de rascunhos), "Duplicar" e "Apagar post". É onde os
   agentes da VPS deixam o que produzem, pelo MCP (seção 6).
 
 - **Desempenho** (4ª visão, ao lado de Mês, Semana e Feed): estatísticas lidas na hora na Meta. Alcance,
@@ -197,8 +199,8 @@ As ferramentas do MCP chamam os mesmos serviços das telas: nenhuma regra de neg
 
 **Conteúdo pelo MCP — feito:** enviar imagem (JPEG) e vídeo de Reel com capa direto ao armazenamento
 (`preparar_envio_de_imagem`, `preparar_envio_de_video`, `confirmar_envio`, que confere formato e
-proporção), `criar_rascunho_de_post`, `listar_rascunhos`, `listar_posts_agendados` e `agendar_post`
-(precisa do Instagram conectado). É o que o Criador e o Estrategista usam.
+proporção), `criar_rascunho_de_post`, `listar_rascunhos`, `listar_posts_agendados`, `agendar_post`
+(agenda ou remarca; precisa do Instagram conectado) e `voltar_para_rascunho` (tira da agenda). É o que o Criador e o Estrategista usam.
 
 ## 6. Escritório Virtual — fora do LeadNexi (decisão de 27/10/2026)
 

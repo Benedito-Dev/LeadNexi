@@ -41,8 +41,8 @@ const resumoDoPost = (post: PostDaTela) => ({
 
 /**
  * Ferramentas de Conteúdo (posts do Instagram) para o Claude e os agentes da VPS: enviar
- * imagens e vídeos direto ao armazenamento, guardar como rascunho, ver rascunhos e agendados e
- * agendar. Chamam os mesmos serviços da tela Conteúdo.
+ * imagens e vídeos direto ao armazenamento, guardar como rascunho, ver rascunhos e agendados,
+ * agendar (ou remarcar) e tirar da agenda. Chamam os mesmos serviços da tela Conteúdo.
  */
 export function registrarConteudo(server: McpServer, { posts, publisher, envio, desempenho, origin }: McpConteudoDeps) {
   const completo = (url: string) => (url.startsWith('/') ? `${origin}${url}` : url);
@@ -164,6 +164,17 @@ export function registrarConteudo(server: McpServer, { posts, publisher, envio, 
       const post = await publisher.update(id, { scheduledAt: quando }, origin);
       return resposta({ scheduled: true, ...resumoDoPost(post), automaticPublishingOff: 'alarmFailed' in post ? post.alarmFailed : undefined });
     },
+  );
+
+  server.registerTool(
+    'voltar_para_rascunho',
+    {
+      title: 'Voltar para rascunho',
+      description:
+        'Tira da agenda um post agendado (ou com falha) que ainda não foi para o Instagram: ele volta a ser rascunho, sem data, com legenda e mídias intactas. Para mudar só o horário, use agendar_post.',
+      inputSchema: { id: z.string().uuid().describe('id do post (vem de listar_posts_agendados)') },
+    },
+    async ({ id }) => resposta({ unscheduled: true, ...resumoDoPost(await publisher.update(id, { draft: true }, origin)) }),
   );
 
   server.registerTool(

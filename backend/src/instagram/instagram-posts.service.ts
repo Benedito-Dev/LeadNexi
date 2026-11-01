@@ -36,6 +36,8 @@ export const ORPHAN_MEDIA_MS = 24 * 60 * 60 * 1000;
 const CANCELABLE: InstagramPostStatus[] = ['DRAFT', 'SCHEDULED', 'FAILED', 'REMOVED'];
 /** Pode mudar de horário: o que ainda não foi para o Instagram (com falha volta a "Agendado") */
 const RESCHEDULABLE: InstagramPostStatus[] = ['DRAFT', 'SCHEDULED', 'FAILED'];
+/** Pode sair da agenda e voltar a rascunho: o que está marcado e ainda não foi para o Instagram */
+const UNSCHEDULABLE: InstagramPostStatus[] = ['SCHEDULED', 'FAILED'];
 /** Já foram para o Instagram (os removidos de lá seguem na lista, marcados, até alguém tirar) */
 const SENT: InstagramPostStatus[] = ['PUBLISHED', 'REMOVED'];
 /** Fora do calendário e da lista: rascunho não tem data (aparece na bandeja de rascunhos) */
@@ -206,15 +208,31 @@ export class InstagramPostsService {
 
   /**
    * Remarca ou agenda um rascunho (agendado, com falha ou rascunho: vira "Agendado", com as
-   * tentativas zeradas) e/ou marca um
-   * publicado como exemplo para o follow-up. O despertador é remarcado por quem chama.
+   * tentativas zeradas), ou, com `draft`, tira da agenda (agendado ou com falha volta a ser
+   * rascunho, sem data). O despertador é remarcado por quem chama; o antigo, se tocar, não acha
+   * nada vencido.
    */
   async update(id: string, dto: UpdateInstagramPostDto, now = new Date()) {
+    if (dto.draft && dto.scheduledAt) {
+      throw new BadRequestException('Escolha entre remarcar e voltar para rascunho.');
+    }
     const post = await this.prisma.instagramPost.findUnique({
       where: { id },
       select: { status: true },
     });
     if (!post) throw new NotFoundException('Post não encontrado');
+
+    // Já é rascunho: nada a fazer (dois cliques, ou duas abas)
+    if (dto.draft && post.status !== 'DRAFT') {
+      // Condição no próprio UPDATE: se a publicação começou agora, nada muda
+      const { count } = await this.prisma.instagramPost.updateMany({
+        where: { id, status: { in: UNSCHEDULABLE } },
+        data: { scheduledAt: null, status: 'DRAFT', error: null, attempts: 0 },
+      });
+      if (count === 0) {
+        throw new ConflictException('Esse post já foi enviado ao Instagram.');
+      }
+    }
 
     if (dto.scheduledAt) {
       if (post.status === 'DRAFT') await this.requireConnectedAccount('Conecte o Instagram para agendar posts.');

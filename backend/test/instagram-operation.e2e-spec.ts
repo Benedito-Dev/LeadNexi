@@ -103,6 +103,46 @@ describe('Operação do Instagram (e2e)', () => {
         .expect(400);
       await api().patch(`/instagram/posts/${published.id}`).send({ scheduledAt: future }).set(auth).expect(409);
     });
+
+    it('tira da agenda: agendado ou com falha volta a ser rascunho, sem data', async () => {
+      const scheduled = await post({ scheduledAt: new Date(Date.now() + DAY) });
+      const failed = await post({ status: 'FAILED', scheduledAt: new Date(Date.now() - DAY) });
+
+      const res = await api().patch(`/instagram/posts/${scheduled.id}`).send({ draft: true }).set(auth).expect(200);
+      expect(res.body).toMatchObject({ status: 'DRAFT', scheduledAt: null });
+      const back = await api().patch(`/instagram/posts/${failed.id}`).send({ draft: true }).set(auth).expect(200);
+      expect(back.body).toMatchObject({ status: 'DRAFT', scheduledAt: null, error: null });
+      expect(await prisma.instagramPost.findUniqueOrThrow({ where: { id: failed.id } })).toMatchObject({ attempts: 0, error: null });
+
+      // Sai do calendário e entra nos rascunhos
+      const drafts = await api().get('/instagram/posts/drafts').set(auth).expect(200);
+      expect(drafts.body.map((item: { id: string }) => item.id).sort()).toEqual([scheduled.id, failed.id].sort());
+      const calendar = await api()
+        .get('/instagram/posts')
+        .query({ from: new Date(Date.now() - 7 * DAY).toISOString(), to: new Date(Date.now() + 7 * DAY).toISOString() })
+        .set(auth)
+        .expect(200);
+      expect(calendar.body).toHaveLength(0);
+
+      // Repetir (dois cliques, duas abas) não dá erro
+      await api().patch(`/instagram/posts/${scheduled.id}`).send({ draft: true }).set(auth).expect(200);
+    });
+
+    it('não tira da agenda o que já foi (ou está indo) para o Instagram, nem remarca e tira juntos', async () => {
+      const scheduled = await post({ scheduledAt: new Date(Date.now() + DAY) });
+      const published = await post({ status: 'PUBLISHED', scheduledAt: new Date(), publishedAt: new Date() });
+      const publishing = await post({ scheduledAt: new Date() });
+      await prisma.instagramPost.update({ where: { id: publishing.id }, data: { status: 'PUBLISHING', publishingStartedAt: new Date() } });
+
+      await api().patch(`/instagram/posts/${published.id}`).send({ draft: true }).set(auth).expect(409);
+      await api().patch(`/instagram/posts/${publishing.id}`).send({ draft: true }).set(auth).expect(409);
+      await api()
+        .patch(`/instagram/posts/${scheduled.id}`)
+        .send({ draft: true, scheduledAt: new Date(Date.now() + 2 * DAY).toISOString() })
+        .set(auth)
+        .expect(400);
+      expect(await prisma.instagramPost.findUniqueOrThrow({ where: { id: scheduled.id } })).toMatchObject({ status: 'SCHEDULED' });
+    });
   });
 
   it('salva grupos de hashtags sem repetir e com # em todas', async () => {

@@ -169,10 +169,10 @@ export class InstagramPostsController {
   @Patch('posts/:id')
   @ApiOperation({
     summary:
-      'Remarca um post agendado ou com falha (arrastar no calendário), agenda um rascunho e/ou marca um publicado como exemplo',
+      'Remarca um post agendado ou com falha (scheduledAt), agenda um rascunho, ou tira um agendado da agenda e o devolve aos rascunhos (draft: true)',
   })
   @ApiConflictResponse({
-    description: 'O post já foi enviado (remarcar) ou não está publicado (exemplo)',
+    description: 'O post já foi enviado ao Instagram (ou está sendo publicado agora)',
   })
   update(
     @Param('id', ParseUUIDPipe) id: string,

@@ -100,6 +100,12 @@ export function ConteudoPage() {
     setRascunhos((lista) => lista.filter((p) => p.id !== id))
     setAbertoId(null)
   }
+  // Tirado da agenda: sai do calendário e entra na faixa de rascunhos (o mais novo primeiro). O
+  // painel continua aberto, agora como rascunho, para agendar de novo ali mesmo.
+  const voltouParaRascunho = (post: Post) => {
+    setCarregados((c) => c && { ...c, posts: c.posts.filter((p) => p.id !== post.id) })
+    setRascunhos((lista) => [...lista.filter((p) => p.id !== post.id), post].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  }
   // Ordem do "2 de 3" nos detalhes: a do calendário (mais antigo primeiro) ou a do feed (mais novo primeiro)
   const ordenados = [...(posts ?? [])].sort((a, b) => (visao === 'feed' ? -1 : 1) * dataDoPost(a).localeCompare(dataDoPost(b)))
   const agendados = posts?.filter((p) => p.status === 'SCHEDULED').length ?? 0
@@ -197,6 +203,7 @@ export function ConteudoPage() {
         onFechar={() => setAbertoId(null)}
         onAtualizado={trocar}
         onCancelado={tirar}
+        onVoltouParaRascunho={voltouParaRascunho}
         onAgendado={(post) => {
           setAbertoId(null)
           setRecarga((n) => n + 1)

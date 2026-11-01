@@ -48,6 +48,14 @@ describe('Ferramentas de Conteúdo do MCP', () => {
     expect(deps.publisher.update).toHaveBeenCalledWith('post-1', { scheduledAt: '2026-10-30T19:30:00-03:00' }, 'https://leadnexi.vercel.app');
   });
 
+  it('voltar_para_rascunho tira da agenda pelo mesmo caminho da tela', async () => {
+    const { deps, chamar } = setup();
+    deps.publisher.update.mockResolvedValue(POST);
+    const resultado = await chamar('voltar_para_rascunho', { id: 'post-1' });
+    expect(deps.publisher.update).toHaveBeenCalledWith('post-1', { draft: true }, 'https://leadnexi.vercel.app');
+    expect(resultado).toMatchObject({ unscheduled: true, id: 'post-1', status: 'DRAFT', scheduledAt: null });
+  });
+
   it('ver_desempenho_posts traduz os parâmetros e só mostra o status quando não é ok', async () => {
     const { deps, chamar } = setup();
     const ok = await chamar('ver_desempenho_posts', { dias: 7, tipo: 'REELS', ordenar_por: 'shares', limite: 5, forcar_atualizacao: true });

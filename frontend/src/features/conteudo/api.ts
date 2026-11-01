@@ -4,12 +4,14 @@ import type { Desempenho, Post } from './tipos'
 /** Posts do período (calendário): `de` e `ate` em ISO. */
 export const listarPosts = (de: string, ate: string) => api<Post[]>(`/instagram/posts?${new URLSearchParams({ from: de, to: ate })}`)
 
-/** Remarca um post agendado ou com falha (arrastar no calendário). */
 /** Rascunhos (sem data), o mais novo primeiro. */
 export const listarRascunhos = () => api<Post[]>('/instagram/posts/drafts')
 
-/** Remarca um post, ou agenda um rascunho (vira "Agendado"). */
-export const remarcarPost = (id: string, scheduledAt: string) => api<Post>(`/instagram/posts/${id}`, { method: 'PATCH', body: corpo({ scheduledAt }) })
+/** Remarca um post (agendado ou com falha), ou agenda um rascunho: vira "Agendado". */
+export const remarcarPost = (id: string, scheduledAt: string) => api<PostCriado>(`/instagram/posts/${id}`, { method: 'PATCH', body: corpo({ scheduledAt }) })
+
+/** Tira da agenda um post agendado (ou com falha): volta a ser rascunho, sem data. */
+export const voltarParaRascunho = (id: string) => api<Post>(`/instagram/posts/${id}`, { method: 'PATCH', body: corpo({ draft: true }) })
 
 /** "Publicar agora" num agendado ou "Tentar de novo" num que falhou. */
 export const publicarAgora = (id: string) => api<Post>(`/instagram/posts/${id}/publish`, { method: 'POST' })
