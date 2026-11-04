@@ -492,6 +492,13 @@ model InstagramAutomation {
   message       String
   /// Respostas públicas no comentário (uma sorteada por vez); vazio = não responde em público
   publicReplies String[]                  @default([]) @map("public_replies")
+  /// Botão embaixo da mensagem (ex.: "Quero o link"); vazio = só texto, a mensagem já é a entrega
+  buttonLabel   String?                   @map("button_label")
+  /// O que chega quando a pessoa toca no botão (o link, o material)
+  deliveryMessage String?                 @map("delivery_message")
+  /// Só entrega para quem segue a conta; quem não segue recebe `notFollowingMessage` e o botão de novo
+  requireFollow Boolean                   @default(false) @map("require_follow")
+  notFollowingMessage String?             @map("not_following_message")
   runs          InstagramAutomationRun[]
   createdAt     DateTime                  @default(now()) @map("created_at")
   updatedAt     DateTime                  @updatedAt @map("updated_at")
@@ -525,6 +532,8 @@ model InstagramAutomationRun {
   leadId        String?                      @map("lead_id")
   status        InstagramAutomationRunStatus
   error         String?
+  /// Com botão: quando a pessoa tocou e recebeu a entrega
+  deliveredAt   DateTime?                    @map("delivered_at")
   createdAt     DateTime                     @default(now()) @map("created_at")
 
   @@index([automationId, createdAt])

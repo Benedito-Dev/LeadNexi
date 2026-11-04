@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, CircleAlert, Clapperboard, ImageOff, Layers, LoaderCircle, Save, Trash2 } from 'lucide-react'
 import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
+import { Campo } from '@/components/ui/campo'
 import { Input } from '@/components/ui/input'
 import { segmento, barraDeSegmentos } from '@/components/ui/segmentos'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
@@ -13,7 +14,19 @@ import { formatarDecorrido } from '../../hoje/textos'
 import { buscarPerfil } from '../../instagram/api'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
 import type { PostDoPerfil } from '../../instagram/tipos'
-import { apagarAutomacao, criarAutomacao, editarAutomacao, LIMITE_DA_MENSAGEM, listarDisparos, type Automacao, type Disparo } from '../automacoes'
+import { Interruptor } from '@/components/ui/interruptor'
+import {
+  apagarAutomacao,
+  criarAutomacao,
+  editarAutomacao,
+  LIMITE_COM_BOTAO,
+  LIMITE_DA_MENSAGEM,
+  LIMITE_DO_BOTAO,
+  listarDisparos,
+  TEXTO_PADRAO_DE_SEGUIR,
+  type Automacao,
+  type Disparo,
+} from '../automacoes'
 import { Passo } from './NovoPost'
 
 type Props = {
@@ -61,11 +74,17 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
   const [palavras, setPalavras] = useState(automacao?.keywords.join(', ') ?? '')
   const [mensagem, setMensagem] = useState(automacao?.message ?? '')
   const [respostas, setRespostas] = useState(automacao?.publicReplies.join('\n') ?? '')
+  const [comBotao, setComBotao] = useState(Boolean(automacao?.buttonLabel))
+  const [botao, setBotao] = useState(automacao?.buttonLabel ?? 'Quero receber')
+  const [entrega, setEntrega] = useState(automacao?.deliveryMessage ?? '')
+  const [pedirParaSeguir, setPedirParaSeguir] = useState(automacao?.requireFollow ?? false)
+  const [textoDeSeguir, setTextoDeSeguir] = useState(automacao?.notFollowingMessage ?? '')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
 
   const listaDePalavras = separar(palavras, /,/)
+  const limite = comBotao ? LIMITE_COM_BOTAO : LIMITE_DA_MENSAGEM
   const bloqueio = !nome.trim()
     ? 'Dê um nome para achar a automação na lista.'
     : !todosOsPosts && posts.length === 0
@@ -74,9 +93,13 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
         ? 'Escreva pelo menos uma palavra, ou "Qualquer comentário".'
         : !mensagem.trim()
           ? 'Escreva a mensagem do direct.'
-          : mensagem.length > LIMITE_DA_MENSAGEM
-            ? `A mensagem passa de ${LIMITE_DA_MENSAGEM} caracteres.`
-            : null
+          : mensagem.length > limite
+            ? `A mensagem passa de ${limite} caracteres${comBotao ? ' (o limite com botão)' : ''}.`
+            : comBotao && !botao.trim()
+              ? 'Escreva o texto do botão.'
+              : comBotao && !entrega.trim()
+                ? 'Escreva o que chega quando a pessoa tocar no botão.'
+                : null
 
   const salvar = async () => {
     if (bloqueio) return
@@ -88,6 +111,10 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
       keywords: qualquerComentario ? [] : listaDePalavras,
       message: mensagem.trim(),
       publicReplies: separar(respostas, /\n/),
+      buttonLabel: comBotao ? botao.trim() : null,
+      deliveryMessage: comBotao ? entrega.trim() : null,
+      requireFollow: comBotao && pedirParaSeguir,
+      notFollowingMessage: comBotao && pedirParaSeguir ? textoDeSeguir.trim() || null : null,
     }
     try {
       if (automacao) await editarAutomacao(automacao.id, dados)
@@ -163,16 +190,60 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
 
         {/* 4. Mensagem */}
         <section aria-labelledby="au-mensagem" className="flex flex-col gap-3 border-t border-border pt-5">
-          <Passo id="au-mensagem" numero={4} titulo="Mensagem no direct" detalhe={`${mensagem.length}/${LIMITE_DA_MENSAGEM}`} alerta={mensagem.length > LIMITE_DA_MENSAGEM} />
+          <Passo id="au-mensagem" numero={4} titulo="Mensagem no direct" detalhe={`${mensagem.length}/${limite}`} alerta={mensagem.length > limite} />
+          <div className={barraDeSegmentos} role="radiogroup" aria-label="Formato da mensagem">
+            <button type="button" role="radio" aria-checked={!comBotao} onClick={() => setComBotao(false)} className={segmento(!comBotao)}>
+              Só a mensagem
+            </button>
+            <button type="button" role="radio" aria-checked={comBotao} onClick={() => setComBotao(true)} className={segmento(comBotao)}>
+              Com botão
+            </button>
+          </div>
           <Textarea
             value={mensagem}
             onChange={(e) => setMensagem(e.target.value)}
             rows={4}
-            placeholder="Oi! Aqui está o link que você pediu: https://..."
+            placeholder={comBotao ? 'Oi! Toque no botão aqui embaixo que eu te mando o link.' : 'Oi! Aqui está o link que você pediu: https://...'}
             className="min-h-24 resize-y text-sm leading-6 [field-sizing:content] max-h-80"
             aria-labelledby="au-mensagem"
-            aria-invalid={mensagem.length > LIMITE_DA_MENSAGEM}
+            aria-invalid={mensagem.length > limite}
           />
+          {comBotao && (
+            <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/40 p-4">
+              <Campo id="au-botao" rotulo="Texto do botão" dica={`Até ${LIMITE_DO_BOTAO} caracteres.`}>
+                <Input id="au-botao" value={botao} onChange={(e) => setBotao(e.target.value)} maxLength={LIMITE_DO_BOTAO} placeholder="Quero receber" />
+              </Campo>
+              <Campo id="au-entrega" rotulo="O que chega quando tocar">
+                <Textarea
+                  id="au-entrega"
+                  value={entrega}
+                  onChange={(e) => setEntrega(e.target.value)}
+                  rows={3}
+                  placeholder="Aqui está: https://..."
+                  className="min-h-20 resize-y text-sm leading-6 [field-sizing:content] max-h-60"
+                  maxLength={LIMITE_DA_MENSAGEM}
+                />
+              </Campo>
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 text-[13px] font-semibold text-foreground">Só para quem me segue</p>
+                  <p className="m-0 mt-0.5 text-xs font-medium text-muted-foreground">Quem não segue recebe um pedido para seguir e o botão de novo.</p>
+                </div>
+                <Interruptor ligado={pedirParaSeguir} rotulo="Só para quem me segue" onMudar={setPedirParaSeguir} />
+              </div>
+              {pedirParaSeguir && (
+                <Textarea
+                  value={textoDeSeguir}
+                  onChange={(e) => setTextoDeSeguir(e.target.value)}
+                  rows={2}
+                  placeholder={TEXTO_PADRAO_DE_SEGUIR}
+                  aria-label="Mensagem para quem não segue"
+                  className="min-h-16 resize-y text-sm leading-6 [field-sizing:content] max-h-40"
+                  maxLength={LIMITE_DA_MENSAGEM}
+                />
+              )}
+            </div>
+          )}
           <p className="m-0 text-xs font-medium text-muted-foreground">Cada pessoa recebe uma vez por post, mesmo se comentar de novo.</p>
         </section>
 
@@ -190,7 +261,7 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
           <p className="m-0 text-xs font-medium text-muted-foreground">Uma resposta por linha. O LeadNexi sorteia uma a cada comentário, para não repetir sempre a mesma.</p>
         </section>
 
-        {automacao && <UltimosDisparos automacaoId={automacao.id} />}
+        {automacao && <UltimosDisparos automacaoId={automacao.id} comBotao={Boolean(automacao.buttonLabel)} />}
       </div>
 
       <footer className="flex flex-col gap-3 border-t border-border px-6 py-4">
@@ -297,7 +368,7 @@ const SITUACAO: Record<Disparo['status'], string> = {
 }
 
 /** Quem comentou e se a mensagem saiu, do mais novo para o mais antigo. */
-function UltimosDisparos({ automacaoId }: { automacaoId: string }) {
+function UltimosDisparos({ automacaoId, comBotao }: { automacaoId: string; comBotao: boolean }) {
   const [disparos, setDisparos] = useState<Disparo[] | null>(null)
 
   useEffect(() => {
@@ -331,7 +402,7 @@ function UltimosDisparos({ automacaoId }: { automacaoId: string }) {
                 )}
               </div>
               <span className={cn('shrink-0 text-xs font-semibold', d.status === 'FAILED' ? 'text-leadnexi-danger' : d.status === 'SENT' ? 'text-success-foreground' : 'text-muted-foreground')}>
-                {SITUACAO[d.status]} · {formatarDecorrido(d.createdAt)}
+                {d.status === 'SENT' && comBotao ? (d.deliveredAt ? 'Tocou e recebeu' : 'Esperando o toque') : SITUACAO[d.status]} · {formatarDecorrido(d.createdAt)}
               </span>
             </li>
           ))}

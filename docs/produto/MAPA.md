@@ -146,8 +146,14 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
   quantas mensagens saíram; o editor mostra os últimos comentários e o motivo de cada falha. Precisa da permissão
   `instagram_business_manage_comments` e do campo `comments` no webhook do app da Meta: conta conectada antes
   disso mostra "Falta liberar os comentários" até conectar de novo.
-  Próximas fases: botão na mensagem e "siga para receber"; resposta a story, menção e palavra no direct;
-  ações no lead (etapa, lista) e o placar por automação; ferramentas no MCP.
+  **Botão e "siga para receber":** a mensagem pode ir com um botão (ex.: "Quero receber"); ao tocar, chega a
+  entrega (o link). Com "Só para quem me segue", o LeadNexi confere na Meta se a pessoa segue: quem não segue
+  recebe o pedido para seguir e o botão de novo; se a Meta não responder, entrega. A conferência só funciona
+  depois do toque (a Meta exige que a pessoa tenha interagido no direct). Precisa do campo
+  `messaging_postbacks` no webhook do app da Meta. A Meta só documenta texto na resposta a comentário: o botão
+  ainda precisa ser confirmado num teste real.
+  Próximas fases: resposta a story, menção e palavra no direct; ações no lead (etapa, lista) e o placar por
+  automação; ferramentas no MCP.
 
 Fora do plano: banco de provas (decisão de 26/10/2026; tabela removida em 27/10/2026). A IA não cita resultado de outros clientes.
 

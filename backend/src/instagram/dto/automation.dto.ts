@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 /** Limite do texto no direct (o da Meta é 1.000 bytes; o envio confere em bytes) */
@@ -27,6 +28,10 @@ const cleanList = ({ value }: { value: unknown }) =>
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
+
+/** Texto opcional: vazio vira null (tira o campo) */
+const trimOrNull = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() || null : value;
 
 export class CreateAutomationDto {
   /**
@@ -89,6 +94,41 @@ export class CreateAutomationDto {
   @IsString({ each: true })
   @MaxLength(PUBLIC_REPLY_LIMIT, { each: true })
   publicReplies?: string[];
+
+  /**
+   * Botão embaixo da mensagem (até 20 caracteres); vazio ou null = só texto
+   * @example "Quero o link"
+   */
+  @Transform(trimOrNull)
+  @ValidateIf((_dto, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(20)
+  buttonLabel?: string | null;
+
+  /**
+   * O que chega quando a pessoa toca no botão (obrigatório com botão)
+   * @example "Aqui está: https://exemplo.com/catalogo"
+   */
+  @Transform(trimOrNull)
+  @ValidateIf((_dto, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(AUTOMATION_MESSAGE_LIMIT)
+  deliveryMessage?: string | null;
+
+  /** Só entrega para quem segue a conta (precisa do botão) */
+  @IsOptional()
+  @IsBoolean()
+  requireFollow?: boolean;
+
+  /**
+   * Para quem tocou e não segue; null = o texto padrão
+   * @example "Me segue e toca de novo que eu te mando!"
+   */
+  @Transform(trimOrNull)
+  @ValidateIf((_dto, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(AUTOMATION_MESSAGE_LIMIT)
+  notFollowingMessage?: string | null;
 }
 
 export class UpdateAutomationDto extends PartialType(CreateAutomationDto) {}

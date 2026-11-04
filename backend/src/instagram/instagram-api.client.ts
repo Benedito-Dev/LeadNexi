@@ -53,6 +53,13 @@ export interface InstagramAppCredentials {
   redirectUri: string;
 }
 
+/** Botão de uma mensagem do direct: ao tocar, a Meta avisa o webhook com o `payload` */
+export interface PostbackButton {
+  /** Texto do botão (a Meta aceita até 20 caracteres) */
+  title: string;
+  payload: string;
+}
+
 /** Quem mandou direct: o que a Meta informa do perfil (pode faltar) */
 export interface MessagingProfile {
   name: string | null;
@@ -284,8 +291,8 @@ export class InstagramApiClient {
         method: 'POST',
         body: new URLSearchParams({
           subscribed_fields: comments
-            ? 'messages,message_reactions,comments'
-            : 'messages,message_reactions',
+            ? 'messages,message_reactions,messaging_postbacks,comments'
+            : 'messages,message_reactions,messaging_postbacks',
           access_token: token,
         }),
       },
@@ -294,14 +301,68 @@ export class InstagramApiClient {
 
   /**
    * Resposta privada a um comentário: a mensagem chega no direct de quem comentou, mesmo sem
-   * conversa antes. A Meta aceita uma por comentário, até 7 dias depois dele. Devolve o ID da
-   * mensagem (o mesmo do eco).
+   * conversa antes. A Meta aceita uma por comentário, até 7 dias depois dele. Com `button`, vai
+   * com um botão que avisa o webhook (postback) quando tocado. Devolve o ID da mensagem (o mesmo
+   * do eco).
    */
   async sendPrivateReply(
     token: string,
     commentId: string,
     text: string,
+    button?: PostbackButton,
   ): Promise<string> {
+    return this.sendMessage(token, { comment_id: commentId }, text, button);
+  }
+
+  /**
+   * Texto com um botão (postback) no direct de quem já interagiu com a conta (IGSID), dentro da
+   * janela de 24 h. Devolve o ID da mensagem.
+   */
+  async sendButtonMessage(
+    token: string,
+    recipientId: string,
+    text: string,
+    button: PostbackButton,
+  ): Promise<string> {
+    return this.sendMessage(token, { id: recipientId }, text, button);
+  }
+
+  /**
+   * Se a pessoa (IGSID) segue a conta. Só funciona depois que ela interagiu no direct (mensagem
+   * ou toque num botão); antes, a Meta recusa. Sem a informação na resposta: null.
+   */
+  async followsAccount(token: string, userId: string): Promise<boolean | null> {
+    const url = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/${userId}`);
+    url.search = new URLSearchParams({
+      fields: 'is_user_follow_business',
+      access_token: token,
+    }).toString();
+    const body = await this.request(url);
+    return typeof body.is_user_follow_business === 'boolean'
+      ? body.is_user_follow_business
+      : null;
+  }
+
+  private async sendMessage(
+    token: string,
+    recipient: { id: string } | { comment_id: string },
+    text: string,
+    button?: PostbackButton,
+  ): Promise<string> {
+    const message = button
+      ? {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'button',
+              text,
+              buttons: [
+                { type: 'postback', title: button.title, payload: button.payload },
+              ],
+            },
+          },
+        }
+      : { text };
     const body = await this.request(
       `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
       {
@@ -310,10 +371,7 @@ export class InstagramApiClient {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          recipient: { comment_id: commentId },
-          message: { text },
-        }),
+        body: JSON.stringify({ recipient, message }),
       },
     );
     return requireString(body.message_id, 'message_id');

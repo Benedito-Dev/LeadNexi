@@ -31,6 +31,9 @@ describe('Automações do Instagram (e2e)', () => {
   const meta = {
     sendPrivateReply: vi.fn(),
     replyToComment: vi.fn(),
+    sendTextMessage: vi.fn(),
+    sendButtonMessage: vi.fn(),
+    followsAccount: vi.fn(),
     getMessagingProfile: vi.fn(),
     downloadImage: vi.fn(),
   };
@@ -69,6 +72,11 @@ describe('Automações do Instagram (e2e)', () => {
       Promise.resolve(`mid-${++n}`),
     );
     meta.replyToComment.mockResolvedValue('resposta-1');
+    meta.sendTextMessage.mockImplementation(() => Promise.resolve(`mid-${++n}`));
+    meta.sendButtonMessage.mockImplementation(() =>
+      Promise.resolve(`mid-${++n}`),
+    );
+    meta.followsAccount.mockResolvedValue(true);
     await prisma.instagramAccount.create({
       data: {
         igUserId: ACCOUNT,
@@ -210,6 +218,7 @@ describe('Automações do Instagram (e2e)', () => {
         'token-real',
         'c-1',
         'Oi! Aqui está o link: https://exemplo.test',
+        undefined,
       );
       expect(meta.replyToComment).toHaveBeenCalledWith(
         'token-real',
@@ -375,5 +384,154 @@ describe('Automações do Instagram (e2e)', () => {
     expect(
       lead.activities.filter((a) => a.type === 'INSTAGRAM_MESSAGE_SENT'),
     ).toHaveLength(1);
+  });
+
+  describe('botão e "siga para receber"', () => {
+    /** Toque no botão (postback), no formato da Meta */
+    function tap(payload: string, sender = 'igsid-ana') {
+      return {
+        object: 'instagram',
+        entry: [
+          {
+            id: ACCOUNT,
+            time: Date.now(),
+            messaging: [
+              {
+                sender: { id: sender },
+                recipient: { id: ACCOUNT },
+                timestamp: Date.now(),
+                postback: { mid: `pb-${Math.random()}`, title: 'Quero o link', payload },
+              },
+            ],
+          },
+        ],
+      };
+    }
+
+    const withButton = {
+      message: 'Toque no botão para receber',
+      buttonLabel: 'Quero o link',
+      deliveryMessage: 'Aqui está: https://exemplo.test/catalogo',
+    };
+
+    async function commentAndGetPayload() {
+      await deliver(comment('quero'));
+      const button = meta.sendPrivateReply.mock.calls[0][3] as {
+        title: string;
+        payload: string;
+      };
+      return button;
+    }
+
+    it('a primeira mensagem leva o botão; o toque entrega uma vez só', async () => {
+      const automation = await createAutomation(withButton);
+      const button = await commentAndGetPayload();
+      expect(button.title).toBe('Quero o link');
+      expect(button.payload).toMatch(/^automacao:/);
+
+      await deliver(tap(button.payload));
+      await deliver(tap(button.payload));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+      expect(meta.sendTextMessage).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-ana',
+        'Aqui está: https://exemplo.test/catalogo',
+      );
+
+      const lead = await prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-ana' },
+        include: { activities: { orderBy: { createdAt: 'asc' } } },
+      });
+      expect(lead.instagramLastMessageAt).not.toBeNull();
+      expect(
+        lead.activities.filter((a) => a.type === 'INSTAGRAM_MESSAGE_SENT').map((a) => a.text),
+      ).toEqual(['Toque no botão para receber', 'Aqui está: https://exemplo.test/catalogo']);
+
+      const list = await api().get('/instagram/automations').set(auth).expect(200);
+      expect(list.body[0]).toMatchObject({ sent: 1, delivered: 1 });
+      const runs = await api()
+        .get(`/instagram/automations/${automation.body.id}/runs`)
+        .set(auth)
+        .expect(200);
+      expect(runs.body[0].deliveredAt).not.toBeNull();
+    });
+
+    it('quem não segue recebe o pedido com o botão; depois de seguir, recebe a entrega', async () => {
+      await createAutomation({
+        ...withButton,
+        requireFollow: true,
+        notFollowingMessage: 'Me segue e toca de novo!',
+      });
+      const button = await commentAndGetPayload();
+
+      meta.followsAccount.mockResolvedValue(false);
+      await deliver(tap(button.payload));
+      expect(meta.sendButtonMessage).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-ana',
+        'Me segue e toca de novo!',
+        button,
+      );
+      expect(meta.sendTextMessage).not.toHaveBeenCalled();
+
+      meta.followsAccount.mockResolvedValue(true);
+      await deliver(tap(button.payload));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('se a Meta não disser se segue, entrega mesmo assim', async () => {
+      await createAutomation({ ...withButton, requireFollow: true });
+      const button = await commentAndGetPayload();
+      meta.followsAccount.mockRejectedValue(new Error('fora do ar'));
+      await deliver(tap(button.payload));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('toque de outra pessoa ou de botão desconhecido não entrega', async () => {
+      await createAutomation(withButton);
+      const button = await commentAndGetPayload();
+      await deliver(tap(button.payload, 'igsid-outra'));
+      await deliver(tap('automacao:00000000-0000-4000-8000-000000000000'));
+      await deliver(tap('outra-coisa'));
+      expect(meta.sendTextMessage).not.toHaveBeenCalled();
+    });
+
+    it('entrega recusada pela Meta pode sair num toque seguinte', async () => {
+      await createAutomation(withButton);
+      const button = await commentAndGetPayload();
+      meta.sendTextMessage.mockRejectedValueOnce(new Error('fora do ar'));
+      await deliver(tap(button.payload));
+      await deliver(tap(button.payload));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(2);
+      const run = await prisma.instagramAutomationRun.findFirstOrThrow();
+      expect(run.deliveredAt).not.toBeNull();
+      expect(run.error).toBeNull();
+    });
+
+    it('recusa botão sem entrega, "siga" sem botão e texto longo com botão', async () => {
+      const base = { name: 'x', message: 'Oi', mediaIds: [], keywords: [] };
+      const bad = async (body: Record<string, unknown>, pattern: RegExp) => {
+        const res = await api().post('/instagram/automations').set(auth).send({ ...base, ...body }).expect(400);
+        expect(JSON.stringify(res.body.message)).toMatch(pattern);
+      };
+      await bad({ buttonLabel: 'Quero' }, /tocar no botão/);
+      await bad({ requireFollow: true }, /precisa ter um botão/);
+      await bad({ ...withButton, message: 'a'.repeat(641) }, /640/);
+      await bad({ buttonLabel: 'a'.repeat(21), deliveryMessage: 'x' }, /buttonLabel/);
+
+      // Editar tirando a entrega de uma com botão também é recusado
+      const ok = await createAutomation(withButton);
+      await api()
+        .patch(`/instagram/automations/${ok.body.id}`)
+        .set(auth)
+        .send({ deliveryMessage: '' })
+        .expect(400);
+      // Tirar o botão junto libera
+      await api()
+        .patch(`/instagram/automations/${ok.body.id}`)
+        .set(auth)
+        .send({ buttonLabel: null, deliveryMessage: null })
+        .expect(200);
+    });
   });
 });

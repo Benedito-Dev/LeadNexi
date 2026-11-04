@@ -12,14 +12,27 @@ export type Automacao = {
   message: string
   /** Respostas públicas no comentário (uma sorteada); vazio = não responde em público */
   publicReplies: string[]
+  /** Botão embaixo da mensagem; null = só texto (a mensagem já é a entrega) */
+  buttonLabel: string | null
+  /** O que chega ao tocar no botão */
+  deliveryMessage: string | null
+  /** Só entrega para quem segue a conta */
+  requireFollow: boolean
+  /** Para quem tocou e não segue; null = o texto padrão */
+  notFollowingMessage: string | null
   createdAt: string
   /** Mensagens enviadas e recusadas pela Meta */
   sent: number
   failed: number
+  /** Com botão: quantos tocaram e receberam a entrega */
+  delivered: number
   lastSentAt: string | null
 }
 
-export type DadosDaAutomacao = Pick<Automacao, 'name' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies'> & { active?: boolean }
+export type DadosDaAutomacao = Pick<
+  Automacao,
+  'name' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies' | 'buttonLabel' | 'deliveryMessage' | 'requireFollow' | 'notFollowingMessage'
+> & { active?: boolean }
 
 /** Um comentário que disparou a automação. */
 export type Disparo = {
@@ -30,11 +43,19 @@ export type Disparo = {
   leadId: string | null
   status: 'PENDING' | 'SENT' | 'SKIPPED' | 'FAILED'
   error: string | null
+  /** Com botão: quando tocou e recebeu a entrega */
+  deliveredAt: string | null
   createdAt: string
 }
 
 /** Limite da mensagem no direct (o da Meta) */
 export const LIMITE_DA_MENSAGEM = 1000
+/** Com botão, o texto acima dele tem o limite do modelo da Meta */
+export const LIMITE_COM_BOTAO = 640
+/** Texto do botão (limite da Meta) */
+export const LIMITE_DO_BOTAO = 20
+/** O mesmo texto padrão do servidor, para quem não segue */
+export const TEXTO_PADRAO_DE_SEGUIR = 'Quase lá! Siga o perfil e toque no botão de novo para receber.'
 
 export const listarAutomacoes = () => api<Automacao[]>('/instagram/automations')
 

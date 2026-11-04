@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { decryptSecret } from '../common/crypto/secret-box.js';
 import type {
   InstagramAccount,
@@ -26,6 +31,13 @@ export const VIA_AUTOMATION = 'automacao';
 const MAX_COMMENT = 500;
 /** Últimos disparos mostrados na tela de uma automação */
 const RECENT_RUNS = 30;
+/** Payload do botão: liga o toque ao disparo (comentário) que mandou a mensagem */
+const POSTBACK_PREFIX = 'automacao:';
+/** Limite do texto acima do botão (modelo de botão da Meta) */
+export const BUTTON_TEXT_LIMIT = 640;
+/** Quem não segue e tocou no botão, quando a automação não tem um texto próprio */
+export const DEFAULT_NOT_FOLLOWING =
+  'Quase lá! Siga o perfil e toque no botão de novo para receber.';
 
 /** Comentário no formato dos avisos da Meta (entry[].changes[] com field "comments") */
 interface CommentEvent {
@@ -33,6 +45,13 @@ interface CommentEvent {
   text?: unknown;
   from?: { id?: unknown; username?: unknown };
   media?: { id?: unknown };
+}
+
+/** Toque num botão do direct (entry[].messaging[] com postback) */
+interface Postback {
+  accountId: string;
+  senderId: string;
+  payload: string;
 }
 
 interface Comment {
@@ -46,7 +65,7 @@ interface Comment {
 type Json = Record<string, unknown>;
 
 export interface AutomationsResult {
-  /** Mensagens enviadas no direct */
+  /** Mensagens enviadas no direct (a do comentário e a entrega depois do botão) */
   sent: number;
   /** Comentários que dispararam, mas a Meta recusou */
   failed: number;
@@ -73,7 +92,7 @@ export class InstagramAutomationsService {
 
   /** Todas, a mais nova primeiro, com quantas mensagens cada uma já mandou. */
   async list() {
-    const [automations, counts, last] = await Promise.all([
+    const [automations, counts, last, delivered] = await Promise.all([
       this.prisma.instagramAutomation.findMany({
         orderBy: { createdAt: 'desc' },
       }),
@@ -86,6 +105,11 @@ export class InstagramAutomationsService {
         where: { status: 'SENT' },
         _max: { createdAt: true },
       }),
+      this.prisma.instagramAutomationRun.groupBy({
+        by: ['automationId'],
+        where: { deliveredAt: { not: null } },
+        _count: { _all: true },
+      }),
     ]);
     const count = (id: string, status: string) =>
       counts.find((c) => c.automationId === id && c.status === status)?._count
@@ -94,6 +118,10 @@ export class InstagramAutomationsService {
       ...automation,
       sent: count(automation.id, 'SENT'),
       failed: count(automation.id, 'FAILED'),
+      /** Com botão: quantos tocaram e receberam a entrega */
+      delivered:
+        delivered.find((d) => d.automationId === automation.id)?._count._all ??
+        0,
       lastSentAt:
         last.find((l) => l.automationId === automation.id)?._max.createdAt ??
         null,
@@ -101,11 +129,31 @@ export class InstagramAutomationsService {
   }
 
   create(dto: CreateAutomationDto) {
+    checkSetup({
+      message: dto.message,
+      buttonLabel: dto.buttonLabel ?? null,
+      deliveryMessage: dto.deliveryMessage ?? null,
+      requireFollow: dto.requireFollow ?? false,
+    });
     return this.prisma.instagramAutomation.create({ data: dto });
   }
 
   async update(id: string, dto: UpdateAutomationDto) {
-    await this.findOrThrow(id);
+    const current = await this.prisma.instagramAutomation.findUnique({
+      where: { id },
+    });
+    if (!current) throw new NotFoundException('Automação não encontrada');
+    // O que fica depois da edição (campo ausente = o atual; null = tirado)
+    checkSetup({
+      message: dto.message ?? current.message,
+      buttonLabel:
+        dto.buttonLabel === undefined ? current.buttonLabel : dto.buttonLabel,
+      deliveryMessage:
+        dto.deliveryMessage === undefined
+          ? current.deliveryMessage
+          : dto.deliveryMessage,
+      requireFollow: dto.requireFollow ?? current.requireFollow,
+    });
     return this.prisma.instagramAutomation.update({ where: { id }, data: dto });
   }
 
@@ -129,16 +177,21 @@ export class InstagramAutomationsService {
         leadId: true,
         status: true,
         error: true,
+        deliveredAt: true,
         createdAt: true,
       },
     });
   }
 
-  /** Processa os comentários de um aviso da Meta. Erro num comentário não impede os outros. */
+  /**
+   * Processa os comentários e os toques nos botões de um aviso da Meta. Erro num não impede os
+   * outros.
+   */
   async handle(payload: unknown, now = new Date()): Promise<AutomationsResult> {
     const result: AutomationsResult = { sent: 0, failed: 0, ignored: 0 };
     const events = commentEvents(payload);
-    if (events.length === 0) return result;
+    const taps = postbackEvents(payload);
+    if (events.length === 0 && taps.length === 0) return result;
 
     const account = await this.prisma.instagramAccount.findFirst({
       orderBy: { createdAt: 'desc' },
@@ -168,7 +221,122 @@ export class InstagramAutomationsService {
         );
       }
     }
+
+    for (const tap of taps) {
+      if (!account || tap.accountId !== account.igUserId) {
+        result.ignored++;
+        continue;
+      }
+      try {
+        result[await this.deliver(account, tap, now)]++;
+      } catch (error) {
+        result.failed++;
+        this.logger.error(
+          `Entrega da automação falhou: ${(error as Error).message}`,
+        );
+      }
+    }
     return result;
+  }
+
+  /**
+   * A pessoa tocou no botão: entrega o conteúdo (uma vez só). Se a automação pede que siga e ela
+   * não segue, manda o pedido com o botão de novo. Se a Meta não informar, entrega (o lead não
+   * fica preso por uma falha da conferência).
+   */
+  private async deliver(
+    account: InstagramAccount,
+    tap: Postback,
+    now: Date,
+  ): Promise<keyof AutomationsResult> {
+    const run = await this.prisma.instagramAutomationRun.findUnique({
+      where: { id: tap.payload.slice(POSTBACK_PREFIX.length) },
+      include: { automation: true },
+    });
+    const automation = run?.automation;
+    if (
+      !run ||
+      !automation?.buttonLabel ||
+      !automation.deliveryMessage ||
+      run.commenterId !== tap.senderId ||
+      run.deliveredAt
+    ) {
+      return 'ignored';
+    }
+
+    // O toque abre a janela de 24 h do direct, como uma mensagem
+    if (run.leadId) {
+      await this.prisma.lead.updateMany({
+        where: {
+          id: run.leadId,
+          OR: [
+            { instagramLastMessageAt: null },
+            { instagramLastMessageAt: { lt: now } },
+          ],
+        },
+        data: { instagramLastMessageAt: now },
+      });
+    }
+
+    const token = decryptSecret(account.accessToken, this.settings.requireKey());
+    if (automation.requireFollow) {
+      const follows = await this.api
+        .followsAccount(token, tap.senderId)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Não deu para conferir se @${run.username ?? tap.senderId} segue: ${(error as Error).message}`,
+          );
+          return null;
+        });
+      if (follows === false) {
+        const text = automation.notFollowingMessage ?? DEFAULT_NOT_FOLLOWING;
+        try {
+          const messageId = await this.api.sendButtonMessage(token, tap.senderId, text, {
+            title: automation.buttonLabel,
+            payload: tap.payload,
+          });
+          if (run.leadId) await this.recordSent(run.leadId, messageId, text, now);
+          return 'sent';
+        } catch (error) {
+          await this.prisma.instagramAutomationRun.update({
+            where: { id: run.id },
+            data: { error: await this.describeFailure(error, account.id, now) },
+          });
+          return 'failed';
+        }
+      }
+    }
+
+    // Reserva a entrega: o mesmo toque avisado duas vezes não entrega duas
+    const { count } = await this.prisma.instagramAutomationRun.updateMany({
+      where: { id: run.id, deliveredAt: null },
+      data: { deliveredAt: now },
+    });
+    if (count === 0) return 'ignored';
+    try {
+      const messageId = await this.api.sendTextMessage(
+        token,
+        tap.senderId,
+        automation.deliveryMessage,
+      );
+      if (run.leadId) {
+        await this.recordSent(run.leadId, messageId, automation.deliveryMessage, now);
+      }
+      await this.prisma.instagramAutomationRun.update({
+        where: { id: run.id },
+        data: { error: null },
+      });
+      return 'sent';
+    } catch (error) {
+      await this.prisma.instagramAutomationRun.update({
+        where: { id: run.id },
+        data: {
+          deliveredAt: null,
+          error: await this.describeFailure(error, account.id, now),
+        },
+      });
+      return 'failed';
+    }
   }
 
   private async respond(
@@ -226,6 +394,12 @@ export class InstagramAutomationsService {
         token,
         comment.id,
         automation.message,
+        automation.buttonLabel
+          ? {
+              title: automation.buttonLabel,
+              payload: `${POSTBACK_PREFIX}${runId}`,
+            }
+          : undefined,
       );
     } catch (error) {
       await this.prisma.instagramAutomationRun.update({
@@ -267,7 +441,7 @@ export class InstagramAutomationsService {
     return created?.lead ?? null;
   }
 
-  /** A mensagem no histórico do lead. Se o eco da Meta chegou antes, só marca "via automação". */
+  /** A mensagem no histórico do lead. Se o eco da Meta chegou antes, completa o dele. */
   private async recordSent(
     leadId: string,
     messageId: string,
@@ -287,9 +461,10 @@ export class InstagramAutomationsService {
       });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
+      // O eco de mensagem com botão chega sem o texto: fica o que foi enviado
       await this.prisma.leadActivity.update({
         where: { externalId: messageId },
-        data: { via: VIA_AUTOMATION },
+        data: { via: VIA_AUTOMATION, text },
       });
     }
   }
@@ -391,4 +566,53 @@ function asId(value: unknown) {
   return typeof value === 'string' || typeof value === 'number'
     ? String(value)
     : null;
+}
+
+/** Toques nos botões das automações (entry[].messaging[] com postback "automacao:<disparo>"). */
+function postbackEvents(payload: unknown): Postback[] {
+  const body = (payload ?? {}) as Json;
+  if (body.object !== 'instagram' || !Array.isArray(body.entry)) return [];
+  const taps: Postback[] = [];
+  for (const entry of body.entry as Json[]) {
+    const accountId = asId(entry?.id) ?? '';
+    if (!Array.isArray(entry?.messaging)) continue;
+    for (const event of entry.messaging as Json[]) {
+      const postback = event?.postback as Json | undefined;
+      const senderId = asId((event?.sender as Json | undefined)?.id);
+      const data = postback?.payload;
+      if (!senderId || typeof data !== 'string' || !data.startsWith(POSTBACK_PREFIX)) {
+        continue;
+      }
+      taps.push({ accountId, senderId, payload: data });
+    }
+  }
+  return taps;
+}
+
+/**
+ * Regras que dependem de mais de um campo: "siga para receber" precisa do botão (só depois do
+ * toque a Meta diz se a pessoa segue), o botão precisa da entrega e o texto acima do botão tem
+ * o limite do modelo da Meta.
+ */
+function checkSetup(setup: {
+  message?: string;
+  buttonLabel?: string | null;
+  deliveryMessage?: string | null;
+  requireFollow?: boolean;
+}) {
+  if (setup.requireFollow && !setup.buttonLabel) {
+    throw new BadRequestException(
+      'Para pedir que a pessoa siga, a mensagem precisa ter um botão.',
+    );
+  }
+  if (setup.buttonLabel && !setup.deliveryMessage) {
+    throw new BadRequestException(
+      'Escreva o que chega quando a pessoa tocar no botão.',
+    );
+  }
+  if (setup.buttonLabel && (setup.message?.length ?? 0) > BUTTON_TEXT_LIMIT) {
+    throw new BadRequestException(
+      `Com botão, a mensagem tem até ${BUTTON_TEXT_LIMIT} caracteres.`,
+    );
+  }
 }

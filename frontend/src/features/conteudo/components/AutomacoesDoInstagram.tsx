@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CircleAlert, KeyRound, MessageCircleReply, Plus, Workflow } from 'lucide-react'
 import { botaoPrincipalDoTopo } from '@/components/list-page/botoes'
 import { Button } from '@/components/ui/button'
+import { Interruptor } from '@/components/ui/interruptor'
 import { Selo } from '@/components/ui/selo'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -137,6 +138,11 @@ function CartaoDaAutomacao({ automacao, onAbrir, onLigar }: { automacao: Automac
         <span>
           <span className="font-marca text-sm font-extrabold tabular-nums text-foreground">{automacao.sent}</span> {automacao.sent === 1 ? 'mensagem enviada' : 'mensagens enviadas'}
         </span>
+        {automacao.buttonLabel && (
+          <span>
+            <span className="font-marca text-sm font-extrabold tabular-nums text-foreground">{automacao.delivered}</span> {automacao.delivered === 1 ? 'tocou no botão' : 'tocaram no botão'}
+          </span>
+        )}
         {automacao.lastSentAt && <span>última há {formatarDecorrido(automacao.lastSentAt)}</span>}
         {automacao.failed > 0 && (
           <span className="inline-flex items-center gap-1 text-warn-foreground">
@@ -147,24 +153,5 @@ function CartaoDaAutomacao({ automacao, onAbrir, onLigar }: { automacao: Automac
         <span className="ml-auto">{automacao.active ? 'Ligada' : 'Pausada'}</span>
       </div>
     </article>
-  )
-}
-
-/** Chave liga/desliga (violeta ligada). */
-export function Interruptor({ ligado, rotulo, onMudar }: { ligado: boolean; rotulo: string; onMudar: (ligado: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={ligado}
-      aria-label={rotulo}
-      onClick={() => onMudar(!ligado)}
-      className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan focus-visible:ring-offset-2',
-        ligado ? 'border-leadnexi-violet-600 bg-leadnexi-violet-600' : 'border-input bg-muted',
-      )}
-    >
-      <span aria-hidden className={cn('inline-block h-4 w-4 rounded-full bg-white shadow transition-transform', ligado ? 'translate-x-6' : 'translate-x-1')} />
-    </button>
   )
 }

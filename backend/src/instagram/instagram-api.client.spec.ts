@@ -232,7 +232,7 @@ describe('InstagramApiClient', () => {
       );
       expect(init?.method).toBe('POST');
       expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
-        subscribed_fields: 'messages,message_reactions',
+        subscribed_fields: 'messages,message_reactions,messaging_postbacks',
         access_token: 'tok',
       });
     });
@@ -242,7 +242,7 @@ describe('InstagramApiClient', () => {
       await client.subscribeToMessages('tok', true);
       const { init } = lastCall();
       expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
-        subscribed_fields: 'messages,message_reactions,comments',
+        subscribed_fields: 'messages,message_reactions,messaging_postbacks,comments',
         access_token: 'tok',
       });
     });
@@ -260,6 +260,39 @@ describe('InstagramApiClient', () => {
         recipient: { comment_id: 'c-1' },
         message: { text: 'Te mandei o link' },
       });
+    });
+
+    it('resposta privada com botão vai como modelo de botão', async () => {
+      reply(200, { message_id: 'mid.2' });
+      await client.sendPrivateReply('tok', 'c-1', 'Toque para receber', {
+        title: 'Quero o link',
+        payload: 'automacao:r1',
+      });
+      expect(JSON.parse(lastCall().init?.body as string)).toEqual({
+        recipient: { comment_id: 'c-1' },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'button',
+              text: 'Toque para receber',
+              buttons: [
+                { type: 'postback', title: 'Quero o link', payload: 'automacao:r1' },
+              ],
+            },
+          },
+        },
+      });
+    });
+
+    it('lê se a pessoa segue a conta', async () => {
+      reply(200, { is_user_follow_business: false, id: '55' });
+      await expect(client.followsAccount('tok', '55')).resolves.toBe(false);
+      const { url } = lastCall();
+      expect(url.pathname).toBe(`/${GRAPH_VERSION}/55`);
+      expect(url.searchParams.get('fields')).toBe('is_user_follow_business');
+      reply(200, { id: '55' });
+      await expect(client.followsAccount('tok', '55')).resolves.toBeNull();
     });
 
     it('responde um comentário em público', async () => {
