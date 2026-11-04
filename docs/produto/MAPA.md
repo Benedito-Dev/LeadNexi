@@ -152,8 +152,12 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
   depois do toque (a Meta exige que a pessoa tenha interagido no direct). Precisa do campo
   `messaging_postbacks` no webhook do app da Meta. A Meta só documenta texto na resposta a comentário: o botão
   ainda precisa ser confirmado num teste real.
-  Próximas fases: resposta a story, menção e palavra no direct; ações no lead (etapa, lista) e o placar por
-  automação; ferramentas no MCP.
+  **Gatilhos:** comentário no post (o de cima), resposta ao story (com palavra ou qualquer uma), menção no story
+  e palavra no direct (palavra obrigatória). Story e direct respondem na conversa que a pessoa abriu (janela de
+  24 h), com o mesmo botão e "siga para receber"; post e resposta pública só existem no comentário. Fora do
+  comentário, a mesma pessoa recebe a mesma automação no máximo uma vez por dia. Resposta a story sem automação
+  de story cai na de palavra no direct.
+  Próximas fases: ações no lead (etapa, lista) e o placar por automação; ferramentas no MCP.
 
 Fora do plano: banco de provas (decisão de 26/10/2026; tabela removida em 27/10/2026). A IA não cita resultado de outros clientes.
 

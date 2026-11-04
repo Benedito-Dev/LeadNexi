@@ -534,4 +534,172 @@ describe('Automações do Instagram (e2e)', () => {
         .expect(200);
     });
   });
+
+  describe('story e direct', () => {
+    /** Mensagem recebida no direct, no formato da Meta */
+    function dm(
+      message: Record<string, unknown>,
+      options: { mid?: string; from?: string } = {},
+    ) {
+      return {
+        object: 'instagram',
+        entry: [
+          {
+            id: ACCOUNT,
+            time: Date.now(),
+            messaging: [
+              {
+                sender: { id: options.from ?? 'igsid-ana' },
+                recipient: { id: ACCOUNT },
+                timestamp: Date.now(),
+                message: { mid: options.mid ?? 'dm-1', ...message },
+              },
+            ],
+          },
+        ],
+      };
+    }
+    const storyReply = (text: string, mid = 'dm-1') =>
+      dm({ text, reply_to: { story: { id: 'story-1', url: 'https://cdn.test/s' } } }, { mid });
+    const mention = (mid = 'dm-1') =>
+      dm({ attachments: [{ type: 'story_mention', payload: { url: 'https://cdn.test/m' } }] }, { mid });
+
+    beforeEach(() => {
+      meta.getMessagingProfile.mockResolvedValue({
+        name: 'Ana Lima',
+        username: 'ana.lima',
+        profilePictureUrl: null,
+      });
+    });
+
+    it('resposta a story responde no direct da pessoa, que vira lead pelo inbox', async () => {
+      const automation = await createAutomation({
+        trigger: 'STORY_REPLY',
+        keywords: [],
+        mediaIds: ['post-1'],
+        publicReplies: ['não vale aqui'],
+      });
+      // Post e resposta pública não valem para story
+      expect(automation.body).toMatchObject({ mediaIds: [], publicReplies: [] });
+
+      await deliver(storyReply('que lindo!'));
+      expect(meta.sendTextMessage).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-ana',
+        'Oi! Aqui está o link: https://exemplo.test',
+      );
+      expect(meta.sendPrivateReply).not.toHaveBeenCalled();
+      expect(meta.replyToComment).not.toHaveBeenCalled();
+
+      const lead = await prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-ana' },
+        include: { activities: { orderBy: { createdAt: 'asc' } } },
+      });
+      expect(lead.activities.map((a) => [a.type, a.via])).toEqual([
+        ['CREATED', null],
+        ['INSTAGRAM_MESSAGE', null],
+        ['INSTAGRAM_MESSAGE_SENT', 'automacao'],
+      ]);
+      const [run] = await prisma.instagramAutomationRun.findMany();
+      expect(run).toMatchObject({
+        mediaId: 'story-1',
+        username: 'ana.lima',
+        commentText: 'que lindo!',
+        status: 'SENT',
+      });
+    });
+
+    it('menção no story dispara a automação de menção', async () => {
+      await createAutomation({ trigger: 'STORY_MENTION', keywords: ['quero'] });
+      await deliver(mention());
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+      const automation = await prisma.instagramAutomation.findFirstOrThrow();
+      expect(automation.keywords).toEqual([]);
+    });
+
+    it('palavra no direct dispara; sem a palavra, não', async () => {
+      await createAutomation({ trigger: 'DM_KEYWORD', keywords: ['preço'], mediaIds: [] });
+      await deliver(dm({ text: 'oi, tudo bem?' }, { mid: 'dm-1' }));
+      expect(meta.sendTextMessage).not.toHaveBeenCalled();
+      await deliver(dm({ text: 'qual o PRECO?' }, { mid: 'dm-2' }));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('no direct, a mesma pessoa recebe uma vez por dia', async () => {
+      await createAutomation({ trigger: 'DM_KEYWORD', keywords: ['preço'], mediaIds: [] });
+      await deliver(dm({ text: 'preço' }, { mid: 'dm-1' }));
+      await deliver(dm({ text: 'preço?' }, { mid: 'dm-2' }));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+      // Passado um dia, recebe de novo
+      await prisma.instagramAutomationRun.updateMany({
+        data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+      });
+      await deliver(dm({ text: 'preço' }, { mid: 'dm-3' }));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(2);
+    });
+
+    it('resposta a story sem automação de story cai na de palavra no direct', async () => {
+      await createAutomation({ trigger: 'DM_KEYWORD', keywords: ['quero'], mediaIds: [] });
+      await deliver(storyReply('quero!'));
+      expect(meta.sendTextMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('com botão, vai como mensagem com botão e o toque entrega', async () => {
+      await createAutomation({
+        trigger: 'DM_KEYWORD',
+        keywords: ['quero'],
+        mediaIds: [],
+        message: 'Toque para receber',
+        buttonLabel: 'Quero',
+        deliveryMessage: 'Aqui: https://exemplo.test',
+      });
+      await deliver(dm({ text: 'quero' }));
+      const [, , , button] = meta.sendButtonMessage.mock.calls[0] as [
+        string,
+        string,
+        string,
+        { payload: string },
+      ];
+      await deliver({
+        object: 'instagram',
+        entry: [
+          {
+            id: ACCOUNT,
+            time: Date.now(),
+            messaging: [
+              {
+                sender: { id: 'igsid-ana' },
+                recipient: { id: ACCOUNT },
+                timestamp: Date.now(),
+                postback: { mid: 'pb-1', title: 'Quero', payload: button.payload },
+              },
+            ],
+          },
+        ],
+      });
+      expect(meta.sendTextMessage).toHaveBeenCalledWith(
+        'token-real',
+        'igsid-ana',
+        'Aqui: https://exemplo.test',
+      );
+    });
+
+    it('a própria mensagem da conta (eco) e a automação de comentário não disparam no direct', async () => {
+      await createAutomation({ mediaIds: [], keywords: [] });
+      await createAutomation({ trigger: 'DM_KEYWORD', keywords: ['quero'], mediaIds: [] });
+      await deliver(dm({ text: 'quero', is_echo: true }));
+      await deliver(dm({ text: 'quero' }, { mid: 'dm-9', from: ACCOUNT }));
+      expect(meta.sendTextMessage).not.toHaveBeenCalled();
+      expect(meta.sendPrivateReply).not.toHaveBeenCalled();
+    });
+
+    it('palavra no direct sem palavra é recusada', async () => {
+      const res = await api()
+        .post('/instagram/automations')
+        .set(auth)
+        .send({ name: 'x', trigger: 'DM_KEYWORD', message: 'Oi', keywords: [] })
+        .expect(400);
+      expect(res.body.message).toMatch(/pelo menos uma palavra/);
+    });
+  });
 });

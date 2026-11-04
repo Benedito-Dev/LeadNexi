@@ -1,10 +1,21 @@
 import { api, corpo } from '@/lib/api'
 
 /** Automação do Instagram: comentário num post vira mensagem no direct. */
+/** O que dispara a automação */
+export type Gatilho = 'COMMENT' | 'STORY_REPLY' | 'STORY_MENTION' | 'DM_KEYWORD'
+
+export const GATILHOS: { valor: Gatilho; rotulo: string; texto: string }[] = [
+  { valor: 'COMMENT', rotulo: 'Comentário no post', texto: 'Comentou no post ou Reel' },
+  { valor: 'STORY_REPLY', rotulo: 'Resposta ao story', texto: 'Respondeu um story seu' },
+  { valor: 'STORY_MENTION', rotulo: 'Menção no story', texto: 'Marcou você no story' },
+  { valor: 'DM_KEYWORD', rotulo: 'Palavra no direct', texto: 'Mandou a palavra no direct' },
+]
+
 export type Automacao = {
   id: string
   name: string
   active: boolean
+  trigger: Gatilho
   /** Posts na Meta; vazio = qualquer post ou Reel */
   mediaIds: string[]
   /** Palavras que disparam; vazio = qualquer comentário */
@@ -31,7 +42,7 @@ export type Automacao = {
 
 export type DadosDaAutomacao = Pick<
   Automacao,
-  'name' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies' | 'buttonLabel' | 'deliveryMessage' | 'requireFollow' | 'notFollowingMessage'
+  'name' | 'trigger' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies' | 'buttonLabel' | 'deliveryMessage' | 'requireFollow' | 'notFollowingMessage'
 > & { active?: boolean }
 
 /** Um comentário que disparou a automação. */

@@ -22,10 +22,12 @@ import {
   LIMITE_COM_BOTAO,
   LIMITE_DA_MENSAGEM,
   LIMITE_DO_BOTAO,
+  GATILHOS,
   listarDisparos,
   TEXTO_PADRAO_DE_SEGUIR,
   type Automacao,
   type Disparo,
+  type Gatilho,
 } from '../automacoes'
 import { Passo } from './NovoPost'
 
@@ -44,7 +46,7 @@ export function EditorDeAutomacao({ aberto, automacao, onFechar, onSalvo }: Prop
       <SheetContent className="flex w-full flex-col gap-0 p-0 font-marca sm:max-w-xl">
         <header className="border-b border-border px-6 py-4 pr-14">
           <SheetTitle className="m-0 text-lg font-extrabold tracking-[-0.02em] text-foreground">{automacao ? 'Editar automação' : 'Nova automação'}</SheetTitle>
-          <SheetDescription className="m-0 mt-0.5 text-[13px] font-medium text-muted-foreground">Comentou no post, recebe a mensagem no direct.</SheetDescription>
+          <SheetDescription className="m-0 mt-0.5 text-[13px] font-medium text-muted-foreground">Comentou, respondeu o story ou mandou a palavra: recebe a mensagem no direct.</SheetDescription>
         </header>
         {aberto && <Formulario key={automacao?.id ?? 'nova'} automacao={automacao} onFechar={onFechar} onSalvo={onSalvo} />}
       </SheetContent>
@@ -68,6 +70,7 @@ function separar(texto: string, separador: RegExp) {
 
 function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
   const [nome, setNome] = useState(automacao?.name ?? '')
+  const [gatilho, setGatilho] = useState<Gatilho>(automacao?.trigger ?? 'COMMENT')
   const [todosOsPosts, setTodosOsPosts] = useState(automacao ? automacao.mediaIds.length === 0 : false)
   const [posts, setPosts] = useState<string[]>(automacao?.mediaIds ?? [])
   const [qualquerComentario, setQualquerComentario] = useState(automacao ? automacao.keywords.length === 0 : false)
@@ -85,12 +88,17 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
 
   const listaDePalavras = separar(palavras, /,/)
   const limite = comBotao ? LIMITE_COM_BOTAO : LIMITE_DA_MENSAGEM
+  const ehComentario = gatilho === 'COMMENT'
+  // Palavra: opcional no comentário e na resposta ao story, obrigatória no direct, não existe na menção
+  const usaPalavra = gatilho === 'DM_KEYWORD' || (gatilho !== 'STORY_MENTION' && !qualquerComentario)
   const bloqueio = !nome.trim()
     ? 'Dê um nome para achar a automação na lista.'
-    : !todosOsPosts && posts.length === 0
+    : ehComentario && !todosOsPosts && posts.length === 0
       ? 'Escolha pelo menos um post, ou "Qualquer post".'
-      : !qualquerComentario && listaDePalavras.length === 0
-        ? 'Escreva pelo menos uma palavra, ou "Qualquer comentário".'
+      : usaPalavra && listaDePalavras.length === 0
+        ? gatilho === 'DM_KEYWORD'
+          ? 'Escreva pelo menos uma palavra.'
+          : `Escreva pelo menos uma palavra, ou "${ehComentario ? 'Qualquer comentário' : 'Qualquer resposta'}".`
         : !mensagem.trim()
           ? 'Escreva a mensagem do direct.'
           : mensagem.length > limite
@@ -107,10 +115,11 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
     setErro(null)
     const dados = {
       name: nome.trim(),
-      mediaIds: todosOsPosts ? [] : posts,
-      keywords: qualquerComentario ? [] : listaDePalavras,
+      trigger: gatilho,
+      mediaIds: ehComentario && !todosOsPosts ? posts : [],
+      keywords: usaPalavra ? listaDePalavras : [],
       message: mensagem.trim(),
-      publicReplies: separar(respostas, /\n/),
+      publicReplies: ehComentario ? separar(respostas, /\n/) : [],
       buttonLabel: comBotao ? botao.trim() : null,
       deliveryMessage: comBotao ? entrega.trim() : null,
       requireFollow: comBotao && pedirParaSeguir,
@@ -142,55 +151,85 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
     }
   }
 
+  let numero = 0
+  const passo = () => ++numero
+
   return (
     <>
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
-        {/* 1. Nome */}
+        {/* Nome, gatilho e o que muda com ele; os números dos passos seguem os que aparecem */}
         <section aria-labelledby="au-nome" className="flex flex-col gap-3">
-          <Passo id="au-nome" numero={1} titulo="Nome" />
+          <Passo id="au-nome" numero={passo()} titulo="Nome" />
           <Input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={80} placeholder="Ex.: Link do catálogo" aria-labelledby="au-nome" />
         </section>
 
-        {/* 2. Em qual post */}
-        <section aria-labelledby="au-post" className="flex flex-col gap-3 border-t border-border pt-5">
-          <Passo id="au-post" numero={2} titulo="Em qual post" detalhe={!todosOsPosts && posts.length > 0 ? `${posts.length} ${posts.length === 1 ? 'escolhido' : 'escolhidos'}` : undefined} />
-          <div className={barraDeSegmentos} role="radiogroup" aria-label="Em qual post">
-            <button type="button" role="radio" aria-checked={!todosOsPosts} onClick={() => setTodosOsPosts(false)} className={segmento(!todosOsPosts)}>
-              Posts escolhidos
-            </button>
-            <button type="button" role="radio" aria-checked={todosOsPosts} onClick={() => setTodosOsPosts(true)} className={segmento(todosOsPosts)}>
-              Qualquer post
-            </button>
+        {/* 2. O que dispara */}
+        <section aria-labelledby="au-gatilho" className="flex flex-col gap-3 border-t border-border pt-5">
+          <Passo id="au-gatilho" numero={passo()} titulo="O que dispara" />
+          <div role="radiogroup" aria-labelledby="au-gatilho" className="grid grid-cols-2 gap-2">
+            {GATILHOS.map((g) => (
+              <button
+                key={g.valor}
+                type="button"
+                role="radio"
+                aria-checked={gatilho === g.valor}
+                onClick={() => setGatilho(g.valor)}
+                className={cn(
+                  'flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leadnexi-cyan',
+                  gatilho === g.valor ? 'border-leadnexi-violet-600 bg-leadnexi-violet/10' : 'border-border bg-card hover:bg-accent',
+                )}
+              >
+                <span className="text-[13px] font-bold text-foreground">{g.rotulo}</span>
+                <span className="text-xs font-medium text-muted-foreground">{g.texto}</span>
+              </button>
+            ))}
           </div>
-          {todosOsPosts ? (
-            <p className="m-0 text-[13px] font-medium text-muted-foreground">Vale para todos os posts e Reels, inclusive os que você publicar depois.</p>
-          ) : (
-            <GradeDePosts escolhidos={posts} onMudar={setPosts} />
-          )}
         </section>
 
-        {/* 3. Qual comentário */}
-        <section aria-labelledby="au-palavra" className="flex flex-col gap-3 border-t border-border pt-5">
-          <Passo id="au-palavra" numero={3} titulo="Qual comentário" />
-          <div className={barraDeSegmentos} role="radiogroup" aria-label="Qual comentário">
-            <button type="button" role="radio" aria-checked={!qualquerComentario} onClick={() => setQualquerComentario(false)} className={segmento(!qualquerComentario)}>
-              Com a palavra
-            </button>
-            <button type="button" role="radio" aria-checked={qualquerComentario} onClick={() => setQualquerComentario(true)} className={segmento(qualquerComentario)}>
-              Qualquer comentário
-            </button>
-          </div>
-          {!qualquerComentario && (
-            <>
-              <Input value={palavras} onChange={(e) => setPalavras(e.target.value)} placeholder="quero, link, preço" aria-label="Palavras que disparam" />
-              <p className="m-0 text-xs font-medium text-muted-foreground">Separe por vírgula. Maiúscula e acento não fazem diferença: "quero" também pega "QUERO!".</p>
-            </>
-          )}
-        </section>
+        {ehComentario && (
+          <section aria-labelledby="au-post" className="flex flex-col gap-3 border-t border-border pt-5">
+            <Passo id="au-post" numero={passo()} titulo="Em qual post" detalhe={!todosOsPosts && posts.length > 0 ? `${posts.length} ${posts.length === 1 ? 'escolhido' : 'escolhidos'}` : undefined} />
+            <div className={barraDeSegmentos} role="radiogroup" aria-label="Em qual post">
+              <button type="button" role="radio" aria-checked={!todosOsPosts} onClick={() => setTodosOsPosts(false)} className={segmento(!todosOsPosts)}>
+                Posts escolhidos
+              </button>
+              <button type="button" role="radio" aria-checked={todosOsPosts} onClick={() => setTodosOsPosts(true)} className={segmento(todosOsPosts)}>
+                Qualquer post
+              </button>
+            </div>
+            {todosOsPosts ? (
+              <p className="m-0 text-[13px] font-medium text-muted-foreground">Vale para todos os posts e Reels, inclusive os que você publicar depois.</p>
+            ) : (
+              <GradeDePosts escolhidos={posts} onMudar={setPosts} />
+            )}
+          </section>
+        )}
+
+        {gatilho !== 'STORY_MENTION' && (
+          <section aria-labelledby="au-palavra" className="flex flex-col gap-3 border-t border-border pt-5">
+            <Passo id="au-palavra" numero={passo()} titulo={gatilho === 'DM_KEYWORD' ? 'Qual palavra' : ehComentario ? 'Qual comentário' : 'Qual resposta'} />
+            {gatilho !== 'DM_KEYWORD' && (
+              <div className={barraDeSegmentos} role="radiogroup" aria-label="Quais disparam">
+                <button type="button" role="radio" aria-checked={!qualquerComentario} onClick={() => setQualquerComentario(false)} className={segmento(!qualquerComentario)}>
+                  Com a palavra
+                </button>
+                <button type="button" role="radio" aria-checked={qualquerComentario} onClick={() => setQualquerComentario(true)} className={segmento(qualquerComentario)}>
+                  {ehComentario ? 'Qualquer comentário' : 'Qualquer resposta'}
+                </button>
+              </div>
+            )}
+            {usaPalavra && (
+              <>
+                <Input value={palavras} onChange={(e) => setPalavras(e.target.value)} placeholder="quero, link, preço" aria-label="Palavras que disparam" />
+                <p className="m-0 text-xs font-medium text-muted-foreground">Separe por vírgula. Maiúscula e acento não fazem diferença: "quero" também pega "QUERO!".</p>
+              </>
+            )}
+          </section>
+        )}
 
         {/* 4. Mensagem */}
         <section aria-labelledby="au-mensagem" className="flex flex-col gap-3 border-t border-border pt-5">
-          <Passo id="au-mensagem" numero={4} titulo="Mensagem no direct" detalhe={`${mensagem.length}/${limite}`} alerta={mensagem.length > limite} />
+          <Passo id="au-mensagem" numero={passo()} titulo="Mensagem no direct" detalhe={`${mensagem.length}/${limite}`} alerta={mensagem.length > limite} />
           <div className={barraDeSegmentos} role="radiogroup" aria-label="Formato da mensagem">
             <button type="button" role="radio" aria-checked={!comBotao} onClick={() => setComBotao(false)} className={segmento(!comBotao)}>
               Só a mensagem
@@ -244,24 +283,27 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
               )}
             </div>
           )}
-          <p className="m-0 text-xs font-medium text-muted-foreground">Cada pessoa recebe uma vez por post, mesmo se comentar de novo.</p>
+          <p className="m-0 text-xs font-medium text-muted-foreground">
+            {ehComentario ? 'Cada pessoa recebe uma vez por post, mesmo se comentar de novo.' : 'Cada pessoa recebe no máximo uma vez por dia.'}
+          </p>
         </section>
 
-        {/* 5. Resposta pública */}
-        <section aria-labelledby="au-publica" className="flex flex-col gap-3 border-t border-border pt-5">
-          <Passo id="au-publica" numero={5} titulo="Responder no comentário" detalhe="opcional" />
-          <Textarea
-            value={respostas}
-            onChange={(e) => setRespostas(e.target.value)}
-            rows={3}
-            placeholder={'Te mandei no direct!\nCorre no direct que mandei lá'}
-            className="min-h-20 resize-y text-sm leading-6 [field-sizing:content] max-h-60"
-            aria-labelledby="au-publica"
-          />
-          <p className="m-0 text-xs font-medium text-muted-foreground">Uma resposta por linha. O LeadNexi sorteia uma a cada comentário, para não repetir sempre a mesma.</p>
-        </section>
+        {ehComentario && (
+          <section aria-labelledby="au-publica" className="flex flex-col gap-3 border-t border-border pt-5">
+            <Passo id="au-publica" numero={passo()} titulo="Responder no comentário" detalhe="opcional" />
+            <Textarea
+              value={respostas}
+              onChange={(e) => setRespostas(e.target.value)}
+              rows={3}
+              placeholder={'Te mandei no direct!\nCorre no direct que mandei lá'}
+              className="min-h-20 resize-y text-sm leading-6 [field-sizing:content] max-h-60"
+              aria-labelledby="au-publica"
+            />
+            <p className="m-0 text-xs font-medium text-muted-foreground">Uma resposta por linha. O LeadNexi sorteia uma a cada comentário, para não repetir sempre a mesma.</p>
+          </section>
+        )}
 
-        {automacao && <UltimosDisparos automacaoId={automacao.id} comBotao={Boolean(automacao.buttonLabel)} />}
+        {automacao && <UltimosDisparos automacaoId={automacao.id} gatilho={automacao.trigger} comBotao={Boolean(automacao.buttonLabel)} />}
       </div>
 
       <footer className="flex flex-col gap-3 border-t border-border px-6 py-4">
@@ -368,7 +410,14 @@ const SITUACAO: Record<Disparo['status'], string> = {
 }
 
 /** Quem comentou e se a mensagem saiu, do mais novo para o mais antigo. */
-function UltimosDisparos({ automacaoId, comBotao }: { automacaoId: string; comBotao: boolean }) {
+/** O que a pessoa fez, na lista: "comentou "quero"", "respondeu o story "lindo"", "marcou você no story" */
+function oQueFez(gatilho: Gatilho, texto: string) {
+  if (gatilho === 'STORY_MENTION') return 'marcou você no story'
+  const verbo = gatilho === 'COMMENT' ? 'comentou' : gatilho === 'STORY_REPLY' ? 'respondeu o story' : 'mandou'
+  return texto ? `${verbo} "${texto}"` : verbo
+}
+
+function UltimosDisparos({ automacaoId, gatilho, comBotao }: { automacaoId: string; gatilho: Gatilho; comBotao: boolean }) {
   const [disparos, setDisparos] = useState<Disparo[] | null>(null)
 
   useEffect(() => {
@@ -380,19 +429,19 @@ function UltimosDisparos({ automacaoId, comBotao }: { automacaoId: string; comBo
   return (
     <section aria-labelledby="au-disparos" className="flex flex-col gap-3 border-t border-border pt-5">
       <h3 id="au-disparos" className="m-0 text-[15px] font-extrabold text-foreground">
-        Últimos comentários
+        Quem disparou por último
       </h3>
       {!disparos ? (
         <div aria-busy="true" className="h-16 animate-pulse rounded-lg bg-muted" />
       ) : disparos.length === 0 ? (
-        <p className="m-0 text-[13px] font-medium text-muted-foreground">Ninguém comentou ainda.</p>
+        <p className="m-0 text-[13px] font-medium text-muted-foreground">Ninguém disparou ainda.</p>
       ) : (
         <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
           {disparos.map((d) => (
             <li key={d.id} className="flex items-start gap-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="m-0 truncate text-[13px] font-bold text-foreground">
-                  {d.username ? `@${d.username}` : 'Alguém'} <span className="font-medium text-muted-foreground">comentou "{d.commentText}"</span>
+                  {d.username ? `@${d.username}` : 'Alguém'} <span className="font-medium text-muted-foreground">{oQueFez(gatilho, d.commentText)}</span>
                 </p>
                 {d.error && (
                   <p className="m-0 mt-0.5 flex items-start gap-1 text-xs font-medium text-warn-foreground">

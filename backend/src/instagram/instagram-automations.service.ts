@@ -8,6 +8,7 @@ import { decryptSecret } from '../common/crypto/secret-box.js';
 import type {
   InstagramAccount,
   InstagramAutomation,
+  InstagramAutomationTrigger,
 } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { pickAutomation } from './automation-match.js';
@@ -27,8 +28,10 @@ import { InstagramSettingsService } from './instagram-settings.service.js';
 
 /** Marca no histórico do lead: a mensagem saiu sozinha, por uma automação */
 export const VIA_AUTOMATION = 'automacao';
-/** Comentário guardado no registro, cortado se for muito longo */
+/** Comentário ou mensagem guardado no registro, cortado se for muito longo */
 const MAX_COMMENT = 500;
+/** Fora do comentário (story e direct), a mesma pessoa recebe a mesma automação no máximo 1x neste tempo */
+const REPEAT_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Últimos disparos mostrados na tela de uma automação */
 const RECENT_RUNS = 30;
 /** Payload do botão: liga o toque ao disparo (comentário) que mandou a mensagem */
@@ -54,10 +57,14 @@ interface Postback {
   payload: string;
 }
 
-interface Comment {
-  id: string;
+/** O que disparou: um comentário ou uma mensagem no direct (resposta ou menção no story, ou texto) */
+interface Trigger {
+  kind: InstagramAutomationTrigger;
+  /** ID do comentário ou da mensagem na Meta */
+  sourceId: string;
   text: string;
-  mediaId: string;
+  /** Post comentado ou story respondido */
+  mediaId: string | null;
   fromId: string;
   username: string | null;
 }
@@ -129,13 +136,18 @@ export class InstagramAutomationsService {
   }
 
   create(dto: CreateAutomationDto) {
+    const trigger = dto.trigger ?? 'COMMENT';
     checkSetup({
+      trigger,
+      keywords: dto.keywords ?? [],
       message: dto.message,
       buttonLabel: dto.buttonLabel ?? null,
       deliveryMessage: dto.deliveryMessage ?? null,
       requireFollow: dto.requireFollow ?? false,
     });
-    return this.prisma.instagramAutomation.create({ data: dto });
+    return this.prisma.instagramAutomation.create({
+      data: { ...withoutUnused(trigger, dto), trigger },
+    });
   }
 
   async update(id: string, dto: UpdateAutomationDto) {
@@ -144,7 +156,10 @@ export class InstagramAutomationsService {
     });
     if (!current) throw new NotFoundException('Automação não encontrada');
     // O que fica depois da edição (campo ausente = o atual; null = tirado)
+    const trigger = dto.trigger ?? current.trigger;
     checkSetup({
+      trigger,
+      keywords: dto.keywords ?? current.keywords,
       message: dto.message ?? current.message,
       buttonLabel:
         dto.buttonLabel === undefined ? current.buttonLabel : dto.buttonLabel,
@@ -154,7 +169,10 @@ export class InstagramAutomationsService {
           : dto.deliveryMessage,
       requireFollow: dto.requireFollow ?? current.requireFollow,
     });
-    return this.prisma.instagramAutomation.update({ where: { id }, data: dto });
+    return this.prisma.instagramAutomation.update({
+      where: { id },
+      data: withoutUnused(trigger, dto),
+    });
   }
 
   async remove(id: string) {
@@ -184,12 +202,13 @@ export class InstagramAutomationsService {
   }
 
   /**
-   * Processa os comentários e os toques nos botões de um aviso da Meta. Erro num não impede os
-   * outros.
+   * Processa os comentários, as mensagens do direct (story e palavra) e os toques nos botões de
+   * um aviso da Meta. Erro num não impede os outros. Roda depois do inbox: quem escreveu no
+   * direct já virou lead e a mensagem já está no histórico.
    */
   async handle(payload: unknown, now = new Date()): Promise<AutomationsResult> {
     const result: AutomationsResult = { sent: 0, failed: 0, ignored: 0 };
-    const events = commentEvents(payload);
+    const events = [...commentEvents(payload), ...messageEvents(payload)];
     const taps = postbackEvents(payload);
     if (events.length === 0 && taps.length === 0) return result;
 
@@ -200,24 +219,24 @@ export class InstagramAutomationsService {
       where: { active: true },
     });
 
-    for (const { accountId, comment } of events) {
-      // Aviso de outra conta (ou sem conta conectada), ou comentário da própria conta (inclusive
-      // a resposta pública da automação): não dispara
+    for (const { accountId, trigger } of events) {
+      // Aviso de outra conta (ou sem conta conectada), ou da própria conta (inclusive a resposta
+      // pública da automação): não dispara
       if (
         !account ||
         accountId !== account.igUserId ||
-        comment.fromId === account.igUserId
+        trigger.fromId === account.igUserId
       ) {
         result.ignored++;
         continue;
       }
       try {
-        const outcome = await this.respond(account, automations, comment, now);
+        const outcome = await this.respond(account, automations, trigger, now);
         result[outcome]++;
       } catch (error) {
         result.failed++;
         this.logger.error(
-          `Automação do comentário ${comment.id} falhou: ${(error as Error).message}`,
+          `Automação de ${trigger.sourceId} falhou: ${(error as Error).message}`,
         );
       }
     }
@@ -342,37 +361,36 @@ export class InstagramAutomationsService {
   private async respond(
     account: InstagramAccount,
     automations: InstagramAutomation[],
-    comment: Comment,
+    trigger: Trigger,
     now: Date,
   ): Promise<keyof AutomationsResult> {
-    const automation = pickAutomation(
-      automations,
-      comment.mediaId,
-      comment.text,
-    );
+    const automation = this.pick(automations, trigger);
     if (!automation) return 'ignored';
 
+    // Comentário: uma vez por pessoa em cada post. Story e direct: uma vez por dia
     const answeredBefore = await this.prisma.instagramAutomationRun.findFirst({
       where: {
         automationId: automation.id,
-        commenterId: comment.fromId,
-        mediaId: comment.mediaId,
+        commenterId: trigger.fromId,
         status: 'SENT',
+        ...(trigger.kind === 'COMMENT'
+          ? { mediaId: trigger.mediaId }
+          : { createdAt: { gte: new Date(now.getTime() - REPEAT_WINDOW_MS) } }),
       },
       select: { id: true },
     });
 
-    // Reserva o comentário: o mesmo aviso chegando de novo (ou ao mesmo tempo) para aqui
+    // Reserva o comentário ou a mensagem: o mesmo aviso chegando de novo (ou ao mesmo tempo) para aqui
     let runId: string;
     try {
       const run = await this.prisma.instagramAutomationRun.create({
         data: {
           automationId: automation.id,
-          commentId: comment.id,
-          mediaId: comment.mediaId,
-          commenterId: comment.fromId,
-          username: comment.username,
-          commentText: comment.text.slice(0, MAX_COMMENT),
+          sourceId: trigger.sourceId,
+          mediaId: trigger.mediaId,
+          commenterId: trigger.fromId,
+          username: trigger.username,
+          commentText: trigger.text.slice(0, MAX_COMMENT),
           status: answeredBefore ? 'SKIPPED' : 'PENDING',
           createdAt: now,
         },
@@ -385,22 +403,27 @@ export class InstagramAutomationsService {
     }
     if (answeredBefore) return 'ignored';
 
-    const lead = await this.leadOf(comment, now);
+    const lead = await this.leadOf(trigger, now);
+    if (!trigger.username && lead?.instagramUsername) {
+      await this.prisma.instagramAutomationRun.update({
+        where: { id: runId },
+        data: { username: lead.instagramUsername },
+      });
+    }
+    const button = automation.buttonLabel
+      ? { title: automation.buttonLabel, payload: `${POSTBACK_PREFIX}${runId}` }
+      : undefined;
     let token: string;
     let messageId: string;
     try {
       token = decryptSecret(account.accessToken, this.settings.requireKey());
-      messageId = await this.api.sendPrivateReply(
-        token,
-        comment.id,
-        automation.message,
-        automation.buttonLabel
-          ? {
-              title: automation.buttonLabel,
-              payload: `${POSTBACK_PREFIX}${runId}`,
-            }
-          : undefined,
-      );
+      // Comentário: resposta privada. No direct, a conversa já está aberta (janela de 24 h)
+      messageId =
+        trigger.kind === 'COMMENT'
+          ? await this.api.sendPrivateReply(token, trigger.sourceId, automation.message, button)
+          : button
+            ? await this.api.sendButtonMessage(token, trigger.fromId, automation.message, button)
+            : await this.api.sendTextMessage(token, trigger.fromId, automation.message);
     } catch (error) {
       await this.prisma.instagramAutomationRun.update({
         where: { id: runId },
@@ -414,11 +437,10 @@ export class InstagramAutomationsService {
     }
 
     if (lead) await this.recordSent(lead.id, messageId, automation.message, now);
-    const publicError = await this.replyInPublic(
-      token,
-      comment.id,
-      automation.publicReplies,
-    );
+    const publicError =
+      trigger.kind === 'COMMENT'
+        ? await this.replyInPublic(token, trigger.sourceId, automation.publicReplies)
+        : null;
     await this.prisma.instagramAutomationRun.update({
       where: { id: runId },
       data: { status: 'SENT', leadId: lead?.id ?? null, error: publicError },
@@ -426,19 +448,41 @@ export class InstagramAutomationsService {
     return 'sent';
   }
 
-  /** O lead de quem comentou; quem ainda não é lead vira um, com o @ do comentário. */
-  private async leadOf(comment: Comment, now: Date) {
+  /**
+   * A automação que responde: as do mesmo gatilho. Resposta a story sem automação de story cai
+   * nas de palavra no direct (é uma mensagem como outra).
+   */
+  private pick(automations: InstagramAutomation[], trigger: Trigger) {
+    const of = (kind: InstagramAutomationTrigger) =>
+      pickAutomation(
+        automations.filter((a) => a.trigger === kind),
+        trigger.mediaId ?? '',
+        trigger.text,
+      );
+    return (
+      of(trigger.kind) ??
+      (trigger.kind === 'STORY_REPLY' ? of('DM_KEYWORD') : null)
+    );
+  }
+
+  /**
+   * O lead de quem disparou. Pelo direct, o inbox já criou; pelo comentário, quem ainda não é
+   * lead vira um, com o @ do comentário.
+   */
+  private async leadOf(trigger: Trigger, now: Date) {
     const lead = await this.prisma.lead.findUnique({
-      where: { instagramUserId: comment.fromId },
-      select: { id: true },
+      where: { instagramUserId: trigger.fromId },
+      select: { id: true, instagramUsername: true },
     });
     if (lead) return lead;
     const created = await this.leads.create(
-      comment.fromId,
-      { name: null, username: comment.username, profilePictureUrl: null },
+      trigger.fromId,
+      { name: null, username: trigger.username, profilePictureUrl: null },
       now,
     );
-    return created?.lead ?? null;
+    return created
+      ? { id: created.lead.id, instagramUsername: trigger.username }
+      : null;
   }
 
   /** A mensagem no histórico do lead. Se o eco da Meta chegou antes, completa o dele. */
@@ -528,10 +572,10 @@ export class InstagramAutomationsService {
 /** Comentários do aviso (entry[].changes[] com field "comments"), com a conta a que se referem. */
 function commentEvents(
   payload: unknown,
-): { accountId: string; comment: Comment }[] {
+): { accountId: string; trigger: Trigger }[] {
   const body = (payload ?? {}) as Json;
   if (body.object !== 'instagram' || !Array.isArray(body.entry)) return [];
-  const events: { accountId: string; comment: Comment }[] = [];
+  const events: { accountId: string; trigger: Trigger }[] = [];
   for (const entry of body.entry as Json[]) {
     const id = entry?.id;
     const accountId =
@@ -546,8 +590,9 @@ function commentEvents(
       if (!commentId || !mediaId || !fromId) continue;
       events.push({
         accountId,
-        comment: {
-          id: commentId,
+        trigger: {
+          kind: 'COMMENT',
+          sourceId: commentId,
           text: typeof value.text === 'string' ? value.text : '',
           mediaId,
           fromId,
@@ -555,6 +600,50 @@ function commentEvents(
             typeof value.from?.username === 'string'
               ? value.from.username
               : null,
+        },
+      });
+    }
+  }
+  return events;
+}
+
+/**
+ * Mensagens recebidas no direct (entry[].messaging[]) que podem disparar: resposta a story,
+ * menção no story ou texto. Eco da própria conta, apagada e toque em botão ficam de fora.
+ */
+function messageEvents(
+  payload: unknown,
+): { accountId: string; trigger: Trigger }[] {
+  const body = (payload ?? {}) as Json;
+  if (body.object !== 'instagram' || !Array.isArray(body.entry)) return [];
+  const events: { accountId: string; trigger: Trigger }[] = [];
+  for (const entry of body.entry as Json[]) {
+    const accountId = asId(entry?.id) ?? '';
+    if (!Array.isArray(entry?.messaging)) continue;
+    for (const event of entry.messaging as Json[]) {
+      const message = event?.message as Json | undefined;
+      const fromId = asId((event?.sender as Json | undefined)?.id);
+      const mid = asId(message?.mid);
+      if (!message || !fromId || !mid || message.is_echo || message.is_deleted) {
+        continue;
+      }
+      const story = (message.reply_to as Json | undefined)?.story as
+        | Json
+        | undefined;
+      const attachments = Array.isArray(message.attachments)
+        ? (message.attachments as Json[])
+        : [];
+      const mention = attachments.some((a) => a?.type === 'story_mention');
+      const text = typeof message.text === 'string' ? message.text : '';
+      events.push({
+        accountId,
+        trigger: {
+          kind: mention ? 'STORY_MENTION' : story ? 'STORY_REPLY' : 'DM_KEYWORD',
+          sourceId: mid,
+          text,
+          mediaId: story ? asId(story.id) : null,
+          fromId,
+          username: null,
         },
       });
     }
@@ -590,16 +679,23 @@ function postbackEvents(payload: unknown): Postback[] {
 }
 
 /**
- * Regras que dependem de mais de um campo: "siga para receber" precisa do botão (só depois do
- * toque a Meta diz se a pessoa segue), o botão precisa da entrega e o texto acima do botão tem
- * o limite do modelo da Meta.
+ * Regras que dependem de mais de um campo: palavra no direct precisa de palavra, "siga para
+ * receber" precisa do botão (só depois do toque a Meta diz se a pessoa segue), o botão precisa
+ * da entrega e o texto acima do botão tem o limite do modelo da Meta.
  */
 function checkSetup(setup: {
+  trigger: InstagramAutomationTrigger;
+  keywords: string[];
   message?: string;
   buttonLabel?: string | null;
   deliveryMessage?: string | null;
   requireFollow?: boolean;
 }) {
+  if (setup.trigger === 'DM_KEYWORD' && setup.keywords.length === 0) {
+    throw new BadRequestException(
+      'No direct, escreva pelo menos uma palavra (senão toda mensagem dispararia).',
+    );
+  }
   if (setup.requireFollow && !setup.buttonLabel) {
     throw new BadRequestException(
       'Para pedir que a pessoa siga, a mensagem precisa ter um botão.',
@@ -615,4 +711,19 @@ function checkSetup(setup: {
       `Com botão, a mensagem tem até ${BUTTON_TEXT_LIMIT} caracteres.`,
     );
   }
+}
+
+/**
+ * Tira o que não vale para o gatilho: post e resposta pública só existem no comentário, e a
+ * menção no story não tem palavra.
+ */
+function withoutUnused<T extends UpdateAutomationDto>(
+  trigger: InstagramAutomationTrigger,
+  dto: T,
+): T {
+  return {
+    ...dto,
+    ...(trigger !== 'COMMENT' && { mediaIds: [], publicReplies: [] }),
+    ...(trigger === 'STORY_MENTION' && { keywords: [] }),
+  };
 }

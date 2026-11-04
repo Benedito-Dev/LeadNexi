@@ -50,7 +50,7 @@ export function AutomacoesDoInstagram({ conta }: { conta: SituacaoDaConta | null
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
         <p className="m-0 min-w-0 flex-1 text-sm font-medium text-muted-foreground">
-          Quem comenta no post recebe sua mensagem no direct na hora e entra no CRM como lead.
+          Quem comenta, responde seu story, marca você ou manda a palavra no direct recebe sua mensagem na hora e entra no CRM como lead.
         </p>
         <Button className={cn(botaoPrincipalDoTopo, 'h-10')} onClick={() => setAberta({ automacao: null })}>
           <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
@@ -116,10 +116,13 @@ export function AutomacoesDoInstagram({ conta }: { conta: SituacaoDaConta | null
 }
 
 /** Gatilho em uma linha: "Em 2 posts · comentários com "quero" ou "link"" */
-function resumoDoGatilho(automacao: Pick<Automacao, 'mediaIds' | 'keywords'>) {
+function resumoDoGatilho(automacao: Pick<Automacao, 'trigger' | 'mediaIds' | 'keywords'>) {
+  const palavras = automacao.keywords.map((k) => `"${k}"`).join(' ou ')
+  if (automacao.trigger === 'STORY_MENTION') return 'Quando marcam você no story'
+  if (automacao.trigger === 'DM_KEYWORD') return `Direct com ${palavras}`
+  if (automacao.trigger === 'STORY_REPLY') return automacao.keywords.length === 0 ? 'Qualquer resposta ao story' : `Resposta ao story com ${palavras}`
   const onde = automacao.mediaIds.length === 0 ? 'Qualquer post' : automacao.mediaIds.length === 1 ? 'Em 1 post' : `Em ${automacao.mediaIds.length} posts`
-  const quais = automacao.keywords.length === 0 ? 'qualquer comentário' : `comentários com ${automacao.keywords.map((k) => `"${k}"`).join(' ou ')}`
-  return `${onde} · ${quais}`
+  return `${onde} · ${automacao.keywords.length === 0 ? 'qualquer comentário' : `comentários com ${palavras}`}`
 }
 
 function CartaoDaAutomacao({ automacao, onAbrir, onLigar }: { automacao: Automacao; onAbrir: () => void; onLigar: (ativa: boolean) => void }) {

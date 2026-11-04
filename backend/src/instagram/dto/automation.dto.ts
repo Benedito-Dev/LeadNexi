@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -43,6 +44,14 @@ export class CreateAutomationDto {
   @IsNotEmpty()
   @MaxLength(80)
   name: string;
+
+  /**
+   * O que dispara: comentário (padrão), resposta a story, menção no story ou palavra no direct
+   * @example "COMMENT"
+   */
+  @IsOptional()
+  @IsIn(['COMMENT', 'STORY_REPLY', 'STORY_MENTION', 'DM_KEYWORD'])
+  trigger?: 'COMMENT' | 'STORY_REPLY' | 'STORY_MENTION' | 'DM_KEYWORD';
 
   /** Ligada (dispara) ou pausada */
   @IsOptional()

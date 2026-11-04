@@ -480,17 +480,30 @@ model McpToken {
 // Automação do Instagram (Conteúdo › Automações): alguém comenta num post e recebe uma mensagem no
 // direct, sozinho. Exceção à regra "nada sai sozinho" (decisão de 04/11/2026): só pela API oficial
 // e só para quem interagiu primeiro.
+enum InstagramAutomationTrigger {
+  /// Comentário num post ou Reel (resposta privada no direct)
+  COMMENT
+  /// Resposta a um story, no direct
+  STORY_REPLY
+  /// Menção da conta no story de alguém
+  STORY_MENTION
+  /// Palavra numa mensagem do direct
+  DM_KEYWORD
+}
+
 model InstagramAutomation {
   id            String                    @id @default(uuid())
   name          String
   active        Boolean                   @default(true)
-  /// IDs dos posts na Meta; vazio = qualquer post ou Reel
+  /// O que dispara: comentário, resposta ou menção no story, ou palavra no direct
+  trigger       InstagramAutomationTrigger @default(COMMENT)
+  /// Só comentário: IDs dos posts na Meta; vazio = qualquer post ou Reel
   mediaIds      String[]                  @default([]) @map("media_ids")
   /// Palavras que disparam (sem diferença de maiúscula e acento); vazio = qualquer comentário
   keywords      String[]                  @default([])
   /// Mensagem enviada no direct de quem comentou
   message       String
-  /// Respostas públicas no comentário (uma sorteada por vez); vazio = não responde em público
+  /// Só comentário: respostas públicas (uma sorteada por vez); vazio = não responde em público
   publicReplies String[]                  @default([]) @map("public_replies")
   /// Botão embaixo da mensagem (ex.: "Quero o link"); vazio = só texto, a mensagem já é a entrega
   buttonLabel   String?                   @map("button_label")
@@ -517,17 +530,20 @@ enum InstagramAutomationRunStatus {
   FAILED
 }
 
-// Cada comentário que disparou uma automação. O ID do comentário entra uma vez só: a Meta pode
-// avisar o mesmo comentário mais de uma vez, e ele nunca recebe duas mensagens.
+// Cada comentário ou mensagem que disparou uma automação. O ID dele entra uma vez só: a Meta pode
+// avisar o mesmo mais de uma vez, e ele nunca recebe duas respostas.
 model InstagramAutomationRun {
   id            String                       @id @default(uuid())
   automationId  String                       @map("automation_id")
   automation    InstagramAutomation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
-  commentId     String                       @unique @map("comment_id")
-  mediaId       String                       @map("media_id")
-  /// Quem comentou (IGSID) e o @ dela
+  /// ID do comentário ou da mensagem do direct na Meta
+  sourceId      String                       @unique @map("comment_id")
+  /// Post comentado ou story respondido (vazio na menção e no direct)
+  mediaId       String?                      @map("media_id")
+  /// Quem comentou ou escreveu (IGSID) e o @ dela
   commenterId   String                       @map("commenter_id")
   username      String?
+  /// O que a pessoa escreveu (vazio na menção sem texto)
   commentText   String                       @map("comment_text")
   leadId        String?                      @map("lead_id")
   status        InstagramAutomationRunStatus
