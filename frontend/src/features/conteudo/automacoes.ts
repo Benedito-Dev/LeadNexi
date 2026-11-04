@@ -31,18 +31,24 @@ export type Automacao = {
   requireFollow: boolean
   /** Para quem tocou e não segue; null = o texto padrão */
   notFollowingMessage: string | null
+  /** No CRM: etapa para onde o lead vai (só para frente) e lista em que entra; null = não mexe */
+  stageId: string | null
+  listId: string | null
   createdAt: string
   /** Mensagens enviadas e recusadas pela Meta */
   sent: number
   failed: number
   /** Com botão: quantos tocaram e receberam a entrega */
   delivered: number
+  /** Placar: pessoas que receberam e quantas delas fecharam */
+  leads: number
+  won: number
   lastSentAt: string | null
 }
 
 export type DadosDaAutomacao = Pick<
   Automacao,
-  'name' | 'trigger' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies' | 'buttonLabel' | 'deliveryMessage' | 'requireFollow' | 'notFollowingMessage'
+  'name' | 'trigger' | 'mediaIds' | 'keywords' | 'message' | 'publicReplies' | 'buttonLabel' | 'deliveryMessage' | 'requireFollow' | 'notFollowingMessage' | 'stageId' | 'listId'
 > & { active?: boolean }
 
 /** Um comentário que disparou a automação. */

@@ -45,6 +45,8 @@ model Stage {
   pipelineId String   @map("pipeline_id")
   pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   leads      Lead[]
+  /// Automações do Instagram que levam o lead para esta etapa
+  automations InstagramAutomation[]
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -71,6 +73,8 @@ model LeadList {
   targetContacts Int?     @map("target_contacts")
   archived       Boolean  @default(false)
   leads          Lead[]
+  /// Automações do Instagram que põem o lead nesta lista
+  automations InstagramAutomation[]
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -512,6 +516,11 @@ model InstagramAutomation {
   /// Só entrega para quem segue a conta; quem não segue recebe `notFollowingMessage` e o botão de novo
   requireFollow Boolean                   @default(false) @map("require_follow")
   notFollowingMessage String?             @map("not_following_message")
+  /// No CRM: leva o lead para esta etapa (só para frente, nunca volta) e para esta lista
+  stageId       String?                   @map("stage_id")
+  stage         Stage?                    @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  listId        String?                   @map("list_id")
+  list          LeadList?                 @relation(fields: [listId], references: [id], onDelete: SetNull)
   runs          InstagramAutomationRun[]
   createdAt     DateTime                  @default(now()) @map("created_at")
   updatedAt     DateTime                  @updatedAt @map("updated_at")

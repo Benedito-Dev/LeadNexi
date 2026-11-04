@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LeadListsModule } from '../lead-lists/lead-lists.module.js';
+import { LeadsModule } from '../leads/leads.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { InstagramApiClient } from './instagram-api.client.js';
 import { InstagramAutomationsController } from './instagram-automations.controller.js';
@@ -25,7 +26,7 @@ import { InstagramService } from './instagram.service.js';
 import { PublishAlarmService } from './publish-alarm.service.js';
 
 @Module({
-  imports: [LeadListsModule, StorageModule],
+  imports: [LeadListsModule, LeadsModule, StorageModule],
   controllers: [
     InstagramController,
     InstagramPostsController,
@@ -53,6 +54,6 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramAutomationsService,
   ],
   // O servidor MCP (o Claude e os agentes da VPS) usa os mesmos serviços das telas
-  exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService, InstagramPostPerformanceService],
+  exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService, InstagramPostPerformanceService, InstagramAutomationsService],
 })
 export class InstagramModule {}

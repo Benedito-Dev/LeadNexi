@@ -4,6 +4,7 @@ import { botaoPrincipalDoTopo, botaoSecundarioDoTopo } from '@/components/list-p
 import { Button } from '@/components/ui/button'
 import { Campo } from '@/components/ui/campo'
 import { Input } from '@/components/ui/input'
+import { Seletor, type OpcaoDoSeletor } from '@/components/ui/seletor'
 import { segmento, barraDeSegmentos } from '@/components/ui/segmentos'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,7 +12,9 @@ import { ErroDeApi } from '@/lib/api'
 import { addToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { formatarDecorrido } from '../../hoje/textos'
+import { listarPipelines } from '../../crm/api'
 import { buscarPerfil } from '../../instagram/api'
+import { listarListas } from '../../listas/api'
 import { MensagemDeErro } from '../../instagram/components/CartaoAppDaMeta'
 import type { PostDoPerfil } from '../../instagram/tipos'
 import { Interruptor } from '@/components/ui/interruptor'
@@ -82,6 +85,8 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
   const [entrega, setEntrega] = useState(automacao?.deliveryMessage ?? '')
   const [pedirParaSeguir, setPedirParaSeguir] = useState(automacao?.requireFollow ?? false)
   const [textoDeSeguir, setTextoDeSeguir] = useState(automacao?.notFollowingMessage ?? '')
+  const [etapa, setEtapa] = useState(automacao?.stageId ?? '')
+  const [lista, setLista] = useState(automacao?.listId ?? '')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
@@ -124,6 +129,8 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
       deliveryMessage: comBotao ? entrega.trim() : null,
       requireFollow: comBotao && pedirParaSeguir,
       notFollowingMessage: comBotao && pedirParaSeguir ? textoDeSeguir.trim() || null : null,
+      stageId: etapa || null,
+      listId: lista || null,
     }
     try {
       if (automacao) await editarAutomacao(automacao.id, dados)
@@ -303,6 +310,11 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
           </section>
         )}
 
+        <section aria-labelledby="au-crm" className="flex flex-col gap-3 border-t border-border pt-5">
+          <Passo id="au-crm" numero={passo()} titulo="No CRM" detalhe="opcional" />
+          <NoCrm etapa={etapa} lista={lista} onEtapa={setEtapa} onLista={setLista} />
+        </section>
+
         {automacao && <UltimosDisparos automacaoId={automacao.id} gatilho={automacao.trigger} comBotao={Boolean(automacao.buttonLabel)} />}
       </div>
 
@@ -331,6 +343,47 @@ function Formulario({ automacao, onFechar, onSalvo }: Omit<Props, 'aberto'>) {
         </div>
       </footer>
     </>
+  )
+}
+
+const NAO_MEXER = { value: '', label: 'Não mexer' }
+
+/**
+ * Para onde o lead vai no CRM quando a automação dispara. Só etapas em aberto (fechou e perdeu são
+ * com a pessoa) e listas ativas. A etapa só anda para frente: quem já está mais adiante fica.
+ */
+function NoCrm({ etapa, lista, onEtapa, onLista }: { etapa: string; lista: string; onEtapa: (id: string) => void; onLista: (id: string) => void }) {
+  const [etapas, setEtapas] = useState<OpcaoDoSeletor[]>([NAO_MEXER])
+  const [listas, setListas] = useState<OpcaoDoSeletor[]>([NAO_MEXER])
+
+  useEffect(() => {
+    listarPipelines()
+      .then((pipelines) => {
+        const varias = pipelines.length > 1
+        setEtapas([
+          NAO_MEXER,
+          ...pipelines.flatMap((p) =>
+            p.stages
+              .filter((e) => e.stageType !== 'WON' && e.stageType !== 'LOST')
+              .map((e) => ({ value: e.id, label: varias ? `${p.name} · ${e.name}` : e.name })),
+          ),
+        ])
+      })
+      .catch(() => undefined)
+    listarListas()
+      .then((todas) => setListas([NAO_MEXER, ...todas.filter((l) => !l.archived).map((l) => ({ value: l.id, label: l.name }))]))
+      .catch(() => undefined)
+  }, [])
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Campo id="au-etapa" rotulo="Levar para a etapa" dica="Só para frente: quem já está mais adiante fica onde está.">
+        <Seletor id="au-etapa" valor={etapa} opcoes={etapas} onChange={onEtapa} vazio="Não mexer" />
+      </Campo>
+      <Campo id="au-lista" rotulo="Pôr na lista" dica="Só quem ainda está sem lista.">
+        <Seletor id="au-lista" valor={lista} opcoes={listas} onChange={onLista} vazio="Não mexer" />
+      </Campo>
+    </div>
   )
 }
 

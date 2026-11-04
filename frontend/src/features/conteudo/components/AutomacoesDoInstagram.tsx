@@ -146,6 +146,17 @@ function CartaoDaAutomacao({ automacao, onAbrir, onLigar }: { automacao: Automac
             <span className="font-marca text-sm font-extrabold tabular-nums text-foreground">{automacao.delivered}</span> {automacao.delivered === 1 ? 'tocou no botão' : 'tocaram no botão'}
           </span>
         )}
+        {automacao.leads > 0 && (
+          <span>
+            <span className="font-marca text-sm font-extrabold tabular-nums text-foreground">{automacao.leads}</span> {automacao.leads === 1 ? 'lead' : 'leads'}
+            {automacao.won > 0 && (
+              <>
+                {' · '}
+                <span className="font-marca text-sm font-extrabold tabular-nums text-success">{automacao.won}</span> {automacao.won === 1 ? 'fechou' : 'fecharam'}
+              </>
+            )}
+          </span>
+        )}
         {automacao.lastSentAt && <span>última há {formatarDecorrido(automacao.lastSentAt)}</span>}
         {automacao.failed > 0 && (
           <span className="inline-flex items-center gap-1 text-warn-foreground">

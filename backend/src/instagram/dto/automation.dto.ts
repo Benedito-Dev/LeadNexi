@@ -8,6 +8,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
@@ -138,6 +139,16 @@ export class CreateAutomationDto {
   @IsString()
   @MaxLength(AUTOMATION_MESSAGE_LIMIT)
   notFollowingMessage?: string | null;
+
+  /** No CRM: etapa para onde o lead vai (só para frente); null = não mexe */
+  @ValidateIf((_dto, value) => value !== null && value !== undefined)
+  @IsUUID('4')
+  stageId?: string | null;
+
+  /** No CRM: lista em que o lead entra (se ainda estiver na lista padrão); null = não mexe */
+  @ValidateIf((_dto, value) => value !== null && value !== undefined)
+  @IsUUID('4')
+  listId?: string | null;
 }
 
 export class UpdateAutomationDto extends PartialType(CreateAutomationDto) {}

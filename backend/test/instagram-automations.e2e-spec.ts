@@ -96,7 +96,9 @@ describe('Automações do Instagram (e2e)', () => {
 
   async function cleanup() {
     await prisma.instagramAutomation.deleteMany();
+    await prisma.client.deleteMany({ where: { lead: { instagramUserId: { not: null } } } });
     await prisma.lead.deleteMany({ where: { instagramUserId: { not: null } } });
+    await prisma.leadList.deleteMany({ where: { name: 'Lista da automação' } });
     await prisma.instagramAccount.deleteMany();
     await prisma.instagramAppSettings.deleteMany();
   }
@@ -700,6 +702,83 @@ describe('Automações do Instagram (e2e)', () => {
         .send({ name: 'x', trigger: 'DM_KEYWORD', message: 'Oi', keywords: [] })
         .expect(400);
       expect(res.body.message).toMatch(/pelo menos uma palavra/);
+    });
+  });
+
+  describe('no CRM e placar', () => {
+    const stage = (name: string) => prisma.stage.findFirstOrThrow({ where: { name } });
+
+    it('leva o lead novo para a etapa e a lista, com "via automação" no histórico', async () => {
+      const respondeu = await stage('Respondeu');
+      const list = await prisma.leadList.create({ data: { name: 'Lista da automação' } });
+      await createAutomation({ stageId: respondeu.id, listId: list.id });
+      await deliver(comment('quero'));
+
+      const lead = await prisma.lead.findUniqueOrThrow({
+        where: { instagramUserId: 'igsid-ana' },
+        include: { activities: true },
+      });
+      expect(lead).toMatchObject({ stageId: respondeu.id, listId: list.id });
+      expect(lead.activities.find((a) => a.type === 'STAGE_CHANGED')).toMatchObject({
+        toStage: 'Respondeu',
+        via: 'automacao',
+      });
+    });
+
+    it('nunca volta um lead de etapa nem tira quem fechou', async () => {
+      const enviada = await stage('Mensagem enviada');
+      const proposta = await stage('Proposta enviada');
+      const fechou = await stage('Fechou');
+      await createAutomation({ stageId: enviada.id });
+
+      // Já está mais à frente: fica onde está
+      await deliver(comment('quero', { id: 'c-1', from: 'igsid-ana' }));
+      await prisma.lead.update({ where: { instagramUserId: 'igsid-ana' }, data: { stageId: proposta.id } });
+      await createAutomation({ stageId: enviada.id, mediaIds: ['post-2'] });
+      await deliver(comment('quero', { id: 'c-2', media: 'post-2', from: 'igsid-ana' }));
+      expect((await prisma.lead.findUniqueOrThrow({ where: { instagramUserId: 'igsid-ana' } })).stageId).toBe(proposta.id);
+
+      // Fechou: também fica
+      await prisma.lead.update({ where: { instagramUserId: 'igsid-ana' }, data: { stageId: fechou.id } });
+      await createAutomation({ stageId: enviada.id, mediaIds: ['post-3'] });
+      await deliver(comment('quero', { id: 'c-3', media: 'post-3', from: 'igsid-ana' }));
+      expect((await prisma.lead.findUniqueOrThrow({ where: { instagramUserId: 'igsid-ana' } })).stageId).toBe(fechou.id);
+    });
+
+    it('lead que já está noutra lista não muda de lista', async () => {
+      const list = await prisma.leadList.create({ data: { name: 'Lista da automação' } });
+      const outra = await prisma.leadList.create({ data: { name: 'Lista da automação' } });
+      await createAutomation({ listId: list.id });
+      await deliver(comment('quero', { id: 'c-1' }));
+      await prisma.lead.update({ where: { instagramUserId: 'igsid-ana' }, data: { listId: outra.id } });
+      await createAutomation({ listId: list.id, mediaIds: ['post-2'] });
+      await deliver(comment('quero', { id: 'c-2', media: 'post-2' }));
+      expect((await prisma.lead.findUniqueOrThrow({ where: { instagramUserId: 'igsid-ana' } })).listId).toBe(outra.id);
+    });
+
+    it('recusa etapa de fechou e etapa ou lista que não existe', async () => {
+      const fechou = await stage('Fechou');
+      const base = { name: 'x', message: 'Oi', mediaIds: [], keywords: [] };
+      await api().post('/instagram/automations').set(auth).send({ ...base, stageId: fechou.id }).expect(400);
+      await api()
+        .post('/instagram/automations')
+        .set(auth)
+        .send({ ...base, stageId: '00000000-0000-4000-8000-00000000ffff' })
+        .expect(400);
+      await api()
+        .post('/instagram/automations')
+        .set(auth)
+        .send({ ...base, listId: '00000000-0000-4000-8000-00000000ffff' })
+        .expect(400);
+    });
+
+    it('placar: pessoas alcançadas e quantas fecharam', async () => {
+      await createAutomation({ mediaIds: [], keywords: [] });
+      await deliver(comment('quero', { id: 'c-1', from: 'igsid-ana', username: 'ana' }));
+      await deliver(comment('quero', { id: 'c-2', from: 'igsid-bia', username: 'bia' }));
+      await prisma.lead.update({ where: { instagramUserId: 'igsid-bia' }, data: { wonAt: new Date() } });
+      const list = await api().get('/instagram/automations').set(auth).expect(200);
+      expect(list.body[0]).toMatchObject({ sent: 2, leads: 2, won: 1 });
     });
   });
 });

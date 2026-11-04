@@ -10,6 +10,9 @@ import type {
   InstagramAutomation,
   InstagramAutomationTrigger,
 } from '../generated/prisma/client.js';
+import { LeadListsService } from '../lead-lists/lead-lists.service.js';
+import type { ActivityVia } from '../leads/activity-via.js';
+import { LeadsService } from '../leads/leads.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { pickAutomation } from './automation-match.js';
 import {
@@ -27,7 +30,9 @@ import {
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
 /** Marca no histórico do lead: a mensagem saiu sozinha, por uma automação */
-export const VIA_AUTOMATION = 'automacao';
+export const VIA_AUTOMATION: ActivityVia = 'automacao';
+/** Mover para o fim da coluna (o Kanban põe no fim qualquer posição acima do tamanho) */
+const END_OF_COLUMN = 1_000_000;
 /** Comentário ou mensagem guardado no registro, cortado se for muito longo */
 const MAX_COMMENT = 500;
 /** Fora do comentário (story e direct), a mesma pessoa recebe a mesma automação no máximo 1x neste tempo */
@@ -95,11 +100,13 @@ export class InstagramAutomationsService {
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
     private readonly leads: InstagramLeadsService,
+    private readonly crm: LeadsService,
+    private readonly leadLists: LeadListsService,
   ) {}
 
   /** Todas, a mais nova primeiro, com quantas mensagens cada uma já mandou. */
   async list() {
-    const [automations, counts, last, delivered] = await Promise.all([
+    const [automations, counts, last, delivered, reached] = await Promise.all([
       this.prisma.instagramAutomation.findMany({
         orderBy: { createdAt: 'desc' },
       }),
@@ -117,7 +124,25 @@ export class InstagramAutomationsService {
         where: { deliveredAt: { not: null } },
         _count: { _all: true },
       }),
+      // Quem recebeu a mensagem (uma vez cada), para o placar de leads e vendas
+      this.prisma.instagramAutomationRun.findMany({
+        where: { status: 'SENT', leadId: { not: null } },
+        distinct: ['automationId', 'leadId'],
+        select: { automationId: true, leadId: true },
+      }),
     ]);
+    const won = new Set(
+      (
+        await this.prisma.lead.findMany({
+          where: {
+            id: { in: reached.map((r) => r.leadId!) },
+            wonAt: { not: null },
+          },
+          select: { id: true },
+        })
+      ).map((lead) => lead.id),
+    );
+    const reachedBy = (id: string) => reached.filter((r) => r.automationId === id);
     const count = (id: string, status: string) =>
       counts.find((c) => c.automationId === id && c.status === status)?._count
         ._all ?? 0;
@@ -125,6 +150,9 @@ export class InstagramAutomationsService {
       ...automation,
       sent: count(automation.id, 'SENT'),
       failed: count(automation.id, 'FAILED'),
+      /** Placar: pessoas que receberam (viraram ou já eram leads) e quantas delas fecharam */
+      leads: reachedBy(automation.id).length,
+      won: reachedBy(automation.id).filter((r) => won.has(r.leadId!)).length,
       /** Com botão: quantos tocaram e receberam a entrega */
       delivered:
         delivered.find((d) => d.automationId === automation.id)?._count._all ??
@@ -135,7 +163,8 @@ export class InstagramAutomationsService {
     }));
   }
 
-  create(dto: CreateAutomationDto) {
+  async create(dto: CreateAutomationDto) {
+    await this.checkCrm(dto.stageId, dto.listId);
     const trigger = dto.trigger ?? 'COMMENT';
     checkSetup({
       trigger,
@@ -155,6 +184,7 @@ export class InstagramAutomationsService {
       where: { id },
     });
     if (!current) throw new NotFoundException('Automação não encontrada');
+    await this.checkCrm(dto.stageId, dto.listId);
     // O que fica depois da edição (campo ausente = o atual; null = tirado)
     const trigger = dto.trigger ?? current.trigger;
     checkSetup({
@@ -436,7 +466,10 @@ export class InstagramAutomationsService {
       return 'failed';
     }
 
-    if (lead) await this.recordSent(lead.id, messageId, automation.message, now);
+    if (lead) {
+      await this.recordSent(lead.id, messageId, automation.message, now);
+      await this.applyCrm(automation, lead.id);
+    }
     const publicError =
       trigger.kind === 'COMMENT'
         ? await this.replyInPublic(token, trigger.sourceId, automation.publicReplies)
@@ -483,6 +516,93 @@ export class InstagramAutomationsService {
     return created
       ? { id: created.lead.id, instagramUsername: trigger.username }
       : null;
+  }
+
+  /**
+   * O que a automação faz no CRM: leva o lead para a etapa (só para frente: na mesma pipeline, só
+   * se ele estiver antes; em outra, só se ainda estiver na etapa de entrada, onde chega todo lead
+   * do Instagram; quem fechou ou perdeu não sai de lá) e para a lista (só se estiver na padrão).
+   * Falha aqui não desfaz a mensagem.
+   */
+  private async applyCrm(automation: InstagramAutomation, leadId: string) {
+    if (!automation.stageId && !automation.listId) return;
+    try {
+      const lead = await this.prisma.lead.findUniqueOrThrow({
+        where: { id: leadId },
+        select: {
+          listId: true,
+          stage: { select: { id: true, position: true, pipelineId: true, stageType: true } },
+        },
+      });
+      if (automation.listId && automation.listId !== lead.listId) {
+        const standard = await this.leadLists.defaultList();
+        if (lead.listId === standard.id) {
+          await this.prisma.lead.update({
+            where: { id: leadId },
+            data: { listId: automation.listId },
+          });
+        }
+      }
+      if (automation.stageId && automation.stageId !== lead.stage.id) {
+        const target = await this.prisma.stage.findUnique({
+          where: { id: automation.stageId },
+          select: { position: true, pipelineId: true },
+        });
+        const closed = lead.stage.stageType === 'WON' || lead.stage.stageType === 'LOST';
+        const forward = target
+          ? target.pipelineId === lead.stage.pipelineId
+            ? lead.stage.position < target.position
+            : lead.stage.id === (await this.intakeStageId())
+          : false;
+        if (!closed && forward) {
+          await this.crm.move(
+            leadId,
+            { stageId: automation.stageId, position: END_OF_COLUMN },
+            VIA_AUTOMATION,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Automação ${automation.id} não mexeu no lead ${leadId}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** Etapa de entrada: a primeira do primeiro funil, onde nasce todo lead do Instagram */
+  private async intakeStageId() {
+    const stage = await this.prisma.stage.findFirst({
+      orderBy: [
+        { pipeline: { position: 'asc' } },
+        { pipeline: { createdAt: 'asc' } },
+        { position: 'asc' },
+      ],
+      select: { id: true },
+    });
+    return stage?.id ?? null;
+  }
+
+  /** Etapa e lista escolhidas existem; a etapa não pode ser de fechou ou perdeu. */
+  private async checkCrm(stageId?: string | null, listId?: string | null) {
+    if (stageId) {
+      const stage = await this.prisma.stage.findUnique({
+        where: { id: stageId },
+        select: { stageType: true },
+      });
+      if (!stage) throw new BadRequestException('Etapa não encontrada.');
+      if (stage.stageType === 'WON' || stage.stageType === 'LOST') {
+        throw new BadRequestException(
+          'A automação não leva lead para "fechou" nem "perdeu": isso é com você.',
+        );
+      }
+    }
+    if (listId) {
+      const list = await this.prisma.leadList.findUnique({
+        where: { id: listId },
+        select: { archived: true },
+      });
+      if (!list || list.archived) throw new BadRequestException('Lista não encontrada.');
+    }
   }
 
   /** A mensagem no histórico do lead. Se o eco da Meta chegou antes, completa o dele. */

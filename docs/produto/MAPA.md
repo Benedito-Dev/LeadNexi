@@ -157,7 +157,11 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
   24 h), com o mesmo botão e "siga para receber"; post e resposta pública só existem no comentário. Fora do
   comentário, a mesma pessoa recebe a mesma automação no máximo uma vez por dia. Resposta a story sem automação
   de story cai na de palavra no direct.
-  Próximas fases: ações no lead (etapa, lista) e o placar por automação; ferramentas no MCP.
+  **No CRM:** a automação pode levar o lead para uma etapa (só para frente: na mesma pipeline, se ele estiver
+  antes; em outra, só da etapa de entrada; nunca tira de "fechou" ou "perdeu", e não aceita essas como destino)
+  e pôr numa lista (só quem está em "Sem lista"). A troca de etapa entra no histórico "via automação".
+  **Placar** no cartão: mensagens enviadas, quantos tocaram no botão, pessoas alcançadas (leads) e quantas
+  delas fecharam.
 
 Fora do plano: banco de provas (decisão de 26/10/2026; tabela removida em 27/10/2026). A IA não cita resultado de outros clientes.
 
@@ -227,6 +231,9 @@ As ferramentas do MCP chamam os mesmos serviços das telas: nenhuma regra de neg
 (`preparar_envio_de_imagem`, `preparar_envio_de_video`, `confirmar_envio`, que confere formato e
 proporção), `criar_rascunho_de_post`, `listar_rascunhos`, `listar_posts_agendados`, `agendar_post`
 (agenda ou remarca; precisa do Instagram conectado) e `voltar_para_rascunho` (tira da agenda). É o que o Criador e o Estrategista usam.
+
+**Automações pelo MCP — feito:** `listar_automacoes` (com o placar) e `criar_automacao`, que nasce **pausada**:
+só dispara depois que a pessoa revisa e liga em Conteúdo › Automações (o Claude prepara, a pessoa envia).
 
 ## 6. Escritório Virtual — fora do LeadNexi (decisão de 27/10/2026)
 
