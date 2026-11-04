@@ -2,11 +2,14 @@ import { Module } from '@nestjs/common';
 import { LeadListsModule } from '../lead-lists/lead-lists.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { InstagramApiClient } from './instagram-api.client.js';
+import { InstagramAutomationsController } from './instagram-automations.controller.js';
+import { InstagramAutomationsService } from './instagram-automations.service.js';
 import { InstagramCronController } from './instagram-cron.controller.js';
 import { InstagramDirectController } from './instagram-direct.controller.js';
 import { InstagramHashtagsService } from './instagram-hashtags.service.js';
 import { InstagramInboxService } from './instagram-inbox.service.js';
 import { InstagramInsightsService } from './instagram-insights.service.js';
+import { InstagramLeadsService } from './instagram-leads.service.js';
 import { InstagramPostPerformanceService } from './instagram-post-performance.service.js';
 import { InstagramMessagesController } from './instagram-messages.controller.js';
 import { InstagramMessagesService } from './instagram-messages.service.js';
@@ -30,6 +33,7 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramWebhookController,
     InstagramMessagesController,
     InstagramDirectController,
+    InstagramAutomationsController,
   ],
   providers: [
     InstagramService,
@@ -45,6 +49,8 @@ import { PublishAlarmService } from './publish-alarm.service.js';
     InstagramHashtagsService,
     InstagramInsightsService,
     InstagramPostPerformanceService,
+    InstagramLeadsService,
+    InstagramAutomationsService,
   ],
   // O servidor MCP (o Claude e os agentes da VPS) usa os mesmos serviços das telas
   exports: [InstagramPostsService, InstagramPublisherService, InstagramDirectUploadService, InstagramPostPerformanceService],

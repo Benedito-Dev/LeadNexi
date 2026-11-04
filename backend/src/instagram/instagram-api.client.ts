@@ -272,20 +272,67 @@ export class InstagramApiClient {
   }
 
   /**
-   * Liga os avisos (webhook) de mensagens do direct para a conta. Precisa da permissão
-   * instagram_business_manage_messages no login e do webhook configurado no app da Meta.
+   * Liga os avisos (webhook) de mensagens do direct para a conta e, com `comments`, também os de
+   * comentários (automações). Precisa da permissão instagram_business_manage_messages (e
+   * instagram_business_manage_comments para os comentários) no login e do webhook configurado
+   * no app da Meta. A lista enviada substitui a anterior.
    */
-  async subscribeToMessages(token: string): Promise<void> {
+  async subscribeToMessages(token: string, comments = false): Promise<void> {
     await this.request(
       `https://graph.instagram.com/${GRAPH_VERSION}/me/subscribed_apps`,
       {
         method: 'POST',
         body: new URLSearchParams({
-          subscribed_fields: 'messages,message_reactions',
+          subscribed_fields: comments
+            ? 'messages,message_reactions,comments'
+            : 'messages,message_reactions',
           access_token: token,
         }),
       },
     );
+  }
+
+  /**
+   * Resposta privada a um comentário: a mensagem chega no direct de quem comentou, mesmo sem
+   * conversa antes. A Meta aceita uma por comentário, até 7 dias depois dele. Devolve o ID da
+   * mensagem (o mesmo do eco).
+   */
+  async sendPrivateReply(
+    token: string,
+    commentId: string,
+    text: string,
+  ): Promise<string> {
+    const body = await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipient: { comment_id: commentId },
+          message: { text },
+        }),
+      },
+    );
+    return requireString(body.message_id, 'message_id');
+  }
+
+  /** Responde um comentário em público, embaixo dele. Devolve o ID da resposta. */
+  async replyToComment(
+    token: string,
+    commentId: string,
+    text: string,
+  ): Promise<string> {
+    const body = await this.request(
+      `https://graph.instagram.com/${GRAPH_VERSION}/${commentId}/replies`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({ message: text, access_token: token }),
+      },
+    );
+    return requireString(body.id, 'id');
   }
 
   /** Nome, @ e foto de quem mandou direct (pelo ID dessa pessoa no Instagram, o IGSID). */

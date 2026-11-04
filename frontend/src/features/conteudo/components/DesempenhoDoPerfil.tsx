@@ -331,7 +331,8 @@ function Numero({ valor }: { valor: number | null }) {
   return <td className="py-2.5 pr-3 text-right tabular-nums text-foreground">{formatar(valor)}</td>
 }
 
-function Aviso({ Icone, titulo, texto, acao }: { Icone: typeof KeyRound; titulo: string; texto: string; acao: string }) {
+/** Aviso âmbar com o caminho para Configurações › Canais (conta ou permissão faltando). */
+export function Aviso({ Icone, titulo, texto, acao }: { Icone: typeof KeyRound; titulo: string; texto: string; acao: string }) {
   return (
     <div role="status" className="flex flex-wrap items-center gap-4 rounded-xl border border-warn-border bg-card p-5">
       <Selo Icone={Icone} tom="ambar" />

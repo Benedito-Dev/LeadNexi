@@ -10,7 +10,7 @@ import {
   resolveEncryptionKey,
 } from './../src/common/crypto/secret-box.js';
 import { InstagramApiClient } from './../src/instagram/instagram-api.client.js';
-import { UNKNOWN_CONTACT } from './../src/instagram/instagram-inbox.service.js';
+import { UNKNOWN_CONTACT } from './../src/instagram/instagram-leads.service.js';
 import { AVATAR_REFRESH_MS } from './../src/leads/lead-avatar.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { StorageService } from './../src/storage/storage.service.js';

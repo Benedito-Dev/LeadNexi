@@ -121,6 +121,7 @@ describe('Instagram (e2e)', () => {
       'instagram_business_content_publish',
       'instagram_business_manage_messages',
       'instagram_business_manage_insights',
+      'instagram_business_manage_comments',
     ]);
     expect(url.searchParams.get('state')).toBeTruthy();
   });
@@ -153,8 +154,8 @@ describe('Instagram (e2e)', () => {
       'segredo-do-app',
     );
     expect(meta.getProfile).toHaveBeenCalledWith('token-longo');
-    // Já liga os avisos do direct (webhook) para a conta
-    expect(meta.subscribeToMessages).toHaveBeenCalledWith('token-longo');
+    // Já liga os avisos do direct e dos comentários (webhook) para a conta
+    expect(meta.subscribeToMessages).toHaveBeenCalledWith('token-longo', true);
 
     const res = await api().get('/instagram/account').set(auth).expect(200);
     expect(res.body.connected).toBe(true);
@@ -163,6 +164,7 @@ describe('Instagram (e2e)', () => {
       name: 'Loja Teste',
       needsReconnect: false,
       messagesEnabled: true,
+      commentsEnabled: true,
     });
     expect(res.body.account.accessToken).toBeUndefined();
 
@@ -173,6 +175,19 @@ describe('Instagram (e2e)', () => {
     const days = (saved.tokenExpiresAt.getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(59);
     expect(days).toBeLessThan(61);
+  });
+
+  it('sem a permissão de comentários, liga só os avisos do direct', async () => {
+    meta.subscribeToMessages.mockImplementation((_token: string, comments?: boolean) =>
+      comments ? Promise.reject(new Error('sem permissão')) : Promise.resolve(),
+    );
+    await callback({ code: 'codigo-da-meta', state: await validState() });
+    expect(meta.subscribeToMessages).toHaveBeenLastCalledWith('token-longo');
+    const res = await api().get('/instagram/account').set(auth).expect(200);
+    expect(res.body.account).toMatchObject({
+      messagesEnabled: true,
+      commentsEnabled: false,
+    });
   });
 
   it('se não der para ligar os avisos do direct, conecta mesmo assim e a tela avisa', async () => {
@@ -186,6 +201,7 @@ describe('Instagram (e2e)', () => {
     expect(res.body.account).toMatchObject({
       needsReconnect: false,
       messagesEnabled: false,
+      commentsEnabled: false,
     });
   });
 

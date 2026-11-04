@@ -1,8 +1,9 @@
 /**
- * Marca do que o Claude fez pelo servidor MCP (`via = "claude"` no histórico do lead), ao lado da
- * data. Sem marca, foi feito nas telas.
+ * Marca do que não foi feito nas telas, ao lado da data no histórico do lead: o Claude pelo
+ * servidor MCP (`via = "claude"`) ou uma automação do Instagram (`via = "automacao"`).
  */
 export function ViaClaude({ via }: { via?: string | null }) {
+  if (via === 'automacao') return <span className="font-semibold text-leadnexi-violet-texto"> · via automação</span>
   if (via !== 'claude') return null
   return <span className="font-semibold text-leadnexi-violet-texto"> · via Claude</span>
 }

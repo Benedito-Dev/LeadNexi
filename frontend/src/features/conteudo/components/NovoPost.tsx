@@ -538,7 +538,7 @@ function Editor({ conectado, base, dia, onFechar, onCriado }: Omit<Props, 'abert
 }
 
 /** Cabeçalho de cada passo da gaveta: número, título e um detalhe à direita. */
-function Passo({ id, numero, titulo, detalhe, alerta = false, children }: { id: string; numero: number; titulo: string; detalhe?: string; alerta?: boolean; children?: React.ReactNode }) {
+export function Passo({ id, numero, titulo, detalhe, alerta = false, children }: { id: string; numero: number; titulo: string; detalhe?: string; alerta?: boolean; children?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5">
       <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-leadnexi-violet/15 text-xs font-extrabold text-leadnexi-violet-texto">

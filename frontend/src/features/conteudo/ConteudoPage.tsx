@@ -11,6 +11,7 @@ import type { SituacaoDaConta } from '../instagram/tipos'
 import { buscarPublicacao, listarPosts, listarRascunhos, listarTodosOsPosts, sincronizarPosts, type PostCriado } from './api'
 import { BandejaDeRascunhos } from './components/BandejaDeRascunhos'
 import { CalendarioDePosts } from './components/CalendarioDePosts'
+import { AutomacoesDoInstagram } from './components/AutomacoesDoInstagram'
 import { DesempenhoDoPerfil } from './components/DesempenhoDoPerfil'
 import { DetalhesDoPost } from './components/DetalhesDoPost'
 import { FeedDoPerfil } from './components/FeedDoPerfil'
@@ -19,20 +20,21 @@ import { chaveDoDia, diasVisiveis, somarDias, type Modo } from './datas'
 import { dataDoPost } from './situacoes'
 import type { Post } from './tipos'
 
-type Visao = Modo | 'feed' | 'desempenho'
+type Visao = Modo | 'feed' | 'desempenho' | 'automacoes'
 
 const VISOES: [Visao, string][] = [
   ['mes', 'Mês'],
   ['semana', 'Semana'],
   ['feed', 'Feed'],
   ['desempenho', 'Desempenho'],
+  ['automacoes', 'Automações'],
 ]
 
-/** Conteúdo: os posts do Instagram no calendário (mês ou semana), no feed do perfil ou com as estatísticas, e os detalhes. */
+/** Conteúdo: os posts do Instagram no calendário (mês ou semana), no feed do perfil, com as estatísticas ou as automações, e os detalhes. */
 export function ConteudoPage() {
   const [visao, setVisao] = useState<Visao>('mes')
-  // Feed e Desempenho não têm o período do calendário: trazem todos os posts
-  const semPeriodo = visao === 'feed' || visao === 'desempenho'
+  // Feed, Desempenho e Automações não têm o período do calendário: trazem todos os posts
+  const semPeriodo = visao === 'feed' || visao === 'desempenho' || visao === 'automacoes'
   const modo: Modo = visao === 'semana' ? 'semana' : 'mes'
   const [ancora, setAncora] = useState(() => new Date())
   const dias = useMemo(() => diasVisiveis(modo, ancora), [modo, ancora])
@@ -183,9 +185,11 @@ export function ConteudoPage() {
         </p>
       )}
 
-      {visao !== 'desempenho' && <BandejaDeRascunhos rascunhos={rascunhos} onAbrir={(post) => setAbertoId(post.id)} />}
+      {visao !== 'desempenho' && visao !== 'automacoes' && <BandejaDeRascunhos rascunhos={rascunhos} onAbrir={(post) => setAbertoId(post.id)} />}
 
-      {visao === 'desempenho' ? (
+      {visao === 'automacoes' ? (
+        <AutomacoesDoInstagram conta={conta} />
+      ) : visao === 'desempenho' ? (
         <DesempenhoDoPerfil />
       ) : visao === 'feed' ? (
         <FeedDoPerfil posts={posts} onAbrir={(post) => setAbertoId(post.id)} />

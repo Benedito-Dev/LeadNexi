@@ -8,6 +8,8 @@ export type ContaDoInstagram = {
   needsReconnect: boolean
   /** O direct vira lead (avisos de mensagem ligados); falso: conectar de novo dá a permissão */
   messagesEnabled: boolean
+  /** As automações de comentário disparam (avisos de comentários ligados); falso: conectar de novo */
+  commentsEnabled: boolean
 }
 
 /** GET /instagram/account */

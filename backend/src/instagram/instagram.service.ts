@@ -8,12 +8,16 @@ import {
 } from './instagram-api.client.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
-/** Permissões pedidas no login: ler o perfil, publicar conteúdo, receber o direct e ler as estatísticas */
+/**
+ * Permissões pedidas no login: ler o perfil, publicar conteúdo, receber o direct, ler as
+ * estatísticas e ler e responder comentários (automações)
+ */
 const SCOPES = [
   'instagram_business_basic',
   'instagram_business_content_publish',
   'instagram_business_manage_messages',
   'instagram_business_manage_insights',
+  'instagram_business_manage_comments',
 ];
 
 /** Audiência do JWT usado como `state` do OAuth (não serve como token de acesso) */
@@ -63,13 +67,15 @@ export class InstagramService {
         tokenExpiresAt: true,
         tokenInvalidAt: true,
         messagesEnabledAt: true,
+        commentsEnabledAt: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
     });
     if (!account) return { connected: false as const };
 
-    const { tokenInvalidAt, messagesEnabledAt, ...rest } = account;
+    const { tokenInvalidAt, messagesEnabledAt, commentsEnabledAt, ...rest } =
+      account;
     const needsReconnect =
       tokenInvalidAt !== null || account.tokenExpiresAt <= new Date();
     return {
@@ -79,6 +85,8 @@ export class InstagramService {
         needsReconnect,
         /** O direct vira lead (avisos de mensagem ligados nesta conexão) */
         messagesEnabled: messagesEnabledAt !== null,
+        /** As automações de comentário disparam (avisos de comentários ligados nesta conexão) */
+        commentsEnabled: commentsEnabledAt !== null,
       },
     };
   }
@@ -183,7 +191,7 @@ export class InstagramService {
         accessToken: encryptSecret(longToken.accessToken, key),
         tokenExpiresAt: expiresAt(longToken.expiresIn),
         tokenInvalidAt: null,
-        messagesEnabledAt: await this.enableMessages(longToken.accessToken),
+        ...(await this.enableWebhooks(longToken.accessToken)),
       };
       // Uma conta por vez: conectar outra substitui a anterior
       await this.prisma.$transaction([
@@ -205,19 +213,31 @@ export class InstagramService {
   }
 
   /**
-   * Liga os avisos do direct para a conta. Falha (ex.: permissão de mensagens não concedida ou
-   * webhook ainda não configurado no app) não impede a conexão: a tela avisa, e conectar de novo
-   * tenta outra vez.
+   * Liga os avisos do direct e dos comentários para a conta. Sem a permissão de comentários,
+   * tenta só o direct. Falha (ex.: permissão de mensagens não concedida ou webhook ainda não
+   * configurado no app) não impede a conexão: a tela avisa, e conectar de novo tenta outra vez.
    */
-  private async enableMessages(token: string): Promise<Date | null> {
+  private async enableWebhooks(token: string): Promise<{
+    messagesEnabledAt: Date | null;
+    commentsEnabledAt: Date | null;
+  }> {
+    try {
+      await this.api.subscribeToMessages(token, true);
+      const now = new Date();
+      return { messagesEnabledAt: now, commentsEnabledAt: now };
+    } catch (error) {
+      this.logger.warn(
+        `Avisos de comentários não ligados para a conta: ${describe(error)}`,
+      );
+    }
     try {
       await this.api.subscribeToMessages(token);
-      return new Date();
+      return { messagesEnabledAt: new Date(), commentsEnabledAt: null };
     } catch (error) {
       this.logger.warn(
         `Avisos do direct não ligados para a conta: ${describe(error)}`,
       );
-      return null;
+      return { messagesEnabledAt: null, commentsEnabledAt: null };
     }
   }
 

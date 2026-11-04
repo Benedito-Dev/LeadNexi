@@ -237,6 +237,46 @@ describe('InstagramApiClient', () => {
       });
     });
 
+    it('com comentários, liga também os avisos de comentários', async () => {
+      reply(200, { success: true });
+      await client.subscribeToMessages('tok', true);
+      const { init } = lastCall();
+      expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
+        subscribed_fields: 'messages,message_reactions,comments',
+        access_token: 'tok',
+      });
+    });
+
+    it('responde um comentário no direct (resposta privada)', async () => {
+      reply(200, { recipient_id: '55', message_id: 'mid.1' });
+      await expect(
+        client.sendPrivateReply('tok', 'c-1', 'Te mandei o link'),
+      ).resolves.toBe('mid.1');
+      const { url, init } = lastCall();
+      expect(url.href).toBe(
+        `https://graph.instagram.com/${GRAPH_VERSION}/me/messages`,
+      );
+      expect(JSON.parse(init?.body as string)).toEqual({
+        recipient: { comment_id: 'c-1' },
+        message: { text: 'Te mandei o link' },
+      });
+    });
+
+    it('responde um comentário em público', async () => {
+      reply(200, { id: 'c-2' });
+      await expect(
+        client.replyToComment('tok', 'c-1', 'Te chamei no direct!'),
+      ).resolves.toBe('c-2');
+      const { url, init } = lastCall();
+      expect(url.href).toBe(
+        `https://graph.instagram.com/${GRAPH_VERSION}/c-1/replies`,
+      );
+      expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
+        message: 'Te chamei no direct!',
+        access_token: 'tok',
+      });
+    });
+
     it('lê nome e @ de quem mandou mensagem (campos podem faltar)', async () => {
       reply(200, {
         name: 'Maria Souza',

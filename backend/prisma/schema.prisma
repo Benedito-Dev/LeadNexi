@@ -320,6 +320,9 @@ model InstagramAccount {
   tokenInvalidAt    DateTime? @map("token_invalid_at")
   /// Quando os avisos do direct foram ligados para a conta (webhook de mensagens na Meta)
   messagesEnabledAt DateTime? @map("messages_enabled_at")
+  /// Quando os avisos de comentários foram ligados (permissão instagram_business_manage_comments):
+  /// sem eles, as automações de comentário não disparam
+  commentsEnabledAt DateTime? @map("comments_enabled_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
@@ -472,4 +475,59 @@ model McpToken {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   @@map("mcp_tokens")
+}
+
+// Automação do Instagram (Conteúdo › Automações): alguém comenta num post e recebe uma mensagem no
+// direct, sozinho. Exceção à regra "nada sai sozinho" (decisão de 04/11/2026): só pela API oficial
+// e só para quem interagiu primeiro.
+model InstagramAutomation {
+  id            String                    @id @default(uuid())
+  name          String
+  active        Boolean                   @default(true)
+  /// IDs dos posts na Meta; vazio = qualquer post ou Reel
+  mediaIds      String[]                  @default([]) @map("media_ids")
+  /// Palavras que disparam (sem diferença de maiúscula e acento); vazio = qualquer comentário
+  keywords      String[]                  @default([])
+  /// Mensagem enviada no direct de quem comentou
+  message       String
+  /// Respostas públicas no comentário (uma sorteada por vez); vazio = não responde em público
+  publicReplies String[]                  @default([]) @map("public_replies")
+  runs          InstagramAutomationRun[]
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+
+  @@map("instagram_automations")
+}
+
+enum InstagramAutomationRunStatus {
+  /// Sendo enviada agora (o comentário já foi reservado: outro aviso igual não manda de novo)
+  PENDING
+  /// Mensagem enviada no direct
+  SENT
+  /// A pessoa já recebeu esta automação neste post: não manda de novo
+  SKIPPED
+  /// A Meta recusou (o motivo fica em `error`)
+  FAILED
+}
+
+// Cada comentário que disparou uma automação. O ID do comentário entra uma vez só: a Meta pode
+// avisar o mesmo comentário mais de uma vez, e ele nunca recebe duas mensagens.
+model InstagramAutomationRun {
+  id            String                       @id @default(uuid())
+  automationId  String                       @map("automation_id")
+  automation    InstagramAutomation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  commentId     String                       @unique @map("comment_id")
+  mediaId       String                       @map("media_id")
+  /// Quem comentou (IGSID) e o @ dela
+  commenterId   String                       @map("commenter_id")
+  username      String?
+  commentText   String                       @map("comment_text")
+  leadId        String?                      @map("lead_id")
+  status        InstagramAutomationRunStatus
+  error         String?
+  createdAt     DateTime                     @default(now()) @map("created_at")
+
+  @@index([automationId, createdAt])
+  @@index([automationId, commenterId, mediaId])
+  @@map("instagram_automation_runs")
 }

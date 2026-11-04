@@ -2,8 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { decryptSecret } from '../common/crypto/secret-box.js';
 import { readJpegSize } from '../common/utils/jpeg.js';
-import { Prisma } from '../generated/prisma/client.js';
-import { LeadListsService } from '../lead-lists/lead-lists.service.js';
 import { AVATAR_REFRESH_MS, avatarKey } from '../leads/lead-avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -12,12 +10,12 @@ import {
   type MessagingProfile,
 } from './instagram-api.client.js';
 import { HEART } from './instagram-messages.service.js';
+import {
+  InstagramLeadsService,
+  isUniqueViolation,
+} from './instagram-leads.service.js';
 import { InstagramSettingsService } from './instagram-settings.service.js';
 
-/** Origem dos leads que chegam pelo direct (a mesma do formulário de lead) */
-export const INSTAGRAM_SOURCE = 'Instagram';
-/** Nome do lead quando a Meta não informa nome nem @ */
-export const UNKNOWN_CONTACT = 'Contato do Instagram';
 /** Mensagens muito longas entram cortadas no histórico */
 const MAX_TEXT = 2000;
 
@@ -88,7 +86,7 @@ export class InstagramInboxService {
     private readonly settings: InstagramSettingsService,
     private readonly api: InstagramApiClient,
     private readonly storage: StorageService,
-    private readonly leadLists: LeadListsService,
+    private readonly leads: InstagramLeadsService,
   ) {}
 
   /** Cadastro do webhook: a Meta manda o token; confere com o que a tela mostra. */
@@ -192,7 +190,7 @@ export class InstagramInboxService {
     let profile: MessagingProfile | null | undefined;
     if (!lead) {
       profile = await this.profileOf(senderId, storedToken);
-      const result = await this.createLead(senderId, profile, sentAt);
+      const result = await this.leads.create(senderId, profile, sentAt);
       // Sem funil (nenhuma etapa): não há onde pôr o lead
       if (!result) return 'ignored';
       lead = { id: result.lead.id, avatarUpdatedAt: null };
@@ -366,69 +364,6 @@ export class InstagramInboxService {
     }
   }
 
-  /**
-   * Lead novo no fim da primeira etapa do primeiro funil, com "Criado" no histórico logo antes
-   * da primeira mensagem. Se outra mensagem da mesma pessoa criou o lead ao mesmo tempo, usa ele.
-   */
-  private async createLead(
-    senderId: string,
-    profile: MessagingProfile | null,
-    firstMessageAt: Date,
-  ): Promise<{ lead: { id: string }; created: boolean } | null> {
-    const stage = await this.prisma.stage.findFirst({
-      orderBy: [
-        { pipeline: { position: 'asc' } },
-        { pipeline: { createdAt: 'asc' } },
-        { position: 'asc' },
-      ],
-      select: { id: true, name: true },
-    });
-    if (!stage) {
-      this.logger.warn(
-        'Direct recebido, mas não há etapa no funil para o lead',
-      );
-      return null;
-    }
-
-    const name =
-      profile?.name ??
-      (profile?.username ? `@${profile.username}` : UNKNOWN_CONTACT);
-    const list = await this.leadLists.defaultList();
-    try {
-      const lead = await this.prisma.lead.create({
-        data: {
-          name: name.slice(0, 120),
-          source: INSTAGRAM_SOURCE,
-          instagramUserId: senderId,
-          instagramUsername: profile?.username ?? null,
-          stageId: stage.id,
-          listId: list.id,
-          position: await this.prisma.lead.count({
-            where: { stageId: stage.id, archived: false },
-          }),
-          activities: {
-            create: {
-              type: 'CREATED',
-              text: INSTAGRAM_SOURCE,
-              toStage: stage.name,
-              // 1 ms antes da mensagem: no histórico, "criado" vem antes dela
-              createdAt: new Date(firstMessageAt.getTime() - 1),
-            },
-          },
-        },
-        select: { id: true },
-      });
-      return { lead, created: true };
-    } catch (error) {
-      // Duas mensagens da mesma pessoa chegando juntas: a outra criou o lead
-      if (!isUniqueViolation(error)) throw error;
-      const lead = await this.prisma.lead.findUnique({
-        where: { instagramUserId: senderId },
-        select: { id: true },
-      });
-      return lead ? { lead, created: false } : null;
-    }
-  }
 }
 
 /**
@@ -472,13 +407,6 @@ function describeMessage(message: NonNullable<MessagingEvent['message']>) {
   const type = message.attachments?.[0]?.type;
   if (typeof type === 'string' && ATTACHMENTS[type]) return ATTACHMENTS[type];
   return message.attachments?.length ? 'Enviou um anexo' : 'Mensagem sem texto';
-}
-
-function isUniqueViolation(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  );
 }
 
 /** Comparação em tempo constante (não revela o valor esperado pelo tempo de resposta) */

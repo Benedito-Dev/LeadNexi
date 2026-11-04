@@ -9,6 +9,9 @@ Decisões que guiam o mapa (25/10/2026):
 - **WhatsApp por API não oficial** (Evolution API, conectado pelo QR code) na caixa de Conversas. O 1º contato da
   cadência continua pelo link `wa.me`, que abre o WhatsApp com a mensagem pronta.
 - **MCP para o Claude consultar e agir** (ler leads e resultados, criar lead, registrar contato, agendar post).
+- **Automações do Instagram (04/11/2026):** exceção à regra "nada sai sozinho". Vale só no Instagram, pela API
+  oficial da Meta, e só para quem interagiu primeiro (comentou). Nada de envio em massa nem para quem nunca falou
+  com a conta. O WhatsApp continua manual.
 
 ## 1. Princípios
 
@@ -31,7 +34,7 @@ CRM
  ├ Listas       nichos e listas de prospecção, importar, gerar
  └ Pipelines    funis e etapas                                  pronto
 Clientes        pós-venda
-Conteúdo        posts do Instagram
+Conteúdo        posts do Instagram e automações
 Resultados      placar e metas
 Configurações
  ├ Perfil
@@ -92,7 +95,8 @@ WhatsApp (API não oficial)  ─────┘
 A tela de Conversas só conhece o contrato. Trocar o WhatsApp não oficial pelo oficial mexe só no adaptador.
 
 **Risco do WhatsApp não oficial:** o WhatsApp pode banir o número. O LeadNexi nunca envia em massa nem sozinho;
-todo envio sai de um clique, um por vez (mesma regra de hoje).
+todo envio sai de um clique, um por vez (mesma regra de hoje). A única exceção são as automações do Instagram
+(seção 3.5), pela API oficial e só para quem comentou.
 
 ### 3.3 CRM
 
@@ -134,9 +138,21 @@ Servidor: **tem** tudo em `/clients` (lista, ficha, relatórios, pagamentos, lem
   mais interações). Precisa da permissão `instagram_business_manage_insights`: conta conectada antes dela
   mostra "Falta liberar as estatísticas" até conectar de novo.
 
+- **Automações** (5ª visão): quem comenta num post recebe uma mensagem no direct na hora (a "resposta
+  privada" da Meta) e vira lead, com a mensagem no histórico marcada "via automação". Cada automação tem nome,
+  posts (os escolhidos na grade do perfil ou qualquer post), palavras (sem diferença de maiúscula e acento, ou
+  qualquer comentário), a mensagem e respostas públicas opcionais (uma sorteada por comentário). Cada comentário
+  dispara uma vez, e a mesma pessoa recebe a mesma automação uma vez por post. O cartão mostra ligar/pausar e
+  quantas mensagens saíram; o editor mostra os últimos comentários e o motivo de cada falha. Precisa da permissão
+  `instagram_business_manage_comments` e do campo `comments` no webhook do app da Meta: conta conectada antes
+  disso mostra "Falta liberar os comentários" até conectar de novo.
+  Próximas fases: botão na mensagem e "siga para receber"; resposta a story, menção e palavra no direct;
+  ações no lead (etapa, lista) e o placar por automação; ferramentas no MCP.
+
 Fora do plano: banco de provas (decisão de 26/10/2026; tabela removida em 27/10/2026). A IA não cita resultado de outros clientes.
 
-Servidor: **tem** `/instagram/posts`, `/instagram/media`, `/instagram/hashtag-sets`, `/instagram/insights`.
+Servidor: **tem** `/instagram/posts`, `/instagram/media`, `/instagram/hashtag-sets`, `/instagram/insights`,
+`/instagram/automations` (e os comentários chegam pelo mesmo webhook do direct).
 O front antigo (branch `backup/main-2026-10-23`) tem o calendário e o editor de post para reaproveitar.
 
 ### 3.6 Resultados
